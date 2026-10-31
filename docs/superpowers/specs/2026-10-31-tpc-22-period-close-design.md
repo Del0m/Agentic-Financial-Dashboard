@@ -107,7 +107,7 @@ Corrections pick one of the user's lines by its category key. Picking the saving
 
 ## Budget engine
 
-**Income:** the median of `income_by_month` over the fit window (the same complete months the fit uses, up to 3). `None` when every month is $0.
+**Income:** the median of `income_by_month` over the fit window (the same complete months the fit uses, up to 3). `None` when that median is $0 (e.g. one paycheck in three months), so the total falls back instead of becoming $0.
 
 **Fit (`fit_budget`)** additionally returns:
 - a saving line (`kind="fixed"`, `group="saving"`), the lower median of the months with savings transfers, when there are any;
