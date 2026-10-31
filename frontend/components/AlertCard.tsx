@@ -3,6 +3,8 @@ import { categoryLabel, formatCents } from "@/lib/format";
 
 const CAUSES: Record<string, string> = { one_time: "One-time", recurring: "Recurring", seasonal: "Seasonal" };
 const OUTCOMES: Record<string, string> = { accepted: "Accepted", dismissed: "Dismissed" };
+// what period close reports about the whole budget (tpc-22); overspend alerts are badged by severity
+const KINDS: Record<string, string> = { over_income: "Over income", group_over_target: "Over target" };
 
 // one alert from the budget agent. pending alerts get Accept / Dismiss; a budget proposal shows the limit the
 // user would be accepting, and says so when a paused run is waiting on the answer
@@ -19,7 +21,7 @@ export default function AlertCard({ alert, onAccept, onDismiss, busy }: {
       <header className="flex flex-wrap items-center gap-2">
         <h3 className="font-semibold">{alert.category ? categoryLabel(alert.category) : "Budget"}</h3>
         <span className={`rounded px-1.5 text-xs ${alert.severity === "high" ? "bg-red-600 text-white" : "bg-amber-500 text-black"}`}>
-          {alert.severity === "high" ? "Over limit" : "Ahead of pace"}
+          {KINDS[alert.kind] ?? (alert.severity === "high" ? "Over limit" : "Ahead of pace")}
         </span>
         {alert.cause && <span className="text-xs text-neutral-500">{CAUSES[alert.cause] ?? alert.cause}</span>}
       </header>

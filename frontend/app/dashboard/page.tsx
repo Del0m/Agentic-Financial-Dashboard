@@ -8,8 +8,10 @@ import BudgetPaceBar from "@/components/BudgetPaceBar";
 import DebtsTable from "@/components/DebtsTable";
 import NetWorthSummary from "@/components/NetWorthSummary";
 import PlaidLinkButton from "@/components/PlaidLinkButton";
+import TransactionsTable from "@/components/TransactionsTable";
 import {
-  errorMessage, getAlerts, getBudget, getDashboard, syncItem, type Budget, type Dashboard, type ExchangeResult,
+  correctTransaction, errorMessage, getAlerts, getBudget, getDashboard, getTransactions, syncItem, type Budget,
+  type Dashboard, type ExchangeResult, type Txn,
 } from "@/lib/api";
 import { categoryLabel, formatCents, formatDate } from "@/lib/format";
 
@@ -40,6 +42,9 @@ export default function DashboardPage() {
   const [budget, setBudget] = useState<Budget | null>(null);
   const [budgetError, setBudgetError] = useState<string | null>(null);
   const [pendingAlerts, setPendingAlerts] = useState(0);
+  // this month's transactions (tpc-22), with the line each counts against and a picker to correct it
+  const [txns, setTxns] = useState<Txn[] | null>(null);
+  const [txnError, setTxnError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +58,13 @@ export default function DashboardPage() {
     getAlerts("pending_user")
       .then((a) => !cancelled && setPendingAlerts(a.length))
       .catch(() => {}); // the link still works without its count
+    getTransactions()
+      .then((t) => {
+        if (cancelled) return;
+        setTxns(t);
+        setTxnError(null);
+      })
+      .catch((err) => !cancelled && setTxnError(errorMessage(err)));
     return () => {
       cancelled = true;
     };
@@ -84,6 +96,16 @@ export default function DashboardPage() {
   );
 
   const onLinkError = useCallback((message: string) => setLinkError(message), []);
+
+  // a correction moves spending between lines, so the pace bars reload with it
+  const onCorrect = useCallback(
+    async (id: number, category: string, remember: boolean) => {
+      const updated = await correctTransaction(id, category, remember);
+      load();
+      return updated;
+    },
+    [load],
+  );
 
   async function retrySync(itemId: number) {
     setRetrying(itemId);
@@ -208,6 +230,16 @@ export default function DashboardPage() {
                   </p>
                 )}
               </div>
+            )}
+          </Card>
+          <Card title="Transactions">
+            {txnError ? (
+              <p className="text-sm text-red-600 dark:text-red-400">Couldn&apos;t load your transactions: {txnError}</p>
+            ) : !txns ? (
+              <p className="text-sm text-neutral-500">Loading…</p>
+            ) : (
+              <TransactionsTable transactions={txns} lines={budget?.lines ?? []} onCorrect={onCorrect}
+                onRemembered={load} />
             )}
           </Card>
           <Card title="Balances">

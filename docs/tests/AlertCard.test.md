@@ -44,3 +44,9 @@ npm test -- components/AlertCard.test.tsx
 **What it does:** "The agent is waiting for your decision." appears only when `awaiting_approval` is true.
 
 **Why it's there:** It tells the user their click continues a paused run (human-in-the-loop), without claiming that for alerts nothing is waiting on.
+
+## `shows close's over_income and group_over_target alerts`
+
+**What it does:** An `over_income` alert with no category is headed "Budget", badged "Over income" (not "Ahead of pace"), and shows its message; a `group_over_target` alert is badged "Over target".
+
+**Why it's there:** Period close (TPC-22) writes medium alerts about the whole budget. The severity badge was written for overspend alerts and would call these "Ahead of pace".

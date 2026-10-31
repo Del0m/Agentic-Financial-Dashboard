@@ -44,3 +44,9 @@ npm test -- components/BudgetPaceBar.test.tsx
 **What it does:** A fixed line (rent) is labelled "(fixed)".
 
 **Why it's there:** Fixed lines aren't judged on pace (rent lands on the 1st), so a full bar early in the month is expected.
+
+## `shows the line's name`
+
+**What it does:** A line named "Groceries" is labelled "Groceries", and its meter is "Groceries spent".
+
+**Why it's there:** Lines carry the user's name (TPC-22), not Plaid's raw category key; the reserved keys show as "Savings" and "Free".
