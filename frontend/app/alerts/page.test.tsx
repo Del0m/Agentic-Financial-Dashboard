@@ -221,14 +221,14 @@ describe("Alerts page", () => {
       expect((screen.getByRole("button", { name: /Run budget check|Running/ }) as HTMLButtonElement).disabled).toBe(true));
   });
 
-  test("month end on the last day advances one", async () => {
+  test("month end on the last day goes to the next month's end", async () => {
     simMock.mockResolvedValue({ ...SIMULATED, date: "2026-10-31" });
     advanceMock.mockResolvedValue({ job_id: 5 });
-    simJobMock.mockResolvedValue(job({ days_requested: 1, days_done: 1 }));
+    simJobMock.mockResolvedValue(job({ days_requested: 30, days_done: 30 }));
     render(<AlertsPage />);
     await screen.findByText("Simulated date: Oct 31, 2026");
     fireEvent.click(screen.getByRole("button", { name: "To month end" }));
-    await waitFor(() => expect(advanceMock).toHaveBeenCalledWith(1));
+    await waitFor(() => expect(advanceMock).toHaveBeenCalledWith(30));
   });
 
   test("a month-long advance is followed past 10 minutes", async () => {

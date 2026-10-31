@@ -1,5 +1,5 @@
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -26,21 +26,27 @@ def _today() -> date:
     return datetime.now(ZoneInfo(config.SCHEDULER_TZ)).date()
 
 
-# users with a budget or a real plaid item. simulated users live on their own date and are advanced by hand
+# real users: a budget or a real plaid item. simulated users live on their own date and are advanced by hand, and a
+# seeded user (only the placeholder item) isn't real: its synthetic history would be checked against today's date
 def eligible_users(session: Session) -> list[str]:
     has_budget = select(BudgetPeriod.user_id)
     has_item = select(PlaidItem.user_id).where(PlaidItem.access_token_enc != SEED_TOKEN)
-    users = session.scalars(select(User).where(or_(User.id.in_(has_budget), User.id.in_(has_item)))).all()
+    seeded = select(PlaidItem.user_id).where(PlaidItem.access_token_enc == SEED_TOKEN)
+    users = session.scalars(select(User).where(or_(User.id.in_(has_budget), User.id.in_(has_item)),
+                                               or_(User.id.in_(has_item), User.id.not_in(seeded)))).all()
     return sorted(u.id for u in users if not (u.prefs_json or {}).get("sim"))
 
 
 # one user at a time (there's one local model). a user already running (the button, a simulation) is skipped
 # today; one user's failure is on their run row and doesn't stop the rest
 def _ran_today(session, user_id: str, today: date) -> bool:
-    started = session.scalars(select(AgentRun.started_at).where(AgentRun.user_id == user_id,
-                                                                AgentRun.graph == "budget")).all()
+    # the scheduler's day as utc bounds, so the database finds the one row instead of python reading them all
     tz = ZoneInfo(config.SCHEDULER_TZ)
-    return any(t.astimezone(tz).date() == today for t in started)
+    start = datetime.combine(today, time(), tz).astimezone(timezone.utc)
+    end = datetime.combine(today + timedelta(days=1), time(), tz).astimezone(timezone.utc)
+    return session.scalar(select(AgentRun.id).where(AgentRun.user_id == user_id, AgentRun.graph == "budget",
+                                                    AgentRun.started_at >= start, AgentRun.started_at < end)
+                          .limit(1)) is not None
 
 
 # skip_done (the startup catch-up): leave out users whose budget already ran today, by any route
@@ -73,7 +79,10 @@ def month_end_job(session_factory, *, today: Optional[date] = None, skip_done: b
     with session_factory() as s:
         user_ids = eligible_users(s)
         if skip_done:
-            closed = {r.user_id for r in s.scalars(select(AgentRun).where(AgentRun.graph == "close"))
+            # a close for that month is recorded on or after its 1st, so older rows needn't be read at all
+            since = datetime.combine(previous, time(), timezone.utc)
+            closed = {r.user_id for r in s.scalars(select(AgentRun).where(AgentRun.graph == "close",
+                                                                        AgentRun.started_at >= since))
                       if (r.summary_json or {}).get("month") == previous.isoformat()}
             user_ids = [u for u in user_ids if u not in closed]
     for user_id in user_ids:
@@ -98,18 +107,23 @@ def build_scheduler() -> BackgroundScheduler:
     return sched
 
 
+# the startup catch-up as one job, so on the 1st the month closes before that day's budget runs (the order the cron
+# slots and simulated days keep)
+def catch_up(session_factory, *, today: date, close: bool, daily: bool) -> None:
+    if close:
+        month_end_job(session_factory, today=today, skip_done=True)
+    if daily:
+        daily_budget_job(session_factory, today=today, skip_done=True)
+
+
 # a server started after today's slot would otherwise wait for tomorrow (the in-memory job store forgets missed
 # fires). run today's slot once, now, for users it hasn't covered yet. earlier days are never replayed
 def add_catch_up_jobs(sched: BackgroundScheduler, now: datetime) -> list[str]:
     now = now.astimezone(ZoneInfo(config.SCHEDULER_TZ))
-    added = []
-    slots = [("catch_up_daily", daily_budget_job, config.DAILY_RUN_TIME)]
-    if now.day == 1:
-        slots.append(("catch_up_month_end", month_end_job, config.CLOSE_RUN_TIME))
-    for job_id, job, hhmm in slots:
-        at = _at(hhmm)
-        if (now.hour, now.minute) >= (at["hour"], at["minute"]):
-            sched.add_job(job, DateTrigger(run_date=now), args=[budget_hooks.session_factory],
-                          kwargs={"today": now.date(), "skip_done": True}, id=job_id, misfire_grace_time=3600)
-            added.append(job_id)
-    return added
+    passed = lambda hhmm: (now.hour, now.minute) >= (_at(hhmm)["hour"], _at(hhmm)["minute"])
+    close, daily = now.day == 1 and passed(config.CLOSE_RUN_TIME), passed(config.DAILY_RUN_TIME)
+    if not (close or daily):
+        return []
+    sched.add_job(catch_up, DateTrigger(run_date=now), args=[budget_hooks.session_factory],
+                  kwargs={"today": now.date(), "close": close, "daily": daily}, id="catch_up", misfire_grace_time=3600)
+    return ["catch_up"]

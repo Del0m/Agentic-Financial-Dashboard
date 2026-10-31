@@ -217,7 +217,7 @@ Use **structured output** (Pydantic models) for `diagnose` and `decide_action` s
   - `this_month_alerts`: this period's earlier overspend alerts for the category, as severity, action and status;
   - `past_advice`: the category's advice from this budget month and the 3 before it, as month, action and outcome.
 
-  The decide prompt opens with the memory check: if the category was already alerted this month and the severity isn't higher, `no_op`; never re-propose a dismissed adjustment. Code adds a one-line summary ("Earlier alerts for this category this month: 1, highest severity high"). The model makes the call.
+  The decide prompt opens with the memory check: if the category was already alerted this month and the severity isn't higher, `no_op`; never re-propose a dismissed adjustment. Code adds a one-line summary ("Earlier alerts for this category this month: 1, highest severity high"). The model makes the call, but code enforces the floor: a `no_op` stands only when an earlier alert this month was at least as severe. Otherwise it becomes the code-written alert (`escalated`), so the model can never hide an overspend.
 - **Diagnosis:** for each flag, `budget_engine/diagnose.py` computes the facts:
   - the largest purchase and its share;
   - its ratio to that merchant's usual month;
@@ -528,11 +528,11 @@ Only in Sandbox. Plaid's Transfer product needs separate approval for production
 
   **Demo, Sep 30 → Nov 1, one-time user:** 32 runs and 2 alerts: Oct 5, ahead of pace (the corner-shop weeks), and Oct 12, over the limit (the $600 purchase, an escalation the model reports). Nov 1 records October's close slot, then ends `period_ended` until TPC-22.
 - **Scheduler (TPC-21):** `ENABLE_SCHEDULER=1` starts APScheduler inside the API.
-  - Every day at `DAILY_RUN_TIME` (06:00), it runs each real user's budget check (anyone with a budget or a real Plaid item, not simulated users).
+  - Every day at `DAILY_RUN_TIME` (06:00), it runs each real user's budget check: anyone with a budget or a real Plaid item, except simulated users and seeded users (only the placeholder item), whose synthetic history would be checked against today's date.
   - On the 1st at `CLOSE_RUN_TIME` (05:00), it runs the month-end slot.
   - Both are in `SCHEDULER_TZ`.
   - The slots only fire while the server is up: APScheduler's misfire grace covers a busy server, not one that was down.
-  - So at startup, if today's slot has already passed, it runs once for users not yet checked today, and the month-end slot runs on the 1st for users not yet closed. Earlier days are never replayed.
+  - So at startup, if today's slot has already passed, it runs once for users not yet checked today, and the month-end slot runs on the 1st for users not yet closed. Both run as one `catch_up` job, close first, the same order as the cron slots. Earlier days are never replayed.
 - **The UI demo (TPC-20):** seed a planted user, run the API as that user, and use the Alerts page:
 
   ```bash
@@ -738,6 +738,7 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 | 2026-10-28 | Only a recurring cause may `adjust_next_budget` (a code guard downgrades the rest to an `alert`); a recurring proposal is the old limit plus the new merchants' typical month | Review, reproduced live: holiday shopping got a $1,600 January limit, and the gym got $205 from a straight-line projection of charges that had already posted. Now it's $135 |
 | 2026-10-30 | Merchant patterns are judged over the history months the user has data for, with a fourth pattern `occasional`; the recurring proposal adds new merchants' typical month to the category's baseline without them; an unreachable model falls back to code-written alerts; sync runs before `load_state` | Review on #12: with short history every merchant was `started_recently` and the proposal counted a merchant already in the median twice; an Ollama outage hid every overspend that day; a user with no budget was never synced |
 | 2026-10-30 | A paused budget run reads its decisions from the alert rows, and any paused run whose proposals are decided is resumed (after the pause is marked, after a decision, on `GET /alerts`), one resume at a time per run | Review on #13: a failed resume, a click before `awaiting_user`, or two racing decisions each left a run waiting forever on an alert that could no longer be decided |
+| 2026-10-30 | Code turns a `no_op` into an alert unless an earlier alert this month was at least as severe; seeded users aren't scheduled; the startup catch-up is one job, close first | Review on #12 and #14: the prompt hint alone let a small model hide an over-limit flag; seeded users got real-date runs on synthetic data; parallel catch-ups could run the 1st's budget before the close |
 | 2026-10-28 | `categorize` only counts uncategorized transactions in TPC-19; unbudgeted spending is listed, not alerted | Sandbox and synthetic data are always categorized, and nothing in the done-when exercises it. A category with no line isn't overspent against anything |
 | 2026-10-28 | Initial budgets keep the **median** (× 1.05 for flexible lines) | Measured on five synthetic users: pooled MAPE 7.1% (median) vs 17.7% (mean). The mean is 1-2 points better when there's no outlier but 58.8% vs 9.4% with one trip, and it budgets one-off purchases. `eval/results/2026-10-28/budget_accuracy/` |
 | 2026-10-28 | Only proposals that change the budget (`adjust_next_budget`) pause the run with `interrupt()`; `alert` and `suggest_cuts` don't | Architecture 6.6. Informational alerts have nothing to approve, and a paused run per day would pile up |

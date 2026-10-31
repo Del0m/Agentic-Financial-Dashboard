@@ -141,7 +141,10 @@ describe("simulation calls", () => {
 
   test("days to month end", () => {
     expect(daysToMonthEnd("2026-10-03")).toBe(28);
-    expect(daysToMonthEnd("2026-10-31")).toBe(1);
-    expect(daysToMonthEnd("2028-02-28")).toBe(1);
+    expect(daysToMonthEnd("2028-02-28")).toBe(1); // 2028 is a leap year: Feb 29 is the end
+    // review on #14: on the last day, the next month's end (a seeded user starts on one)
+    expect(daysToMonthEnd("2026-10-31")).toBe(30);
+    expect(daysToMonthEnd("2026-09-30")).toBe(31);
+    expect(daysToMonthEnd("2026-12-31")).toBe(31);
   });
 });

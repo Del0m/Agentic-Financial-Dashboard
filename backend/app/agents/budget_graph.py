@@ -15,7 +15,7 @@ from langgraph.types import Command, interrupt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.agents.budget_llm import Action, Diagnosis, decide_messages, diagnose_messages, invoke_structured
+from app.agents.budget_llm import _RANK, Action, Diagnosis, decide_messages, diagnose_messages, invoke_structured
 from app import config
 from app.agents.llm import get_chat_model
 from app.budget_engine.diagnose import overspend_facts, proposed_limit_cents
@@ -202,7 +202,15 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             downgraded = a.action == "adjust_next_budget" and (d or {}).get("cause") != "recurring"
             if downgraded:
                 a = Action(action="alert", message=_fallback_message(flag))
+            # no_op is only for an overspend the user was already told about at this severity; anything else would
+            # hide it (live, the model let a pace warning stand when the category then went over its limit)
+            rank = _RANK.get(_severity(flag["reason"]), 0)
+            escalated = a.action == "no_op" and not any(_RANK.get(e["severity"], 0) >= rank
+                                                        for e in state["memory"][cat])
+            if escalated:
+                a = Action(action="alert", message=_fallback_message(flag))
             actions[cat] = {"action": a.action, "message": a.message, "fallback": fallback, "downgraded": downgraded,
+                            "escalated": escalated,
                             "proposed_limit_cents": f["proposed_limit_cents"] if a.action == "adjust_next_budget" else None}
         return {"actions": actions, "llm_failures": failures}
 

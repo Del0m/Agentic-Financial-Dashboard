@@ -93,6 +93,6 @@ npm test -- lib/api.test.ts
 
 ## `days to month end`
 
-**What it does:** Oct 3 is 28 days from October's end. Oct 31 and Feb 28 2028 (a leap year) both give 1, never 0.
+**What it does:** Oct 3 is 28 days from October's end, and Feb 28 2028 is 1 (2028 is a leap year). On a month's last day it's the next month's end instead: Oct 31 gives 30, Sep 30 gives 31, and Dec 31 gives 31.
 
-**Why it's there:** "To month end" on the last day must still advance one day, because the API rejects 0 (plan Review Focus 3).
+**Why it's there:** It never returns 0, which the API rejects (plan Review Focus 3). On the last day it used to return 1, and a newly seeded user always starts on a month's last day, so "To month end" only reached the 1st and missed the month where the planted overspend happens. The review on #14 found it.

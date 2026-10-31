@@ -152,12 +152,25 @@ def test_adjust_stores_proposed_limit(db, tmp_path):
     assert (alert.action, alert.proposed_limit_cents, alert.severity) == ("adjust_next_budget", 13500, "high")
 
 
-def test_no_op_writes_nothing(db, tmp_path):
+# review on #12 and #14: no_op stands only when an earlier alert this month was at least as severe; otherwise it
+# would hide the overspend, so the code writes its own alert
+def test_no_op_without_an_earlier_alert_still_alerts(db, tmp_path):
     uid = seed(db, "overspend-recurring")
     state = run(db, uid, model=fake(reply(cause="recurring", evidence="A gym."), reply(action="no_op", message="Fine.")),
                 tmp_path=tmp_path)
-    assert rows(db, Alert) == [] and rows(db, AdviceLog) == []
-    assert state["actions"]["PERSONAL_CARE"]["action"] == "no_op"
+    [alert] = rows(db, Alert)
+    assert alert.action == "alert" and alert.message.startswith("Personal care is over its $")
+    assert state["actions"]["PERSONAL_CARE"]["escalated"] is True
+
+
+def test_no_op_on_a_more_severe_flag_becomes_an_alert(db, tmp_path):
+    uid = seed(db, "overspend-one-time")
+    run(db, uid, model=fake(DIAG, ALERT), tmp_path=tmp_path)
+    with db() as s:
+        s.query(Alert).one().severity = "medium"           # as if the earlier alert was a pace warning
+        s.commit()
+    run(db, uid, model=fake(DIAG, reply(action="no_op", message="Already told you.")), tmp_path=tmp_path)
+    assert [a.severity for a in rows(db, Alert)] == ["medium", "high"]
 
 
 def test_diagnose_failure_still_alerts(db, tmp_path):
