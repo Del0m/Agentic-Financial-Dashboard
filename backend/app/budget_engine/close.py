@@ -6,7 +6,7 @@ from app.budget_engine.pace import BudgetLine
 from app.budget_engine.txns import round_cents
 
 # next month's limits at period close (architecture 6.5). smoothing and the clamp keep the
-# budget from chasing one bad month.
+# budget from chasing one bad month. the free line is never passed in: the budget style sets it (tpc-22)
 
 SMOOTH_OLD, SMOOTH_ACTUAL = 0.7, 0.3
 CLAMP = 0.15

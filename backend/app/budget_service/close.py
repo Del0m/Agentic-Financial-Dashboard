@@ -1,0 +1,205 @@
+from datetime import date, timedelta
+from typing import Optional
+
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.budget_engine.close import close_period
+from app.budget_engine.fit import HISTORY_MONTHS, fit_budget
+from app.budget_engine.groups import default_group, default_name
+from app.budget_engine.pace import BudgetLine as EngineLine
+from app.budget_engine.styles import StyleFact, apply_style
+from app.budget_engine.txns import FREE, SAVINGS, add_months, category_totals, month_end, savings, spending
+from app.budget_service.initialize import load_txns
+from app.budget_service.settings import user_style
+from app.db.models import AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, utcnow
+
+# period close (tpc-22, architecture 6.5): the db side of the close graph. gather reads the closed month,
+# adapt is pure (close_period for each line, then the user's style), and persist writes the whole month in
+# one commit: the old period closed, undecided proposals expired, the next period and its lines, any alerts,
+# and the run row. the (user_id, start_date) constraint means a rerun or a race can never open a month twice
+
+SUMMARY_LINE_KEYS = ("category", "name", "group", "old_cents", "actual_cents", "new_cents", "rule")
+
+
+def _money(cents: int) -> str:
+    return f"${cents / 100:,.2f}"
+
+
+def fact_message(fact: StyleFact) -> str:
+    if fact.kind == "over_income":
+        gap = fact.lines_cents - fact.income_cents
+        return (f"Your budget lines add up to {_money(fact.lines_cents)}, {_money(gap)} more than your typical "
+                f"income of {_money(fact.income_cents)}.")
+    return (f"{fact.group.capitalize()} are {fact.lines_cents / fact.income_cents:.0%} of income, above the "
+            f"{fact.target_pct}% target.")
+
+
+# the oldest open period that ended before today; a month with no budget, or one already closed, has none
+def due_period(session: Session, user_id: str, today: date) -> Optional[BudgetPeriod]:
+    return session.scalars(select(BudgetPeriod).where(
+        BudgetPeriod.user_id == user_id, BudgetPeriod.status == "open", BudgetPeriod.end_date < today)
+        .order_by(BudgetPeriod.start_date).limit(1)).first()
+
+
+# adjust_next_budget proposals still waiting when their month closes count as dismissed (architecture 6.6)
+def pending_proposals(session: Session, period_id: int) -> list[int]:
+    return list(session.scalars(select(Alert.id).where(
+        Alert.period_id == period_id, Alert.action == "adjust_next_budget", Alert.status == "pending_user")
+        .order_by(Alert.id)))
+
+
+# marks the alerts dismissed, their advice ignored, and the budget runs paused on them expired. the caller commits
+def expire_proposals(session: Session, alert_ids: list[int]) -> None:
+    if not alert_ids:
+        return
+    for alert in session.scalars(select(Alert).where(Alert.id.in_(alert_ids))):
+        alert.status = "dismissed"
+    advice = session.scalars(select(AdviceLog).where(AdviceLog.alert_id.in_(alert_ids))).all()
+    for row in advice:
+        row.outcome = "ignored"
+    runs = session.scalars(select(AgentRun).where(
+        AgentRun.id.in_({row.run_id for row in advice if row.run_id is not None}),
+        AgentRun.status == "awaiting_user")).all()
+    for run in runs:
+        waited = sorted(row.alert_id for row in advice if row.run_id == run.id)
+        run.status, run.finished_at = "expired", utcnow()
+        run.summary_json = {**(run.summary_json or {}), "expired_alert_ids": waited}
+
+
+def gather_month(session: Session, period_id: int) -> dict:
+    period = session.get(BudgetPeriod, period_id)
+    start, end = period.start_date, period.end_date
+    txns = load_txns(session, period.user_id, start, end)
+    spent = category_totals(spending(txns), start, end)
+    saved = sum(category_totals(savings(txns), start, end).values())
+    lined = {ln.category for ln in period.lines}
+    unlined = {c: amount for c, amount in spent.items() if c not in lined and amount > 0}
+    # what the free line covered, whether or not the period had one (a budget from before tpc-22 didn't)
+    free_actual = spent.get(FREE, 0) + sum(amount for c, amount in unlined.items() if c != FREE)
+
+    def actual(ln: BudgetLine) -> int:
+        if ln.group == "free":
+            return free_actual
+        if ln.group == "saving":
+            return saved
+        return spent.get(ln.category, 0)
+
+    accepted = {}
+    for alert in session.scalars(select(Alert).where(
+            Alert.period_id == period_id, Alert.action == "adjust_next_budget", Alert.status == "accepted",
+            Alert.proposed_limit_cents.is_not(None)).order_by(Alert.id)):
+        accepted[alert.category] = alert.proposed_limit_cents       # the latest answer wins
+
+    new_start = end + timedelta(days=1)
+    history = load_txns(session, period.user_id, add_months(new_start, -HISTORY_MONTHS), end)
+    fit = fit_budget(history, new_start)
+    style, targets = user_style(session, period.user_id)
+    return {
+        "month": start, "new_start": new_start, "user_id": period.user_id,
+        "lines": [{"category": ln.category, "name": ln.name, "group": ln.group, "kind": ln.kind,
+                   "limit_cents": ln.limit_cents, "actual_cents": actual(ln)} for ln in period.lines],
+        "saved_cents": saved, "free_actual_cents": free_actual, "unbudgeted": sorted(c for c in unlined if c != FREE),
+        "accepted": accepted,
+        "income_cents": fit.income_cents, "fallback_total_cents": fit.spending_total_cents,
+        "style": style, "targets": targets,
+    }
+
+
+def _saving_line(actual_cents: int, new_cents: int, rule: str) -> dict:
+    return {"category": SAVINGS, "name": default_name(SAVINGS), "group": "saving", "kind": "fixed", "limit_cents": 0,
+            "actual_cents": actual_cents, "old_cents": 0, "new_cents": new_cents, "rule": rule}
+
+
+# pure: next month's lines from the closed one. free is never adjusted here; the style sets it
+def adapt_month(gathered: dict) -> dict:
+    lines = [ln for ln in gathered["lines"] if ln["group"] != "free"]
+    actuals = {ln["category"]: ln["actual_cents"] for ln in lines}
+    adjustments = close_period([EngineLine(ln["category"], ln["kind"], ln["limit_cents"], ln["group"])
+                                for ln in lines], actuals, gathered["accepted"])
+    new = [{**ln, "old_cents": adj.old_cents, "new_cents": adj.new_cents, "rule": adj.source}
+           for ln, adj in zip(lines, adjustments)]
+    # a budget from before tpc-22 gains a saving line once the user is seen saving
+    if gathered["saved_cents"] and all(ln["category"] != SAVINGS for ln in new):
+        new.append(_saving_line(gathered["saved_cents"], gathered["saved_cents"], "fixed"))
+
+    result = apply_style(gathered["style"], [EngineLine(ln["category"], ln["kind"], ln["new_cents"], ln["group"])
+                                             for ln in new], gathered["income_cents"],
+                         gathered["fallback_total_cents"], gathered["targets"])
+    split = gathered["style"] == "50_30_20" and result.fallback is None
+    if SAVINGS in result.limits and all(ln["category"] != SAVINGS for ln in new):
+        new.append(_saving_line(0, 0, "target"))          # 50/30/20 sets one the history didn't show
+    for ln in new:
+        ln["new_cents"] = result.limits[ln["category"]]
+        if split and ln["category"] == SAVINGS:
+            ln["rule"] = "target"
+
+    old_free = next((ln for ln in gathered["lines"] if ln["group"] == "free"), None)
+    old_cents = old_free["limit_cents"] if old_free else 0
+    new.append({"category": FREE, "name": old_free["name"] if old_free else default_name(FREE), "group": "free",
+                "kind": "flexible", "limit_cents": old_cents, "actual_cents": gathered["free_actual_cents"],
+                "old_cents": old_cents, "new_cents": result.limits[FREE], "rule": "remainder"})
+    return {"lines": new, "total_cents": result.total_cents, "free_cents": result.limits[FREE],
+            "facts": list(result.facts), "style_fallback": result.fallback}
+
+
+# one commit for the whole month. None when another close got there first (the old period is no longer open, or
+# the next one already exists): nothing is written
+def persist_month(session_factory, period_id: int, gathered: dict, adapted: dict,
+                  expired: list[int]) -> Optional[dict]:
+    with session_factory() as s:
+        old = s.get(BudgetPeriod, period_id)
+        if old.status != "open":
+            return None
+        expire_proposals(s, expired)
+        old.status = "closed"
+        new_start = gathered["new_start"]
+        period = BudgetPeriod(user_id=old.user_id, start_date=new_start, end_date=month_end(new_start),
+                              status="open", fit_json=None, income_cents=gathered["income_cents"],
+                              total_cents=adapted["total_cents"])
+        period.lines = [BudgetLine(category=ln["category"], name=ln["name"], group=ln["group"], kind=ln["kind"],
+                                   limit_cents=ln["new_cents"],
+                                   source="user" if ln["rule"] == "accepted" else "adapted",
+                                   fit_json={"old_cents": ln["old_cents"], "actual_cents": ln["actual_cents"],
+                                             "rule": ln["rule"]})
+                        for ln in adapted["lines"]]
+        s.add(period)
+        try:
+            s.flush()
+        except IntegrityError:
+            s.rollback()
+            return None
+        alerts = [Alert(user_id=old.user_id, period_id=period.id, kind=f.kind, category=None, severity="medium",
+                        cause=None, action="alert", message=fact_message(f), status="pending_user")
+                  for f in adapted["facts"]]
+        s.add_all(alerts)
+        s.flush()
+        summary = {
+            "month": gathered["month"].isoformat(), "new_period_id": period.id,
+            "lines": [{k: ln[k] for k in SUMMARY_LINE_KEYS} for ln in adapted["lines"]],
+            "expired_alert_ids": expired, "income_cents": gathered["income_cents"],
+            "total_cents": adapted["total_cents"], "free_cents": adapted["free_cents"], "style": gathered["style"],
+            "alert_ids": [a.id for a in alerts], "unbudgeted": gathered["unbudgeted"],
+        }
+        if adapted["style_fallback"]:
+            summary["style_fallback"] = adapted["style_fallback"]
+        s.add(AgentRun(user_id=old.user_id, graph="close", status="ok", finished_at=utcnow(), summary_json=summary))
+        s.commit()
+        return summary
+
+
+def record_error(session_factory, user_id: str, month: Optional[date], error: str) -> None:
+    with session_factory() as s:
+        s.add(AgentRun(user_id=user_id, graph="close", status="error", finished_at=utcnow(),
+                       summary_json={"month": month.isoformat() if month else None, "error": error}))
+        s.commit()
+
+
+# closes every month that ended before today, oldest first; one summary per month closed. the caller holds the
+# user's lock (budget_service/daily.py)
+def close_due(session_factory, user_id: str, today: date) -> list[dict]:
+    from app.agents.close_graph import build_close_graph      # the graph calls back into this module
+    state = build_close_graph(session_factory).invoke({"user_id": user_id, "today": today.isoformat(), "closed": []},
+                                                      {"recursion_limit": 500})
+    return state["closed"]
