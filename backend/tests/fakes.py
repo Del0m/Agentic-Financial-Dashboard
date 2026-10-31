@@ -98,11 +98,14 @@ def ollama_has(*models: str) -> bool:
 
 
 # answers any structured call for the schema it was bound to (tpc-21's simulations can't script every reply):
-# a one_time diagnosis, then "alert" for a category's first flag of the month and "no_op" once it was alerted
+# a diagnosis with `cause`, then `first_action` for a category's first flag of the month and "no_op" once it was
+# alerted. tpc-22's demo uses cause="recurring", first_action="adjust_next_budget"
 class SchemaReplyModel(BaseChatModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     seen: list = Field(default_factory=list)
+    cause: str = "one_time"
+    first_action: str = "alert"
 
     @property
     def _llm_type(self) -> str:
@@ -112,9 +115,9 @@ class SchemaReplyModel(BaseChatModel):
         self.seen.append(list(messages))
         title = (kwargs.get("format") or {}).get("title")
         if title == "Diagnosis":
-            body = {"cause": "one_time", "evidence": "One purchase explains it."}
+            body = {"cause": self.cause, "evidence": "One purchase explains it."}
         elif "Earlier alerts for this category this month: none" in str(messages[-1].content):
-            body = {"action": "alert", "message": "This category is over budget."}
+            body = {"action": self.first_action, "message": "This category is over budget."}
         else:
             body = {"action": "no_op", "message": "Already alerted."}
         return ChatResult(generations=[ChatGeneration(message=AIMessage(content=json.dumps(body)))])
