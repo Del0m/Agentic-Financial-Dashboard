@@ -17,6 +17,11 @@ class Txn:
     merchant: Optional[str] = None
 
 
+# reserved line categories (tpc-22): the saving line tracks transfers to savings, the free line is the room left
+SAVINGS = "SAVINGS_TRANSFER"
+FREE = "FREE"
+
+
 # not spending: income isn't, a transfer moves money between your own accounts,
 # and a card payment pays for purchases already counted
 EXCLUDED_PRIMARY = frozenset({"INCOME", "TRANSFER_IN", "TRANSFER_OUT"})

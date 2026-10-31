@@ -90,6 +90,7 @@ class Transaction(Base):
     pf_category_primary: Mapped[Optional[str]]
     pf_category_detailed: Mapped[Optional[str]]
     our_category: Mapped[Optional[str]]
+    user_category: Mapped[Optional[str]]                    # the user's correction; wins over every other source
     is_recurring: Mapped[bool] = mapped_column(default=False)
     pending: Mapped[bool] = mapped_column(default=False)
     removed: Mapped[bool] = mapped_column(default=False)
@@ -108,11 +109,19 @@ class BudgetPeriod(Base):
     end_date: Mapped[Date]
     status: Mapped[str] = mapped_column(Enum("open", "closed", name="budget_period_status"), default="open")
     fit_json: Mapped[Optional[dict]] = mapped_column(JSON)
+    income_cents: Mapped[Optional[int]]                     # typical monthly income; null with no income history
+    total_cents: Mapped[Optional[int]]                      # the planned total; the style decides how it's built
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     lines: Mapped[list["BudgetLine"]] = relationship(back_populates="period")
 
-# one limit per category per period; fit_json holds the monthly totals and outlier months behind the limit
+# budget lines belong to a group, which is what the budget rules read (tpc-22); the name is the user's label.
+# plain strings, like the alert columns, so a new group or style never needs a migration
+LineGroup = Literal["needs", "wants", "saving", "free"]
+BudgetStyle = Literal["caps", "50_30_20"]
+
+# one limit per category per period; fit_json holds the monthly totals and outlier months behind the limit.
+# category is the internal key for what the line tracks (a plaid category, SAVINGS_TRANSFER or FREE)
 class BudgetLine(Base):
     __tablename__ = "budget_lines"
     __table_args__ = (UniqueConstraint("period_id", "category", name="uq_budget_lines_period_category"),)
@@ -120,6 +129,8 @@ class BudgetLine(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     period_id: Mapped[int] = mapped_column(ForeignKey("budget_periods.id"), index=True)
     category: Mapped[str]
+    name: Mapped[str]
+    group: Mapped[str]
     kind: Mapped[str] = mapped_column(Enum("fixed", "flexible", name="budget_line_kind"))
     limit_cents: Mapped[int]
     spent_cents: Mapped[int] = mapped_column(default=0)
@@ -128,6 +139,18 @@ class BudgetLine(Base):
     fit_json: Mapped[Optional[dict]] = mapped_column(JSON)
 
     period: Mapped["BudgetPeriod"] = relationship(back_populates="lines")
+
+# a merchant the user always wants in one category ("always do this for costco"). merchant_name is stored
+# trimmed and casefolded so "Costco" and "COSTCO " are one rule
+class CategoryRule(Base):
+    __tablename__ = "category_rules"
+    __table_args__ = (UniqueConstraint("user_id", "merchant_name", name="uq_category_rules_user_merchant"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    merchant_name: Mapped[str]
+    category: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 # alert and advice columns are plain strings so a new kind or action never needs a migration;
 # these list the values architecture section 5 allows

@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.budget_engine.groups import default_group, default_name
 from app.budget_engine.fit import FIXED_DEFAULT, HISTORY_MONTHS, FitResult, FittedLine, fit_budget
 from app.budget_engine.txns import Txn, add_months, month_end, month_start
 from app.db.models import BudgetLine, BudgetPeriod, Transaction
@@ -44,7 +45,8 @@ def initialize_budget(session: Session, user_id: str, today: date,
 
     period = BudgetPeriod(user_id=user_id, start_date=current, end_date=month_end(today), status="open",
                           fit_json=_period_json(fit))
-    period.lines = [BudgetLine(category=ln.category, kind=ln.kind, limit_cents=ln.limit_cents, source="init",
+    period.lines = [BudgetLine(category=ln.category, name=default_name(ln.category), group=default_group(ln.category),
+                               kind=ln.kind, limit_cents=ln.limit_cents, source="init",
                                fit_json=_line_json(ln)) for ln in fit.lines]
     session.add(period)
     try:

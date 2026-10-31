@@ -27,8 +27,8 @@ def test_one_line_per_category(db):
         p = period()
         s.add(p)
         s.flush()
-        s.add_all([BudgetLine(period_id=p.id, category="FOOD_AND_DRINK", kind="flexible", limit_cents=1,
-                              source="init") for _ in range(2)])
+        s.add_all([BudgetLine(period_id=p.id, category="FOOD_AND_DRINK", name="Food and drink", group="needs",
+                              kind="flexible", limit_cents=1, source="init") for _ in range(2)])
         with pytest.raises(IntegrityError):
             s.commit()
 
@@ -39,7 +39,8 @@ def test_period_defaults(db):
         p = period()
         s.add(p)
         s.flush()
-        s.add(BudgetLine(period_id=p.id, category="TRAVEL", kind="flexible", limit_cents=100, source="init"))
+        s.add(BudgetLine(period_id=p.id, category="TRAVEL", name="Travel", group="wants", kind="flexible",
+                         limit_cents=100, source="init"))
         s.commit()
         assert p.status == "open" and p.fit_json is None
         assert p.lines[0].spent_cents == 0 and p.lines[0].last_pace is None
