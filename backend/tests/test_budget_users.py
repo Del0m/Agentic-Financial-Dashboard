@@ -160,3 +160,10 @@ def test_default_start():
     starts = {p.id: default_start(p) for p in PLANTED + PROFILES}
     assert (starts["overspend-one-time"], starts["overspend-seasonal"], starts["steady"]) == (
         date(2026, 9, 30), date(2026, 11, 30), date(2026, 7, 31))
+
+
+# the saving line (tpc-22) tracks plaid's TRANSFER_OUT_SAVINGS; other transfers stay plain
+def test_planted_savings_detailed(db):
+    _, rows, _ = seeded_rows(db, "overspend-one-time")
+    transfers = {r.pf_category_detailed for r in rows if r.pf_category_primary == "TRANSFER_OUT"}
+    assert transfers == {"TRANSFER_OUT_SAVINGS"}

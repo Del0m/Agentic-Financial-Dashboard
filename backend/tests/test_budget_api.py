@@ -194,7 +194,7 @@ def test_budget_lines_match_evaluate(api):
     body = api.client.get("/budget").json()
     with api.db() as s:
         period = s.query(BudgetPeriod).one()
-        expected = evaluate([EngineLine(ln.category, ln.kind, ln.limit_cents) for ln in period.lines],
+        expected = evaluate([EngineLine(ln.category, ln.kind, ln.limit_cents, ln.group) for ln in period.lines],
                             load_txns(s, uid, period.start_date, ONE), ONE)
     assert body["period"] == {"start": "2026-10-01", "end": "2026-10-31"}
     assert (body["days_elapsed"], body["days_in_period"]) == (20, 31)

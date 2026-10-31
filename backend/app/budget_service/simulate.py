@@ -44,7 +44,8 @@ def _inject(session_factory, user_id: str, profile, day: date) -> int:
             if users.txn_id(profile, n) in have:
                 continue
             s.add(Transaction(user_id=user_id, account_id=account_id, plaid_txn_id=users.txn_id(profile, n),
-                              date=when, amount_cents=cents, merchant_name=merchant, pf_category_primary=category))
+                              date=when, amount_cents=cents, merchant_name=merchant, pf_category_primary=category,
+                              pf_category_detailed=users.detailed_for(category, merchant)))
             added += 1
         s.commit()
     return added

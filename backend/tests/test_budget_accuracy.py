@@ -48,3 +48,10 @@ def test_occasional_mean_has_zero_actual_line():
     assert "GENERAL_MERCHANDISE" in r["mean"]["zero_actual_lines"]
     assert "GENERAL_MERCHANDISE" not in [ln["category"] for ln in r["median"]["lines"]]
     assert r["budget"]["skipped"] == ["GENERAL_MERCHANDISE"]
+
+
+# the eval scores how well category limits predict spending; saving and free lines aren't predictions (tpc-22)
+def test_accuracy_ignores_saving_and_free():
+    r = run_profile(profile("steady"))
+    for cats in ([ln["category"] for ln in r["budget"]["lines"]], [ln["category"] for ln in r["median"]["lines"]]):
+        assert "SAVINGS_TRANSFER" not in cats and "FREE" not in cats

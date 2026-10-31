@@ -364,9 +364,7 @@ def test_free_line_never_proposes(db, tmp_path):
     with db() as s:
         period = budget_graph.initialize_budget(s, uid, ONE)
         for ln in period.lines:
-            ln.limit_cents = 10_000_000          # only the free line can flag
-        s.add(BudgetLine(period_id=period.id, category="FREE", name="Free", group="free", kind="flexible",
-                         limit_cents=100, source="init"))
+            ln.limit_cents = 100 if ln.category == "FREE" else 10_000_000     # only the free line can flag
         s.info["n"] = 100000
         add_txn(s, s.query(Account).filter_by(user_id=uid).one(), 20000, "TRAVEL", day=date(2026, 10, 15))
         s.commit()

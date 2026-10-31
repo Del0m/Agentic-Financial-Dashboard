@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.budget_service import initialize
 from app.budget_service.initialize import initialize_budget, load_txns, resolve_category
+from app.budget_service.settings import set_user_style, user_style
 from app.db.models import Account, Alert, BudgetLine, BudgetPeriod, CategoryRule
 from tests.factories import add_account, add_txn, add_user
 
@@ -94,7 +95,7 @@ def test_initialize_creates_period_and_lines(db):
         lines = {ln.category: ln for ln in p.lines}
         assert {c: (ln.kind, ln.limit_cents) for c, ln in lines.items()} == {
             "FOOD_AND_DRINK": ("flexible", 47250), "RENT_AND_UTILITIES": ("fixed", 150000),
-            "TRAVEL": ("flexible", 26250)}
+            "TRAVEL": ("flexible", 26250), "FREE": ("flexible", 12750)}    # no income: free is the fallback's room
         assert all(ln.source == "init" and ln.spent_cents == 0 and ln.last_pace is None for ln in p.lines)
         assert lines["TRAVEL"].fit_json == {
             "monthly_totals": [20000, 190000, 25000],
@@ -144,7 +145,7 @@ def test_current_month_ignored(db):
         add_txn(s, acct, 500000, "FOOD_AND_DRINK", day=date(2026, 8, 1))
         s.commit()
         p = initialize_budget(s, "u1", date(2026, 8, 1))
-        assert [(ln.category, ln.limit_cents) for ln in p.lines] == [("FOOD_AND_DRINK", 10500)]
+        assert [(ln.category, ln.limit_cents) for ln in p.lines] == [("FOOD_AND_DRINK", 10500), ("FREE", 0)]
 
 
 def test_second_call_returns_same_period(db):
@@ -153,7 +154,7 @@ def test_second_call_returns_same_period(db):
         s.commit()
         first = initialize_budget(s, "u1", TODAY).id
         assert initialize_budget(s, "u1", TODAY).id == first
-    assert counts(db) == (1, 3)
+    assert counts(db) == (1, 4)       # three category lines and the free line
 
 
 def test_existing_older_period_returned(db):
@@ -264,3 +265,54 @@ def test_rule_matches_case_insensitively(db):
         s.commit()
         [got] = load_txns(s, "u1", day, day)
     assert (got.category, got.overridden) == ("FOOD_AND_DRINK", True)
+
+
+# --- the full budget model at init (TPC-22) ---
+
+def planted(s, pid="overspend-one-time"):
+    from eval.budget_users import PLANTED, seed_profile
+    return seed_profile(s, next(p for p in PLANTED if p.id == pid))
+
+
+def test_init_writes_groups_names_income_total_free(db):
+    with db() as s:
+        uid = planted(s)
+        period = initialize_budget(s, uid, date(2026, 10, 1))
+        lines = {ln.category: ln for ln in period.lines}
+        others = sum(ln.limit_cents for c, ln in lines.items() if c != "FREE")
+        assert (period.income_cents, period.total_cents) == (420000, 420000)
+        saving = lines["SAVINGS_TRANSFER"]
+        assert (saving.name, saving.group, saving.kind, saving.limit_cents) == ("Savings", "saving", "fixed", 50000)
+        assert (lines["RENT_AND_UTILITIES"].name, lines["RENT_AND_UTILITIES"].group) == ("Rent and utilities", "needs")
+        free = lines["FREE"]
+        assert (free.name, free.group, free.kind, free.source) == ("Free", "free", "flexible", "init")
+        assert free.limit_cents == 420000 - others and free.fit_json == {"rule": "remainder"}
+
+
+def test_init_503020(db):
+    with db() as s:
+        uid = planted(s)
+        set_user_style(s, uid, "50_30_20")
+        s.commit()
+        period = initialize_budget(s, uid, date(2026, 10, 1))
+        lines = {ln.category: ln for ln in period.lines}
+    assert lines["SAVINGS_TRANSFER"].limit_cents == 84000        # 20% of $4,200, not the fitted $500
+    assert user_style_of(db, uid) == ("50_30_20", {"needs": 50, "wants": 30, "saving": 20})
+
+
+def user_style_of(db, uid):
+    with db() as s:
+        return user_style(s, uid)
+
+
+def test_set_user_style_validates(db):
+    with db() as s:
+        add_user(s, "u1", "u1@x")
+        assert user_style(s, "u1") == ("caps", {"needs": 50, "wants": 30, "saving": 20})
+        with pytest.raises(ValueError, match="Targets must add up to 100."):
+            set_user_style(s, "u1", "50_30_20", {"needs": 50, "wants": 30, "saving": 30})
+        with pytest.raises(ValueError):
+            set_user_style(s, "u1", "envelopes")
+        set_user_style(s, "u1", "50_30_20", {"needs": 60, "wants": 25, "saving": 15})
+        s.commit()
+        assert user_style(s, "u1") == ("50_30_20", {"needs": 60, "wants": 25, "saving": 15})

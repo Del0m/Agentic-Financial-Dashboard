@@ -6,9 +6,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.budget_engine.groups import default_group, default_name
+from app.budget_engine.pace import BudgetLine as EngineLine
+from app.budget_engine.styles import apply_style
 from app.budget_engine.fit import FIXED_DEFAULT, HISTORY_MONTHS, FitResult, FittedLine, fit_budget
-from app.budget_engine.txns import (SAVINGS, SAVINGS_DETAILED, Txn, add_months, month_end, month_start,
+from app.budget_engine.txns import (FREE, SAVINGS, SAVINGS_DETAILED, Txn, add_months, month_end, month_start,
                                     normalize_merchant)
+from app.budget_service.settings import user_style
 from app.db.models import BudgetLine, BudgetPeriod, CategoryRule, Transaction
 
 # the db side of the initial budget (architecture 6.3): load history, fit it with budget_engine (which
@@ -69,11 +72,24 @@ def initialize_budget(session: Session, user_id: str, today: date,
     if not fit.lines:
         return None
 
+    style, targets = user_style(session, user_id)
+    groups = {ln.category: default_group(ln.category) for ln in fit.lines}
+    result = apply_style(style, [EngineLine(ln.category, ln.kind, ln.limit_cents, groups[ln.category])
+                                 for ln in fit.lines], fit.income_cents, fit.spending_total_cents, targets)
+
     period = BudgetPeriod(user_id=user_id, start_date=current, end_date=month_end(today), status="open",
-                          fit_json=_period_json(fit))
-    period.lines = [BudgetLine(category=ln.category, name=default_name(ln.category), group=default_group(ln.category),
-                               kind=ln.kind, limit_cents=ln.limit_cents, source="init",
+                          fit_json=_period_json(fit), income_cents=fit.income_cents, total_cents=result.total_cents)
+    period.lines = [BudgetLine(category=ln.category, name=default_name(ln.category), group=groups[ln.category],
+                               kind=ln.kind, limit_cents=result.limits[ln.category], source="init",
                                fit_json=_line_json(ln)) for ln in fit.lines]
+    # lines the style adds: the free line always, a saving line when 50/30/20 sets one the history didn't show
+    for category, rule in ((SAVINGS, "target"), (FREE, "remainder")):
+        if category in result.limits and category not in groups:
+            period.lines.append(BudgetLine(category=category, name=default_name(category),
+                                           group=default_group(category),
+                                           kind="fixed" if category == SAVINGS else "flexible",
+                                           limit_cents=result.limits[category], source="init",
+                                           fit_json={"rule": rule}))
     session.add(period)
     try:
         session.commit()

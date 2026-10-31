@@ -47,3 +47,9 @@ Run them from `backend/`:
 **What it does:** In the occasional profile, the mean fit gives the one-off June purchase a line that August can't score, while the median skips it, and the stored budget lists it as skipped.
 
 **Why it's there:** It's the mean's known weakness, and it only shows up in `zero_actual_lines`, not in the MAPE. Checking it here makes sure the report surfaces it.
+
+## `test_accuracy_ignores_saving_and_free`
+
+**What it does:** For the `steady` profile, neither the stored budget nor the median fit listed in the results includes the saving or free line.
+
+**Why it's there:** The eval measures how well category limits predict next month's spending. A saving target and the free remainder aren't predictions, and including them would change the numbers compared across runs (pooled MAPE stays 7.1% median / 17.7% mean).

@@ -155,3 +155,9 @@ Run them from `backend/`:
 **What it does:** `--start default` means Sep 30 for the one-time user, Nov 30 for the seasonal user, and Jul 31 for the steady accuracy user.
 
 **Why it's there:** It's the day before the month with the planted overspend, so the first advanced day creates that month's budget.
+
+## `test_planted_savings_detailed`
+
+**What it does:** A seeded planted user's transfers out all carry Plaid's detailed category `TRANSFER_OUT_SAVINGS`.
+
+**Why it's there:** The saving line (TPC-22) tracks that category, so the seeded and simulated users get a saving line like a real bank's data would give them.
