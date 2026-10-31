@@ -108,7 +108,7 @@ Four graphs, sharing one tool set:
 |---|---|---|
 | **Chat Agent** | User message | Retrieve guidance for the question, then a ReAct loop: LLM ↔ tools until it answers (at most 6 tool rounds, then one last call without tools) |
 | **Budget Agent** | Daily schedule | Fixed pipeline with one LLM branch (diagnose + decide). Also detects recurring charges and forecasts cash flow (section 6a). See `budget-agent-loop.png` |
-| **Period-Close Agent** | Period end | Compare budget vs actual, apply adjustments, open next period |
+| **Period-Close Agent** | Period end (and the first daily run after it) | No LLM: `load_period → expire_proposals → gather → adapt → persist`, looping while another month is due. Compares budget vs actual, applies accepted proposals, smooths the rest, applies the budget style and opens the next period (section 6.5, TPC-22) |
 | **Goal Agent** | User request or after period close | Gather debts, income and the forecast's surplus → run the debt-payoff planner → propose goals → user approves via `interrupt()` |
 
 **Deterministic Budget Engine:** plain Python functions for totals, pace, thresholds and budget fitting, plus recurring-stream detection, the cash-flow forecast and the debt-payoff simulation (section 6a). The LLM never does arithmetic that matters. This is a core design rule: it makes the system testable and keeps the benchmarks meaningful.
@@ -135,10 +135,12 @@ liabilities      id, user_id, account_id, kind (credit|student|mortgage), apr,
                  min_payment_cents, next_due_date, balance_cents
 transactions     id, user_id, account_id, plaid_txn_id (unique), date, amount_cents,
                  merchant_name, pf_category_primary, pf_category_detailed,
-                 our_category, is_recurring, pending, removed
-budget_periods   id, user_id, start_date, end_date, status (open|closed), fit_json, created_at
+                 our_category, user_category, is_recurring, pending, removed
+budget_periods   id, user_id, start_date, end_date, status (open|closed), fit_json,
+                 income_cents, total_cents, created_at
                  unique (user_id, start_date)
-budget_lines     id, period_id, category, kind (fixed|flexible), limit_cents,
+budget_lines     id, period_id, category, name, group (needs|wants|saving|free),
+                 kind (fixed|flexible), limit_cents,
                  spent_cents, last_pace, source (init|adapted|user), fit_json
                  unique (period_id, category)
 alerts           id, user_id, period_id, kind (overspend|new_subscription|price_increase|
@@ -155,14 +157,24 @@ recurring_streams id, user_id, direction (in|out), merchant_key, merchant_name, 
                  last_cents, amount_varies, first_date, last_date, next_date,
                  status (active|stale), first_seen_run_id, updated_at
 agent_runs       id, user_id, graph, started_at, finished_at, status, summary_json
+category_rules   id, user_id, merchant_name (trimmed, casefolded), category, created_at
+                 unique (user_id, merchant_name)
 ```
 
 TPC-19, TPC-20 and TPC-21 additions:
-- `agent_runs.graph` is also `simulate` (an advance job, with its progress in `summary_json`) and `close` (the month-end slot; a recorded no-op, `status="skipped"`, until TPC-22).
+- `agent_runs.graph` is also `simulate` (an advance job, with its progress in `summary_json`) and `close` (one row per month closed, TPC-22; `ok` or `error`, none when nothing was due).
 - `users.prefs_json["sim"] = {"profile", "date"}` marks a synthetic user living on a simulated date (TPC-21). The date is "today" for that user's dashboard and runs. The scheduler skips them.
 - `alerts.proposed_limit_cents`: set by code for `adjust_next_budget`.
 - `advice_log.alert_id` (FK): the alert the advice became, so the user's decision reaches it as `outcome`.
 - `agent_runs.status` adds `awaiting_user`: a run paused on a budget proposal.
+
+TPC-22 additions:
+- `budget_lines.name` is the user's label; `budget_lines.group` is what the rules read. `category` stays the internal key for what the line tracks: a Plaid category, `SAVINGS_TRANSFER` (the saving line) or `FREE` (the free line). Existing lines were backfilled from the default mapping.
+- `budget_periods.income_cents` (typical monthly income, `null` with no income history) and `total_cents` (the planned total). `null` on periods from before TPC-22.
+- `transactions.user_category`: the user's correction, which wins over everything else. `category_rules` remembers a correction for a merchant.
+- `users.prefs_json["budget"] = {"style": "caps" | "50_30_20", "targets": {"needs", "wants", "saving"}}`; missing means `caps` at 50/30/20.
+- `agent_runs.status` adds `expired`: a budget run paused on a proposal its month closed without.
+- Alert kinds add `over_income` and `group_over_target`, written by close as plain `alert`s.
 
 Notes:
 - `plaid_txn_id` is unique so re-syncing is idempotent (upsert).
@@ -252,6 +264,17 @@ The maths is `budget_engine/fit.py` (`fit_budget`), a pure function over the tra
 
 **Storing it (TPC-18):** `budget_service/initialize.py` (`initialize_budget`) loads the user's non-removed transactions (an LLM-assigned `our_category` wins over Plaid's), fits them, and stores an open period for the current month with one `init` line per fitted category. The evidence goes in `fit_json`. It runs only when the user has no period at all; opening later months is period close's job. It commits (like `sync_transactions`), so call it with nothing else pending. If two runs race, the loser returns the winner's period; any other integrity error is raised. With no complete month of history (or every category skipped) it writes nothing and returns `None`, so the next run tries again.
 
+**The full model (TPC-22):** a transaction's category resolves as the user's correction, then their merchant rule, then `our_category`, then `SAVINGS_TRANSFER` for Plaid's `TRANSFER_OUT_SAVINGS`, then Plaid's primary category (`resolve_category`, the one place that decides). The fit also returns:
+- a **saving** line (fixed, `group="saving"`): the lower median of the months with a transfer to savings;
+- **income**: the median month of `INCOME` over the fit window, or `None` when that median is $0;
+- a fallback total: the median month of total spending × 1.05, for users with no income.
+
+Each line gets a default group (`needs`: rent and utilities, loan payments, transportation, medical, food and drink; `wants`: other spending) and name ("Food and drink"). Then `budget_engine/styles.py` (`apply_style`) sets the free line and the total:
+- **`caps` (default):** `total = max(income or fallback, sum of lines)`; **free** = total − the other lines, never below $0. Lines over income raise `over_income` (only when income is known).
+- **`50_30_20`:** needs, wants and saving targets as percentages of income; the saving line is its target; free is the room left in wants; a group over its target raises `group_over_target`. Without income it runs as `caps` and says so.
+
+Code never cuts a line the user didn't ask to cut. The eval scores only needs/wants lines, so its numbers are unchanged.
+
 **Median vs mean (measured, TPC-18):** on the five synthetic budget users, pooled initial-budget MAPE is **7.1% for the median and 17.7% for the mean**. The mean is 1-2 points better on users with no outliers, but 58.8% vs 9.4% on the user with a $1,900 trip, and it gives a one-off purchase a line that the next month can't use. The median stays. A trimmed mean is the median at 3 months. Run it with `venv/bin/python eval/budget_accuracy.py` (section 10).
 
 ### 6.4 Overspend detection
@@ -267,7 +290,7 @@ flag if spent > limit                          # any category, any day
 
 The `days_elapsed >= 5` guard avoids flagging on day 1 because of one grocery trip. Fixed categories are lumpy (rent lands on the 1st), so judge them only against their limit, not pace. Tune these thresholds with the benchmark, then record the chosen values in the decision log.
 
-This is `budget_engine/pace.py` (`evaluate`). Spending in a category with no budget line is reported to the graph as `unbudgeted` and never flagged. The graph (TPC-19) lists those categories in the run summary and doesn't alert on them; suggesting a new line belongs with period close.
+This is `budget_engine/pace.py` (`evaluate`). Spending in a category with no budget line is reported to the graph as `unbudgeted` and never flagged on its own. With a free line (TPC-22), that spending, plus anything corrected to Free, counts against free, which is judged like any flexible line; its diagnosis looks at those purchases. A saving line is never flagged: it shows what was saved so far. Free and saving lines never get `adjust_next_budget` (downgraded to `alert`): free is computed and saving can't be overspent.
 
 **Known false alarms (found in TPC-19):** pace is unfair to lumpy flexible spending. On Aug 20, a steady synthetic user with no real overspend flags:
 - ENTERTAINMENT at 1.48, because a $15.99 subscription is charged on day 5;
@@ -282,6 +305,15 @@ This is `budget_engine/close.py` (`close_period`):
 - An accepted value is used as-is, with no clamp.
 - A **fixed** line follows the actual amount (a rent increase is adopted, not smoothed toward), and keeps its old limit when the actual is $0.
 - Amounts round half up to the cent.
+
+**As built (TPC-22):** `agents/close_graph.py`, with its steps in `budget_service/close.py`. `close_due(session_factory, user_id, today)`:
+1. **`load_period`:** the oldest open period that ended before today. None (no budget yet, or already closed) → nothing is written.
+2. **`expire_proposals`:** `adjust_next_budget` alerts still `pending_user` on that period (written in step 5).
+3. **`gather`:** the month's actuals per line (free's is the spending without a line, saving's the transfers to savings), accepted proposals (the latest per category wins), income as of the new month and the user's style.
+4. **`adapt`:** `close_period` over needs, wants and saving lines, a saving line added if the month had transfers and the period had none, then `apply_style`.
+5. **`persist`:** one commit: expired alerts `dismissed` (advice `ignored`, paused runs `expired`), the old period `closed`, the next one opened with each line's name and group carried and `fit_json = {old_cents, actual_cents, rule}` (`source="user"` for an accepted value), style alerts on the new period, and an `ok` run whose summary lists every line.
+
+Then it loops, so missed months close one at a time from their own actuals. The `(user_id, start_date)` constraint makes a rerun or a race write nothing; any other failure rolls the month back and records an `error` run, and the next run retries. Every daily run (scheduler, button, simulated day) calls `close_due` first.
 
 ### 6.6 Human in the loop
 Anything that changes the user's money or their budget without being asked goes through LangGraph's `interrupt()` and becomes an alert with status `pending_user`. The agent proposes; the user disposes.
@@ -298,7 +330,7 @@ Anything that changes the user's money or their budget without being asked goes 
   - A new run id clears any old checkpoint thread first, because SQLite reuses deleted run ids.
   - At startup, budget runs left `running` by a stopped server become `error` ("Interrupted").
 - **Who starts a run (TPC-21):** the daily scheduler, the run button and each simulated day all go through `budget_service/daily.py` `run_daily`, behind one per-user lock, so they never overlap.
-- **Applying.** An accepted proposal isn't applied here. TPC-22's close applies `proposed_limit_cents`, and should treat a proposal never decided as dismissed.
+- **Applying (TPC-22).** Close applies an accepted `proposed_limit_cents` exactly. A proposal still undecided when its month closes expires: the alert is `dismissed`, its advice outcome `ignored` (the user never answered, unlike `dismissed`), the paused run `expired`, and a later decision gets a 409.
 
 ---
 
@@ -436,11 +468,14 @@ POST /plaid/link-token          -> { link_token }
 POST /plaid/exchange            { public_token } -> 200
 POST /plaid/webhook             (Plaid calls this)
 GET  /dashboard                 -> balances, net worth, debts by APR (budget pace added in M3)
-GET  /transactions?from&to&category
-GET  /budget                     -> live pace: period (or null), days elapsed/in period, lines, unbudgeted (TPC-20)
+GET  /transactions?month=YYYY-MM -> rows with category, line_name (the line it counts against) and source (plaid|rule|user)
+PATCH /transactions/{id}        { category, remember } -> corrects one; remember saves the merchant rule (TPC-22)
+GET  /budget                     -> live pace: period (or null), days elapsed/in period, lines (id, name, group),
+                                    unbudgeted, income, total, style (TPC-20, TPC-22)
 POST /budget/run                { date? } -> 202 { run_id }; runs in a background thread; 409 if one is running
 GET  /budget/runs/{id}          -> { status, alert_ids, waiting_for, error }
-POST /budget/lines/{id}         (user override)
+PATCH /budget/lines/{id}        { name?, group? } open period only; group only needs <-> wants (TPC-22)
+PUT  /budget/style              { style, targets? } -> { style, targets, effective_from } (next close)
 GET  /alerts?status=pending_user|all ; POST /alerts/{id}/accept | /dismiss   (404 other user's, 409 decided)
 GET  /goals ; POST /goals/generate ; POST /goals/{id}/accept
 GET  /recurring                 -> active and stale streams, newest changes first
@@ -516,16 +551,17 @@ Only in Sandbox. Plaid's Transfer product needs separate approval for production
   1. `scripts/seed_budget_user.py --profile … --start default` seeds history up to the day before the planted month, and marks the user simulated.
   2. Each advanced day (`scripts/simulate.py --user … --days N`, `POST /admin/sandbox/advance`, or the Alerts panel):
      - injects that day's generated transactions (stable ids, so a retried day can't double up);
-     - records the month-end slot on the 1st;
-     - runs the real budget agent;
+     - runs the real budget agent, which first closes the month that ended (on the 1st);
      - then saves the date.
 
   With `qwen2.5:14b`, a month takes minutes, not one: each flagged day makes two model calls. Plaid Sandbox's `/sandbox/transactions/create` isn't used.
 
   **Demo, Sep 30 → Nov 1, one-time user:** 32 runs and 2 alerts: Oct 5, ahead of pace (the corner-shop weeks), and Oct 12, over the limit (the $600 purchase, an escalation the model reports). Nov 1 records October's close slot, then ends `period_ended` until TPC-22.
+
+  **Demo, M3 done-when (TPC-22, `qwen2.5:14b`), Sep 30 → Nov 1, recurring user:** 32 budget runs and 1 alert. On Oct 3, the day the $90 gym lands, personal care is over its $42 limit; the model diagnoses `recurring` and proposes $135 ("You made a $90.00 charge at FitClub Gym, which is now a regular occurrence…"), and the run waits. Accepted, then Nov 1 closes October first: November opens with personal care at $135 (`user`), rent $1,500 and savings $500 at their actuals, and free from $2,158 to $2,065, income and total $4,200. `test_m3_demo.py` checks the same path with a fake model.
 - **Scheduler (TPC-21):** `ENABLE_SCHEDULER=1` starts APScheduler inside the API.
   - Every day at `DAILY_RUN_TIME` (06:00), it runs each real user's budget check (anyone with a budget or a real Plaid item, not simulated users).
-  - On the 1st at `CLOSE_RUN_TIME` (05:00), it runs the month-end slot.
+  - On the 1st at `CLOSE_RUN_TIME` (05:00), it closes the month that ended for each real user (skipping one whose run is going; the daily run closes it instead).
   - Both are in `SCHEDULER_TZ`.
   - The slots only fire while the server is up: APScheduler's misfire grace covers a busy server, not one that was down.
   - So at startup, if today's slot has already passed, it runs once for users not yet checked today, and the month-end slot runs on the 1st for users not yet closed. Earlier days are never replayed.
@@ -589,7 +625,7 @@ plaid-agent/
 │       │   ├── tools.py
 │       │   ├── chat_graph.py
 │       │   ├── budget_graph.py
-│       │   ├── close_graph.py
+│       │   ├── close_graph.py   # period close (tpc-22), steps in budget_service/close.py
 │       │   └── goal_graph.py
 │       ├── rag/                 # chunk.py, fetch.py, store.py
 │       └── scheduler.py
@@ -744,6 +780,12 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 | 2026-10-29 | One `run_daily` behind one per-user lock for the scheduler, the run button and simulated days | They can never overlap on one budget; a busy user is skipped by the scheduler that day |
 | 2026-10-29 | The month-end slot calls `close_month`, a recorded no-op until TPC-22 | Wiring and order (close before the 1st's run) are tested now. Note for TPC-22: the slot also fires for a month with no budget (a simulation's first day), and close should skip it |
 | 2026-10-29 | The decide prompt's summary line says when a flag is more severe than this month's earlier alerts | Live, the model let a pace warning stand when the category went over its limit, so the user was never told. With the note, the pace and over-limit alerts are both written, nothing repeats, and the TPC-19/20 live checks are unchanged |
+| 2026-10-31 | Period close is a LangGraph graph with no LLM; every daily run closes due months first, one at a time; one commit per month guarded by `(user_id, start_date)` | Every number is code's. A missed month-end heals on the next run of any kind, each month from its own actuals, and a rerun or race can't open a month twice. Supersedes the 2026-10-29 placeholder |
+| 2026-10-31 | Undecided proposals expire at close: alert `dismissed`, advice `ignored`, run `expired`; a late decision is a 409 | The user's choice: one rule, and the Alerts page stops offering a decision that can't do anything |
+| 2026-10-31 | The budget total is typical income; a free line is what the other lines leave, never below $0; when the lines exceed income the total rises and close alerts | The user's choice: free exists only when there's room in net income, and code never cuts a line nobody asked to cut |
+| 2026-10-31 | Saving is a budget line fitted from `TRANSFER_OUT_SAVINGS` transfers, not a hidden reserve | The user's choice: savings should be a budgetary item |
+| 2026-10-31 | Lines have a user-editable name and a group (`needs`, `wants`, `saving`, `free`); the rules read groups. Styles `caps` (default) and `50_30_20`, per user, from the next close; UI later | The user's requirement: nameable lines, adaptable to several budget types, 50/30/20 executable without UI |
+| 2026-10-31 | Transaction categories resolve user > merchant rule > LLM > savings transfer > Plaid in one place; a correction offers "Always for <merchant>?" | The user's choice: Plaid sets it automatically, the user fixes it when it's wrong, and one unusual purchase doesn't move a merchant |
 | | | |
 
 ---
