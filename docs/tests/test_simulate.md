@@ -36,13 +36,13 @@ Run them from `backend/`:
 
 ## `test_month_boundary_closes_first`
 
-**What it does:** Advancing from Oct 30 across Nov 1 records the month-end slot for October before Nov 1's budget run.
+**What it does:** Advancing from Oct 30 across Nov 1 closes October (an `ok` close run) before Nov 1's budget run, and that run checks the new November period.
 
 **Why it's there:** Close must finish a month before the new month's first check. That's what TPC-22 will rely on.
 
 ## `test_close_across_new_year`
 
-**What it does:** Advancing the seasonal user from Dec 30 across Jan 1 records the close for December 2026, before Jan 1's run.
+**What it does:** Advancing the seasonal user from Dec 30 across Jan 1 closes December 2026 before Jan 1's run and opens January 1–31 2027.
 
 **Why it's there:** The previous month at New Year is December of the year before, an easy off-by-one (plan Review Focus 1).
 

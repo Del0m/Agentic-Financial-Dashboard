@@ -5,7 +5,7 @@ import pytest
 from app import config
 from app.budget_service import simulate
 from app.budget_service.simulate import NotSimulated, advance_days
-from app.db.models import AgentRun, Transaction, User
+from app.db.models import AgentRun, BudgetPeriod, Transaction, User
 from eval.budget_users import PLANTED, seed_profile, transactions
 from tests.fakes import SchemaReplyModel
 
@@ -67,7 +67,10 @@ def test_month_boundary_closes_first(db):
     _, days = advance(db, uid, 3)
     [close] = runs(db, "close")
     nov1 = next(d for d in days if d["date"] == "2026-11-01")
-    assert close.summary_json["month"] == "2026-10-01" and close.id < nov1["run_id"]
+    assert (close.status, close.summary_json["month"]) == ("ok", "2026-10-01") and close.id < nov1["run_id"]
+    with db() as s:
+        nov = s.query(BudgetPeriod).filter_by(user_id=uid, start_date=date(2026, 11, 1)).one()
+        assert s.get(AgentRun, nov1["run_id"]).summary_json["period_id"] == nov.id
 
 
 def test_close_across_new_year(db):
@@ -75,7 +78,10 @@ def test_close_across_new_year(db):
     _, days = advance(db, uid, 3)
     [close] = runs(db, "close")
     jan1 = next(d for d in days if d["date"] == "2027-01-01")
-    assert close.summary_json["month"] == "2026-12-01" and close.id < jan1["run_id"]
+    assert (close.status, close.summary_json["month"]) == ("ok", "2026-12-01") and close.id < jan1["run_id"]
+    with db() as s:
+        jan = s.query(BudgetPeriod).filter_by(user_id=uid, start_date=date(2027, 1, 1)).one()
+        assert jan.end_date == date(2027, 1, 31)
 
 
 def test_failed_day_stops_and_resumes(db, monkeypatch):

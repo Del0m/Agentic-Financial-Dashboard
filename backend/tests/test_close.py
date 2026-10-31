@@ -96,7 +96,7 @@ def test_close_opens_adapted_month(db):
     assert lines["FOOD_AND_DRINK"].fit_json == {"old_cents": 60000, "actual_cents": 70000, "rule": "smoothed"}
     assert lines["FREE"].fit_json == {"old_cents": 140000, "actual_cents": 5000, "rule": "remainder"}
     [run] = close_runs(db)
-    assert (run.status, run.summary_json) == ("ok", summary)
+    assert (run.status, {**run.summary_json, "run_id": run.id}) == ("ok", summary)
     assert summary["month"] == "2026-10-01" and summary["new_period_id"] == new.id
     assert (summary["income_cents"], summary["total_cents"], summary["free_cents"]) == (420000, 420000, 140000)
     assert (summary["style"], summary["unbudgeted"], summary["expired_alert_ids"], summary["alert_ids"]) == \

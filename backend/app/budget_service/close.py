@@ -144,7 +144,7 @@ def adapt_month(gathered: dict) -> dict:
             "facts": list(result.facts), "style_fallback": result.fallback}
 
 
-# one commit for the whole month. None when another close got there first (the old period is no longer open, or
+# one commit for the whole month; returns the run's summary and its id. None when another close got there first (the old period is no longer open, or
 # the next one already exists): nothing is written
 def persist_month(session_factory, period_id: int, gathered: dict, adapted: dict,
                   expired: list[int]) -> Optional[dict]:
@@ -184,9 +184,10 @@ def persist_month(session_factory, period_id: int, gathered: dict, adapted: dict
         }
         if adapted["style_fallback"]:
             summary["style_fallback"] = adapted["style_fallback"]
-        s.add(AgentRun(user_id=old.user_id, graph="close", status="ok", finished_at=utcnow(), summary_json=summary))
+        run = AgentRun(user_id=old.user_id, graph="close", status="ok", finished_at=utcnow(), summary_json=summary)
+        s.add(run)
         s.commit()
-        return summary
+        return {**summary, "run_id": run.id}
 
 
 def record_error(session_factory, user_id: str, month: Optional[date], error: str) -> None:

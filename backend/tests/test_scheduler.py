@@ -5,7 +5,7 @@ import pytest
 from app import config, scheduler
 from app.agents.budget_graph import run_budget
 from app.budget_service.daily import user_lock
-from app.db.models import AgentRun, PlaidItem
+from app.db.models import AgentRun, BudgetPeriod, PlaidItem
 from app.scheduler import build_scheduler, daily_budget_job, eligible_users, month_end_job
 from eval.budget_users import PLANTED, seed_profile
 from tests.fakes import SchemaReplyModel
@@ -72,11 +72,34 @@ def test_daily_job_skips_locked_and_survives_failure(db, users, monkeypatch):
 
 
 def test_month_end_job_closes_previous_month(db, users):
-    assert month_end_job(db, today=date(2026, 11, 1)) == {
-        "closed": sorted([users["budgeted"], users["real"], users["both"]])}
+    result = month_end_job(db, today=date(2026, 11, 1))
+    assert result == {"closed": sorted([users["budgeted"], users["real"], users["both"]]), "skipped": [], "failed": []}
     with db() as s:
         rows = s.query(AgentRun).filter_by(graph="close").all()
-    assert len(rows) == 3 and {r.summary_json["month"] for r in rows} == {"2026-10-01"}
+        # "real" has no budget yet: nothing to close, nothing written
+        assert sorted(r.user_id for r in rows) == sorted([users["budgeted"], users["both"]])
+        assert {r.summary_json["month"] for r in rows} == {"2026-10-01"}
+        nov = s.query(BudgetPeriod).filter_by(start_date=date(2026, 11, 1)).all()
+        assert sorted(p.user_id for p in nov) == sorted([users["budgeted"], users["both"]])
+
+
+# a run going for the user (the button, a simulation) means the 06:00 daily run closes instead
+def test_month_end_skips_locked_user(db, users, monkeypatch):
+    real_close = scheduler.close_due
+
+    def flaky(session_factory, user_id, today):
+        if user_id == users["both"]:
+            raise RuntimeError("no")
+        return real_close(session_factory, user_id, today)
+
+    monkeypatch.setattr(scheduler, "close_due", flaky)
+    lock = user_lock(users["budgeted"])
+    lock.acquire()
+    try:
+        result = month_end_job(db, today=date(2026, 11, 1))
+    finally:
+        lock.release()
+    assert result == {"closed": [users["real"]], "skipped": [users["budgeted"]], "failed": [users["both"]]}
 
 
 def test_build_scheduler_jobs():
@@ -155,8 +178,8 @@ def test_daily_catch_up_skips_users_already_run_today(db, users):
     assert result["skipped"] == sorted([users["budgeted"], users["both"]])
 
 
-def test_month_end_catch_up_skips_closed(db, users):
+def test_month_end_rerun_closes_nothing(db, users):
     month_end_job(db, today=date(2026, 11, 1))
-    assert month_end_job(db, today=date(2026, 11, 1), skip_done=True) == {"closed": []}
+    month_end_job(db, today=date(2026, 11, 1))
     with db() as s:
-        assert s.query(AgentRun).filter_by(graph="close").count() == 3
+        assert s.query(AgentRun).filter_by(graph="close").count() == 2
