@@ -15,6 +15,7 @@ class BudgetLine:
     category: str
     kind: Literal["fixed", "flexible"]
     limit_cents: int
+    group: str = "wants"          # needs | wants | saving | free (tpc-22)
 
 
 @dataclass(frozen=True)
