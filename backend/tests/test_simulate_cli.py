@@ -4,6 +4,7 @@ import pytest
 
 from app import config
 from app.budget_service.daily import user_lock
+from app.db.models import User
 from eval.budget_users import PLANTED, seed_profile
 from scripts.simulate import main
 from tests.fakes import SchemaReplyModel
@@ -45,3 +46,14 @@ def test_cli_locked_exit_1(db, capsys):
     finally:
         lock.release()
     assert "A budget run is already in progress." in capsys.readouterr().out
+
+
+def test_simulate_sets_style(db, capsys):
+    uid = seed(db)
+    assert main(["--user", uid, "--days", "1", "--style", "50_30_20"], session_factory=db,
+                model=SchemaReplyModel()) == 0
+    with db() as s:
+        assert s.get(User, uid).prefs_json["budget"]["style"] == "50_30_20"
+    with pytest.raises(SystemExit) as exit_:
+        main(["--user", uid, "--days", "1", "--style", "envelopes"], session_factory=db, model=SchemaReplyModel())
+    assert exit_.value.code == 2

@@ -26,8 +26,10 @@ os.environ.setdefault("FERNET_KEY", Fernet.generate_key().decode())
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.db.models import (Account, AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, Liability, PlaidItem,
-                           Transaction, User)
+from app.budget_engine.styles import STYLES
+from app.budget_service.settings import set_user_style
+from app.db.models import (Account, AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, CategoryRule, Liability,
+                           PlaidItem, Transaction, User)
 from eval.budget_users import PLANTED, PROFILES, default_start, seed_profile
 
 
@@ -38,7 +40,7 @@ def delete_user(session: Session, user_id: str) -> None:
     session.execute(delete(Alert).where(Alert.user_id == user_id))
     session.execute(delete(AgentRun).where(AgentRun.user_id == user_id))
     session.execute(delete(BudgetLine).where(BudgetLine.period_id.in_(periods)))
-    for model in (BudgetPeriod, Transaction, Liability, Account, PlaidItem):
+    for model in (BudgetPeriod, Transaction, CategoryRule, Liability, Account, PlaidItem):
         session.execute(delete(model).where(model.user_id == user_id))
     session.execute(delete(User).where(User.id == user_id))
     session.commit()
@@ -49,6 +51,7 @@ def main(argv=None, session_factory=None) -> int:
     parser.add_argument("--profile", required=True)
     parser.add_argument("--replace", action="store_true", help="delete the user and everything it owns first")
     parser.add_argument("--start", help="YYYY-MM-DD or 'default': seed history only up to this day and simulate from it")
+    parser.add_argument("--style", choices=STYLES, default="caps", help="the style its first budget is fitted with")
     args = parser.parse_args(argv)
     profiles = {p.id: p for p in PROFILES + PLANTED}
     profile = profiles.get(args.profile)
@@ -69,6 +72,8 @@ def main(argv=None, session_factory=None) -> int:
         if args.start:
             start = default_start(profile) if args.start == "default" else date.fromisoformat(args.start)
         seed_profile(s, profile, until=start)
+        set_user_style(s, user_id, args.style)
+        s.commit()
     print(f"seeded {user_id}: {profile.description}")
     if start is not None:
         print(f"simulated from {start}; advance it: python scripts/simulate.py --user {user_id} --days 30")

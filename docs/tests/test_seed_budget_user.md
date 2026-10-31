@@ -49,3 +49,15 @@ Run them from `backend/`:
 **What it does:** `--start default` seeds the one-time user as simulated at Sep 30, and prints the `simulate.py` command for 30 days.
 
 **Why it's there:** It's the first step of the "simulate a month" demo (TPC-21), so the printed command has to be the next step.
+
+## `test_seed_style_503020`
+
+**What it does:** `--style 50_30_20` stores the style on the seeded user, and the first budget fitted for them has a saving line of $840 (20% of $4,200).
+
+**Why it's there:** The style has to be in place before the first budget, which is fitted with it (TPC-22). It's the way to try 50/30/20 without a UI.
+
+## `test_replace_deletes_category_rules`
+
+**What it does:** `--replace` also deletes the user's merchant rules.
+
+**Why it's there:** `category_rules` (TPC-22) belongs to the user, so a reseed must not leave rules behind or fail on the foreign key.
