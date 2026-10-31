@@ -2,9 +2,10 @@ import statistics
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import Iterable, Literal
+from typing import Iterable, Literal, Optional
 
-from app.budget_engine.txns import Txn, add_months, category_totals, month_end, month_start, round_cents, spending
+from app.budget_engine.txns import (SAVINGS, Txn, add_months, category_totals, income_by_month, month_end,
+                                    month_start, round_cents, savings, spending)
 
 # initial budget from history (architecture 6.3). fixed lines take a typical month's amount; flexible lines
 # take the median month plus a small cushion, so one vacation doesn't inflate the budget.
@@ -37,6 +38,8 @@ class FitResult:
     lines: tuple[FittedLine, ...]     # sorted by category
     skipped: tuple[str, ...]          # flexible categories whose median is 0, sorted
     window: tuple[date, ...] = ()     # the fitted months (first of each), oldest first
+    income_cents: Optional[int] = None    # the median month's income; None when that median is $0
+    spending_total_cents: int = 0         # the median month's total spending + the cushion: the total with no income
 
 
 def fit_budget(txns: Iterable[Txn], today: date, fixed: frozenset[str] = FIXED_DEFAULT,
@@ -83,7 +86,19 @@ def fit_budget(txns: Iterable[Txn], today: date, fixed: frozenset[str] = FIXED_D
         )
         limit = round_cents(mid * Decimal(str(FLEX_MARKUP)))
         lines.append(FittedLine(cat, "flexible", limit, totals, outliers))
-    return FitResult(tuple(lines), tuple(skipped), tuple(months))
+
+    # the saving line is fitted like a fixed bill: a month without a transfer is a missed month, not a $0 goal
+    saved = savings(txns)
+    saved_totals = tuple(category_totals(saved, m, month_end(m)).get(SAVINGS, 0) for m in months)
+    if any(saved_totals):
+        lines.append(FittedLine(SAVINGS, "fixed", statistics.median_low([x for x in saved_totals if x > 0]),
+                                saved_totals, ()))
+        lines.sort(key=lambda ln: ln.category)
+
+    income = statistics.median(income_by_month(txns, months))
+    spent_totals = [sum(totals.values()) for totals in per_month]
+    fallback = round_cents(Decimal(str(statistics.median(spent_totals))) * Decimal(str(FLEX_MARKUP)))
+    return FitResult(tuple(lines), tuple(skipped), tuple(months), round_cents(Decimal(str(income))) or None, fallback)
 
 
 def _top_txns(spent: list[Txn], category: str, month: date) -> tuple[Txn, ...]:
