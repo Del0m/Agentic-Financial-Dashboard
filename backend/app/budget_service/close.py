@@ -50,12 +50,18 @@ def pending_proposals(session: Session, period_id: int) -> list[int]:
         .order_by(Alert.id)))
 
 
-# marks the alerts dismissed, their advice ignored, and the budget runs paused on them expired. the caller commits
-def expire_proposals(session: Session, alert_ids: list[int]) -> None:
+# marks the alerts dismissed, their advice ignored, and the budget runs paused on them expired; the caller commits.
+# the status is checked again here, in the close's own transaction: a user who answered while close was running
+# keeps their answer. returns the ids actually expired
+def expire_proposals(session: Session, alert_ids: list[int]) -> list[int]:
     if not alert_ids:
-        return
-    for alert in session.scalars(select(Alert).where(Alert.id.in_(alert_ids))):
+        return []
+    alerts = session.scalars(select(Alert).where(Alert.id.in_(alert_ids), Alert.status == "pending_user")).all()
+    for alert in alerts:
         alert.status = "dismissed"
+    alert_ids = sorted(a.id for a in alerts)
+    if not alert_ids:
+        return []
     advice = session.scalars(select(AdviceLog).where(AdviceLog.alert_id.in_(alert_ids))).all()
     for row in advice:
         row.outcome = "ignored"
@@ -66,6 +72,7 @@ def expire_proposals(session: Session, alert_ids: list[int]) -> None:
         waited = sorted(row.alert_id for row in advice if row.run_id == run.id)
         run.status, run.finished_at = "expired", utcnow()
         run.summary_json = {**(run.summary_json or {}), "expired_alert_ids": waited}
+    return alert_ids
 
 
 def gather_month(session: Session, period_id: int) -> dict:
@@ -152,7 +159,7 @@ def persist_month(session_factory, period_id: int, gathered: dict, adapted: dict
         old = s.get(BudgetPeriod, period_id)
         if old.status != "open":
             return None
-        expire_proposals(s, expired)
+        expired = expire_proposals(s, expired)
         old.status = "closed"
         new_start = gathered["new_start"]
         period = BudgetPeriod(user_id=old.user_id, start_date=new_start, end_date=month_end(new_start),

@@ -149,6 +149,12 @@ Uses the `db` fixture from `conftest.py` (see [test_plaid.md](test_plaid.md#shar
 
 **Why it's there:** The API and CLIs write the setting through this function, so bad input stops here.
 
+## `test_rule_moves_only_spending`
+
+**What it does:** With a rule "target → General merchandise", a Target paycheck, a transfer in and a card payment keep their own categories and aren't marked overridden; only a Target purchase moves to General merchandise.
+
+**Why it's there:** Found in the TPC-22 review. "Always for Target" means Target purchases. Applied to a paycheck, the rule turned income into negative shopping, so the line could never flag and close lost the user's income.
+
 ## Not covered
 
 - **The Alembic migration** is checked by hand, not by pytest: on a scratch SQLite file, `alembic upgrade head`, `alembic check` (no drift from the models), `alembic downgrade -1`, then `upgrade head` again.

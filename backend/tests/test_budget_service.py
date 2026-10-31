@@ -316,3 +316,20 @@ def test_set_user_style_validates(db):
         set_user_style(s, "u1", "50_30_20", {"needs": 60, "wants": 25, "saving": 15})
         s.commit()
         assert user_style(s, "u1") == ("50_30_20", {"needs": 60, "wants": 25, "saving": 15})
+
+
+# "always for target" means target purchases: a paycheck, a transfer or a card payment from the same merchant
+# keeps its own category, or income would vanish and spending go negative (tpc-22 review)
+def test_rule_moves_only_spending(db):
+    day = date(2026, 8, 5)
+    with db() as s:
+        acct = user(s)
+        s.add(CategoryRule(user_id="u1", merchant_name="target", category="GENERAL_MERCHANDISE"))
+        add_txn(s, acct, -420000, "INCOME", merchant="Target", day=day)
+        add_txn(s, acct, -5000, "TRANSFER_IN", merchant="Target", day=day)
+        add_txn(s, acct, 8000, "LOAN_PAYMENTS", merchant="Target", day=day, detailed="LOAN_PAYMENTS_CREDIT_CARD_PAYMENT")
+        add_txn(s, acct, 3000, "ENTERTAINMENT", merchant="Target", day=day)
+        s.commit()
+        got = {t.amount_cents: (t.category, t.overridden) for t in load_txns(s, "u1", day, day)}
+    assert got == {-420000: ("INCOME", False), -5000: ("TRANSFER_IN", False),
+                   8000: ("LOAN_PAYMENTS", False), 3000: ("GENERAL_MERCHANDISE", True)}

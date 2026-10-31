@@ -10,7 +10,7 @@ from app.budget_engine.pace import BudgetLine as EngineLine
 from app.budget_engine.styles import apply_style
 from app.budget_engine.fit import FIXED_DEFAULT, HISTORY_MONTHS, FitResult, FittedLine, fit_budget
 from app.budget_engine.txns import (FREE, SAVINGS, SAVINGS_DETAILED, Txn, add_months, month_end, month_start,
-                                    normalize_merchant)
+                                    normalize_merchant, spending)
 from app.budget_service.settings import user_style
 from app.db.models import BudgetLine, BudgetPeriod, CategoryRule, Transaction
 
@@ -24,7 +24,9 @@ from app.db.models import BudgetLine, BudgetPeriod, CategoryRule, Transaction
 def resolve_category(row: Transaction, rules: dict[str, str]) -> tuple[str, str]:
     if row.user_category:
         return row.user_category, "user"
-    rule = rules.get(normalize_merchant(row.merchant_name)) if row.merchant_name else None
+    # a rule is about the merchant's purchases: its paychecks, transfers and card payments keep their category
+    plain = Txn(row.date, row.amount_cents, row.pf_category_primary or "UNCATEGORIZED", row.pf_category_detailed)
+    rule = rules.get(normalize_merchant(row.merchant_name)) if row.merchant_name and spending([plain]) else None
     if rule:
         return rule, "rule"
     if row.our_category:

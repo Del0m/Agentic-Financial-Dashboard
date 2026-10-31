@@ -257,3 +257,24 @@ def test_close_across_new_year(db):
     jan = period_at(db, date(2027, 1, 1))
     assert (jan.start_date, jan.end_date) == (date(2027, 1, 1), date(2027, 1, 31))
     assert summary["month"] == "2026-12-01"
+
+
+# the user accepts while close is running (after it listed the pending proposals): their answer stands and is
+# applied, instead of being overwritten as expired (tpc-22 review)
+def test_decision_during_close_is_kept(db, monkeypatch):
+    pid, _ = setup(db)
+    alert_id, run_id = add_alert(db, pid, "FOOD_AND_DRINK", 90000, "pending_user", run_status="awaiting_user")
+    gather = close_mod.gather_month
+
+    def user_clicks(session, period_id):
+        decide_alert(db, "u1", alert_id, "accepted")
+        return gather(session, period_id)
+
+    monkeypatch.setattr(close_mod, "gather_month", user_clicks)
+    [summary] = close_due(db, "u1", NOV1)
+    with db() as s:
+        assert s.get(Alert, alert_id).status == "accepted"
+        assert s.query(AdviceLog).filter_by(alert_id=alert_id).one().outcome == "accepted"
+        assert s.get(AgentRun, run_id).status == "awaiting_user"
+    assert summary["expired_alert_ids"] == []
+    assert lines_of(period_at(db, NOV1))["FOOD_AND_DRINK"].limit_cents == 90000

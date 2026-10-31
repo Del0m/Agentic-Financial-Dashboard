@@ -105,3 +105,9 @@ Run them from `backend/`:
 **What it does:** Closing December on Jan 1 2027 opens January 1–31 2027, with the summary month `2026-12-01`.
 
 **Why it's there:** Date arithmetic across the year boundary (month 12 + 1).
+
+## `test_decision_during_close_is_kept`
+
+**What it does:** The user accepts a pending $900 food proposal while close is running, after close listed it as pending. The alert stays `accepted` with its advice `accepted`, the paused run isn't expired, the summary lists no expired alerts, and November's food line is the accepted $900.
+
+**Why it's there:** Found in the TPC-22 review. Expiry re-checks each alert's status inside the close's own commit, so a decision made in that window is never overwritten as expired.
