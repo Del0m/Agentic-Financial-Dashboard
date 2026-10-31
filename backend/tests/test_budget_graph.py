@@ -356,3 +356,21 @@ def test_live_second_run_no_duplicate(db, tmp_path):
     print("second run:", second["actions"])
     assert len(rows(db, Alert)) == 1
     assert second["actions"][GM]["action"] == "no_op"
+
+
+# free is computed and saving isn't overspending, so neither may propose next month's limit (tpc-22)
+def test_free_line_never_proposes(db, tmp_path):
+    uid = seed(db, "overspend-one-time")
+    with db() as s:
+        period = budget_graph.initialize_budget(s, uid, ONE)
+        for ln in period.lines:
+            ln.limit_cents = 10_000_000          # only the free line can flag
+        s.add(BudgetLine(period_id=period.id, category="FREE", name="Free", group="free", kind="flexible",
+                         limit_cents=100, source="init"))
+        s.info["n"] = 100000
+        add_txn(s, s.query(Account).filter_by(user_id=uid).one(), 20000, "TRAVEL", day=date(2026, 10, 15))
+        s.commit()
+    state = run(db, uid, model=fake(RECUR, ADJUST), tmp_path=tmp_path, checkpointer=InMemorySaver())
+    [alert] = rows(db, Alert)
+    assert (alert.category, alert.action, alert.proposed_limit_cents) == ("FREE", "alert", None)
+    assert state["actions"]["FREE"]["downgraded"] is True and state["status"] == "ok"

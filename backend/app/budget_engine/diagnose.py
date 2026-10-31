@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Iterable, Literal, Optional
 
 from app.budget_engine.pace import PaceResult
-from app.budget_engine.txns import Txn, add_months, month_end, round_cents, spending
+from app.budget_engine.txns import FREE, Txn, add_months, month_end, round_cents, spending
 
 # the facts the budget graph's diagnose step hands the llm (spec: tpc-19). the code works out what a small
 # model would get wrong from raw rows (how much one purchase explains, which merchants are new or repeating);
@@ -63,13 +63,21 @@ def proposed_limit_cents(facts: OverspendFacts) -> int:
     return -(-base // PROPOSAL_STEP) * PROPOSAL_STEP
 
 
+# lined: the period's line categories. the free line has no category of its own; its purchases are the ones
+# in categories without a line (and any corrected to Free)
 def overspend_facts(flag: PaceResult, line_fit: Optional[dict], period_txns: Iterable[Txn],
-                    history_txns: Iterable[Txn], period_start: date) -> OverspendFacts:
+                    history_txns: Iterable[Txn], period_start: date, *,
+                    lined: frozenset[str] = frozenset()) -> OverspendFacts:
     today = period_start + timedelta(days=flag.days_elapsed - 1)
     hist_start = add_months(period_start, -HISTORY_MONTHS)
-    period = [t for t in spending(period_txns) if t.category == flag.category and period_start <= t.date <= today]
-    history = [t for t in spending(history_txns)
-               if t.category == flag.category and hist_start <= t.date < period_start]
+
+    def mine(t: Txn) -> bool:
+        if flag.category == FREE:
+            return t.category == FREE or t.category not in lined
+        return t.category == flag.category
+
+    period = [t for t in spending(period_txns) if mine(t) and period_start <= t.date <= today]
+    history = [t for t in spending(history_txns) if mine(t) and hist_start <= t.date < period_start]
 
     purchases = [t for t in period if t.amount_cents > 0]
     largest = max(purchases, key=lambda t: (t.amount_cents, t.date), default=None)

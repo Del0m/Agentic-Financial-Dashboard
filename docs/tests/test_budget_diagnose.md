@@ -87,3 +87,9 @@ Run them from `backend/`:
 **What it does:** Merchants are labelled `started_recently` (the gym, seen in 1 of the last 3 months), `regular` (the barber, seen in all 3) or `new` (a spa, never seen).
 
 **Why it's there:** In a live run, the model read "months_seen_before: 1" as "seen for the first time" and called the gym `one_time`. Naming the pattern in code removes that reading error, and the model still decides the cause.
+
+## `test_free_facts_use_unlined_categories`
+
+**What it does:** For a flagged free line, with food and free as the period's lines, the facts cover the $300 airline purchase (travel has no line) and the $20 kiosk purchase corrected to Free, not the groceries. The airline's September purchase counts as history.
+
+**Why it's there:** The free line has no category of its own. Its diagnosis has to look at the purchases it actually covers, or the model would explain the wrong spending.

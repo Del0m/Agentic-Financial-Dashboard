@@ -108,3 +108,21 @@ Run them from `backend/`:
 **What it does:** Lines given as [TRAVEL, FOOD] come back in that order, each with $0 spent. A paycheck produces no row.
 
 **Why it's there:** Callers match results to their stored lines by position, so the order must hold. Income is never spending, budgeted or not.
+
+## `test_free_line_counts_unlined_spending`
+
+**What it does:** With a food line and a free line, $40 of travel, $30 of personal care and $20 corrected to Free count against free ($90); food keeps its own $90. Travel and personal care are still listed as `unbudgeted` and never flagged on their own.
+
+**Why it's there:** The free line (TPC-22) is the room left after the other lines, so any spending without a line has to count against it. The `unbudgeted` rows let the run summary say what free covered.
+
+## `test_no_free_line_unchanged`
+
+**What it does:** Without a free line, travel is reported as `unbudgeted` with its $40, as before.
+
+**Why it's there:** Budgets from before TPC-22 have no free line until their first close; they must behave exactly as they did.
+
+## `test_saving_line_never_flagged`
+
+**What it does:** Saving $800 against a $500 saving line shows $800 saved, with no flag.
+
+**Why it's there:** Saving more than planned isn't overspending. The line shows what was saved so far, which comes from transfers to savings, not from spending.

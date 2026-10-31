@@ -147,8 +147,8 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
     def update_totals(state: BudgetState) -> dict:
         with session_factory() as s:
             period, txns = period_txns(s, state)
-            results = evaluate([EngineLine(ln.category, ln.kind, ln.limit_cents) for ln in period.lines], txns,
-                               today_of(state))
+            lines = [EngineLine(ln.category, ln.kind, ln.limit_cents, ln.group) for ln in period.lines]
+            results = evaluate(lines, txns, today_of(state))
             by_cat = {r.category: r for r in results}
             for ln in period.lines:
                 ln.spent_cents, ln.last_pace = by_cat[ln.category].spent_cents, by_cat[ln.category].pace
@@ -165,12 +165,13 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             history = load_txns(s, state["user_id"], add_months(period.start_date, -3),
                                 period.start_date - timedelta(days=1))
             fits = {ln.category: ln.fit_json for ln in period.lines}
+            lined = frozenset(ln.category for ln in period.lines)
             memory = {f["category"]: (_this_month_alerts(s, state["user_id"], period.id, f["category"]),
                                       _past_advice(s, state["user_id"], period.start_date, f["category"]))
                       for f in state["flags"]}
         for flag in state["flags"]:
             cat = flag["category"]
-            f = overspend_facts(PaceResult(**flag), fits.get(cat), txns, history, period.start_date)
+            f = overspend_facts(PaceResult(**flag), fits.get(cat), txns, history, period.start_date, lined=lined)
             facts[cat] = {**asdict(f), "proposed_limit_cents": proposed_limit_cents(f)}
             contexts[cat] = gateway.build_context("diagnose", facts=f, transactions=txns,
                                                   this_month_alerts=memory[cat][0], past_advice=memory[cat][1])
@@ -192,9 +193,11 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             if fallback:
                 failures += 1
                 a = Action(action="alert", message=_fallback_message(flag))
-            # only a recurring cause may change next month's budget; the model's message would quote a limit
-            # it shouldn't have proposed, so the code writes the alert instead
-            downgraded = a.action == "adjust_next_budget" and (d or {}).get("cause") != "recurring"
+            # only a recurring cause may change next month's budget, and never the free line (it's computed) or
+            # the saving line; the model's message would quote a limit it shouldn't have proposed, so the code
+            # writes the alert instead
+            downgraded = a.action == "adjust_next_budget" and ((d or {}).get("cause") != "recurring"
+                                                               or flag.get("group") in ("free", "saving"))
             if downgraded:
                 a = Action(action="alert", message=_fallback_message(flag))
             actions[cat] = {"action": a.action, "message": a.message, "fallback": fallback, "downgraded": downgraded,

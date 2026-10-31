@@ -84,7 +84,7 @@ def get_budget(user: User = Depends(get_current_user)):
                 if period is not None and period.end_date < today else None
             return BudgetOut(period=None, ended_period=ended, days_elapsed=today.day, days_in_period=days, lines=[],
                              unbudgeted=[])
-        results = evaluate([EngineLine(ln.category, ln.kind, ln.limit_cents) for ln in period.lines],
+        results = evaluate([EngineLine(ln.category, ln.kind, ln.limit_cents, ln.group) for ln in period.lines],
                            load_txns(s, user.id, period.start_date, today), today)
         out = PeriodOut(start=period.start_date, end=period.end_date)
     return BudgetOut(

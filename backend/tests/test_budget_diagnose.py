@@ -119,3 +119,14 @@ def test_merchant_pattern():
     f = overspend_facts(flag(cat, 15500, 4200), None, period, history, OCT)
     assert {m.merchant: m.pattern for m in f.merchants} == {
         "FitClub Gym": "started_recently", "Barber": "regular", "Spa": "new"}
+
+
+# the free line has no category of its own: its facts are the purchases in categories without a line
+def test_free_facts_use_unlined_categories():
+    period = [t(10, 12, 30000, "TRAVEL", "Airline"), t(10, 5, 2000, "FREE", "Kiosk"),
+              t(10, 6, 9000, "FOOD_AND_DRINK", "Grocer")]
+    history = [t(9, 10, 5000, "TRAVEL", "Airline"), t(9, 11, 7000, "FOOD_AND_DRINK", "Grocer")]
+    f = overspend_facts(flag("FREE", 32000, 10000), None, period, history, OCT,
+                        lined=frozenset({"FOOD_AND_DRINK", "FREE"}))
+    assert {m.merchant for m in f.merchants} == {"Airline", "Kiosk"}
+    assert f.largest.amount_cents == 30000 and merchant(f, "Airline").prior_months == 1

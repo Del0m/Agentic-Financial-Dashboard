@@ -203,3 +203,9 @@ SQLite gives the new run the same id, and it still pauses, with its alert pendin
 **What it does:** It is skipped unless Ollama is running with `OLLAMA_MODEL`. It runs the one-time planted user twice on Oct 20 with the real model. The first run writes one alert. The second chooses `no_op`, and there is still one alert.
 
 **Why it's there:** It's TPC-20's done-when, checked against the real local model, because deduplication is the model's decision from its memory facts.
+
+## `test_free_line_never_proposes`
+
+**What it does:** Only the free line can flag (every other limit is raised). The model diagnoses `recurring` and picks `adjust_next_budget`, but the alert is written as a plain `alert` with no proposed limit, marked `downgraded`, and the run finishes `ok` without pausing.
+
+**Why it's there:** The free line's limit is computed (whatever the other lines leave), so a proposed limit for it would be overwritten at close; the same goes for the saving line, which can't be overspent. Only a category line can be adjusted.

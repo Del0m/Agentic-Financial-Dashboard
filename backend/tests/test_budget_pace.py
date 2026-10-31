@@ -129,3 +129,30 @@ def test_lines_keep_given_order_and_excluded_skipped():
     results = evaluate(lines, [t(2026, 10, 1, -400000, "INCOME")], date(2026, 10, 15))
     assert [r.category for r in results] == ["TRAVEL", "FOOD_AND_DRINK"]
     assert all(r.spent_cents == 0 for r in results)
+
+
+FREE_LINE = BudgetLine("FREE", "flexible", 10000, "free")
+
+
+# the free line is the room left after the other lines: spending without a line, or corrected to Free, counts here
+def test_free_line_counts_unlined_spending():
+    txns = [t(2026, 10, 3, 4000, "TRAVEL"), t(2026, 10, 4, 2000, "FREE"), t(2026, 10, 5, 9000),
+            t(2026, 10, 6, 3000, "PERSONAL_CARE")]
+    res = by_cat(evaluate([flex("FOOD_AND_DRINK", 30000), FREE_LINE], txns, date(2026, 10, 10)))
+    assert res["FREE"].spent_cents == 9000 and res["FREE"].group == "free"
+    assert res["FOOD_AND_DRINK"].spent_cents == 9000
+    # still listed, so the run summary can say what free covered
+    assert {c for c, r in res.items() if r.kind == "unbudgeted"} == {"TRAVEL", "PERSONAL_CARE"}
+    assert not res["TRAVEL"].flagged
+
+
+def test_no_free_line_unchanged():
+    res = by_cat(evaluate([flex("FOOD_AND_DRINK", 30000)], [t(2026, 10, 3, 4000, "TRAVEL")], date(2026, 10, 10)))
+    assert (res["TRAVEL"].kind, res["TRAVEL"].spent_cents) == ("unbudgeted", 4000)
+
+
+# saving more than planned isn't overspending; the line shows what was saved so far
+def test_saving_line_never_flagged():
+    saving = BudgetLine("SAVINGS_TRANSFER", "fixed", 50000, "saving")
+    r = one([saving], [t(2026, 10, 16, 80000, "SAVINGS_TRANSFER")], date(2026, 10, 20))
+    assert (r.spent_cents, r.flagged, r.reason) == (80000, False, None)
