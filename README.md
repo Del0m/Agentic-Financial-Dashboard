@@ -27,6 +27,8 @@ The browser only talks to the Next.js server. It forwards `/api/*` to FastAPI on
 
 To try it: open http://localhost:3000, click **Connect a bank**, pick **First Platypus Bank**, and log in with `user_good` / `pass_good`.
 
+Linking returns immediately after saving the bank connection; its first full sync runs in the background. The dashboard polls while it is syncing and keeps **Retry sync** available if any step fails, including balances or liabilities. Run one API worker: per-item sync locks serialize webhook, initial and manual syncs within that process.
+
 ## Knowledge base
 
 The chat agent's `search_kb` tool reads public financial guidance from a local Chroma store. One-time setup, from `backend/`:
@@ -82,6 +84,8 @@ With Ollama running, each flagged day takes a few seconds of model time, so a mo
 Set `ENABLE_SCHEDULER=1` and the API runs each real user's budget check daily at `DAILY_RUN_TIME` (06:00), plus the month-end slot on the 1st at `CLOSE_RUN_TIME` (05:00), in `SCHEDULER_TZ`. If the server starts after today's slot, it runs it once at startup for anyone not yet checked today. Earlier missed days aren't replayed. Run a single uvicorn worker (the default); the scheduler lives inside it.
 
 ## Demo on a phone
+
+Use **Plaid Sandbox data only** for this demo. The app has one unauthenticated dev user: anyone who can reach the LAN address or tunnel can read the dashboard and call its API. Use a trusted network, do not share the tunnel URL publicly, and stop the server/tunnel when the demo ends. Real accounts require authentication and webhook verification first.
 
 1. Build and serve the web app on every network interface:
    ```bash

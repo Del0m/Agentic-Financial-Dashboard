@@ -136,7 +136,7 @@ Run them from `backend/`:
 
 ## `test_run_error_status`
 
-**What it does:** When the model raises, the run reads `error` with `ConnectionError`, and the next run can start (the lock was released).
+**What it does:** When the run crashes (`evaluate` raises `RuntimeError`), the run reads `error` with `RuntimeError`, and the next run can start (the lock was released). Since the review on #12, an Ollama outage ends in code-written alerts instead of an error, so the crash comes from the engine.
 
 **Why it's there:** The page can say the run failed and why, and a failure doesn't lock the user out.
 
@@ -215,3 +215,15 @@ Run them from `backend/`:
 **What it does:** On startup, a simulation job still marked `running` becomes `error` ("Interrupted").
 
 **Why it's there:** A simulation's thread dies with the server, like a run's. Otherwise the Alerts panel would poll it forever.
+
+## `test_run_status_with_a_broken_checkpoint`
+
+**What it does:** Pauses a run, then reads `GET /budget/runs/{id}` with an empty checkpointer and with one that raises. Both give a 200 with `status: "error"` and `waiting_for: []`.
+
+**Why it's there:** The route called `waiting_for` without the guard `GET /alerts` uses. An unreadable checkpoint gave a 500, which stopped the page's polling. A missing thread reported `awaiting_user` with no proposals, and the page showed "Waiting for your approval on 0 proposals" forever. The review on #13 found it.
+
+## `test_decide_needs_no_model`
+
+**What it does:** Makes `budget_hooks.make_model` raise, then accepts a paused run's proposal. The accept returns 200.
+
+**Why it's there:** Every accept or dismiss built a chat model that was never used, because no LLM step runs after the pause. A model configuration error then blocked the decision. `resume_budget_run` no longer takes a model. The review on #13 found it.

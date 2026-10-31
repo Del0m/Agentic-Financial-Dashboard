@@ -35,12 +35,19 @@ def test_cli_prints_report(db, capsys):
         assert text in out, text
 
 
-def test_cli_error_exit(db, capsys):
+# a model outage now ends in fallback alerts (test_model_unreachable_still_alerts), so a crash comes from elsewhere
+def test_cli_error_exit(db, capsys, monkeypatch):
+    from app.agents import budget_graph
+
+    def boom(*a, **k):
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(budget_graph, "evaluate", boom)
     uid = seeded(db)
     code = main(["--user", uid, "--date", "2026-10-20", "--no-sync"], session_factory=db,
-                model=ScriptedChatModel(replies=[ConnectionError("down")]))
+                model=ScriptedChatModel(replies=[]))
     assert code == 1
-    assert "ConnectionError" in capsys.readouterr().out
+    assert "RuntimeError" in capsys.readouterr().out
 
 
 def test_cli_bad_date(db):
@@ -80,3 +87,13 @@ def test_cli_awaiting_user(db, capsys, tmp_path, monkeypatch):
     assert main(["--user", uid, "--date", "2026-10-20", "--no-sync"], session_factory=db,
                 model=ScriptedChatModel(replies=replies)) == 0
     assert "status: awaiting_user (waiting for alert(s)" in capsys.readouterr().out
+
+
+# review on #13: no test may open (and delete threads in) the developer's real checkpoint file
+def test_tests_never_use_the_real_checkpoint_file():
+    from pathlib import Path
+
+    from app import config
+    real = Path(config.__file__).parent.parent / "data" / "budget_checkpoints.db"
+    assert config.BUDGET_CHECKPOINT_PATH != real
+    assert config.CHAT_CHECKPOINT_PATH != real.with_name("checkpoints.db")

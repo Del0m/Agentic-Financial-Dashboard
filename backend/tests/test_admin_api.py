@@ -114,10 +114,20 @@ def test_start_failure_500_frees_lock(admin):
     lock.release()
 
 
+# an ollama outage ends in fallback alerts since the review on #12, so the failing day crashes in the engine:
+# the third evaluate call raises, after two days have completed
 def test_advance_job_error_reports_type(admin):
+    from app.agents import budget_graph
     uid = admin.seed()
-    admin.mp.setattr(budget_hooks, "make_model",
-                     lambda: ScriptedChatModel(replies=[ConnectionError("down")] * 5))
+    calls, real_evaluate = [], budget_graph.evaluate
+
+    def crash_on_third(*a, **k):
+        calls.append(1)
+        if len(calls) == 3:
+            raise RuntimeError("bug")
+        return real_evaluate(*a, **k)
+
+    admin.mp.setattr(budget_graph, "evaluate", crash_on_third)
     # the first october days have no flags (no model call), so start near the purchase
     with admin.db() as s:
         user = s.get(User, uid)
@@ -125,7 +135,8 @@ def test_advance_job_error_reports_type(admin):
         s.commit()
     job_id = advance(admin, 3).json()["job_id"]
     job = admin.client.get(f"/admin/sandbox/advance/{job_id}").json()
-    assert (job["status"], job["error"]) == ("error", "ConnectionError")
+    assert (job["status"], job["error"]) == ("error", "RuntimeError")
+    assert job["date"] == "2026-10-13"
     assert admin.client.get("/admin/sandbox").json()["date"] == job["date"]
     lock = user_lock(uid)
     assert lock.acquire(blocking=False)

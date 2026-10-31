@@ -80,7 +80,7 @@ Run them from `backend/`:
 
 ## `test_advance_job_error_reports_type`
 
-**What it does:** With the model down, an advance from Oct 11 ends `error` with `ConnectionError`. The simulated date stays at the last completed day, and the lock is free (plan Review Focus 5).
+**What it does:** An advance from Oct 11 whose third day crashes (`evaluate` raises `RuntimeError` on its third call) ends `error` with `RuntimeError`. The simulated date stays at Oct 13, the last completed day, and the lock is free (plan Review Focus 5). Since the review on #12, the model being down no longer fails a day, so the crash comes from the engine.
 
 **Why it's there:** The panel says where the simulation stopped and why. A second advance resumes from there instead of skipping a day.
 
