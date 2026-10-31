@@ -7,21 +7,47 @@ from sqlalchemy.orm import Session
 
 from app.budget_engine.groups import default_group, default_name
 from app.budget_engine.fit import FIXED_DEFAULT, HISTORY_MONTHS, FitResult, FittedLine, fit_budget
-from app.budget_engine.txns import Txn, add_months, month_end, month_start
-from app.db.models import BudgetLine, BudgetPeriod, Transaction
+from app.budget_engine.txns import (SAVINGS, SAVINGS_DETAILED, Txn, add_months, month_end, month_start,
+                                    normalize_merchant)
+from app.db.models import BudgetLine, BudgetPeriod, CategoryRule, Transaction
 
 # the db side of the initial budget (architecture 6.3): load history, fit it with budget_engine (which
 # stays pure), and store the result with the evidence the agent needs to explain it
 
 
-# the user's spending history as budget_engine Txns. an llm-assigned category wins over plaid's
+# one place decides a transaction's category, so fit, pace, close and the api agree (tpc-22): the user's
+# correction, then their merchant rule, then the llm's category, then a transfer to savings, then plaid's.
+# source is what the transactions list shows: "user", "rule", or "plaid" for everything automatic
+def resolve_category(row: Transaction, rules: dict[str, str]) -> tuple[str, str]:
+    if row.user_category:
+        return row.user_category, "user"
+    rule = rules.get(normalize_merchant(row.merchant_name)) if row.merchant_name else None
+    if rule:
+        return rule, "rule"
+    if row.our_category:
+        return row.our_category, "plaid"
+    if row.pf_category_primary == "TRANSFER_OUT" and row.pf_category_detailed == SAVINGS_DETAILED:
+        return SAVINGS, "plaid"
+    return row.pf_category_primary or "UNCATEGORIZED", "plaid"
+
+
+def category_rules(session: Session, user_id: str) -> dict[str, str]:
+    return {r.merchant_name: r.category
+            for r in session.scalars(select(CategoryRule).where(CategoryRule.user_id == user_id))}
+
+
+# the user's spending history as budget_engine Txns
 def load_txns(session: Session, user_id: str, start: date, end: date) -> list[Txn]:
+    rules = category_rules(session, user_id)
     rows = session.scalars(select(Transaction).where(
         Transaction.user_id == user_id, Transaction.removed.is_(False),
         Transaction.date >= start, Transaction.date <= end))
-    return [Txn(date=r.date, amount_cents=r.amount_cents,
-                category=r.our_category or r.pf_category_primary or "UNCATEGORIZED",
-                detailed=r.pf_category_detailed, merchant=r.merchant_name) for r in rows]
+    txns = []
+    for r in rows:
+        category, source = resolve_category(r, rules)
+        txns.append(Txn(date=r.date, amount_cents=r.amount_cents, category=category, detailed=r.pf_category_detailed,
+                        merchant=r.merchant_name, overridden=source != "plaid"))
+    return txns
 
 
 def _latest_period(session: Session, user_id: str) -> Optional[BudgetPeriod]:

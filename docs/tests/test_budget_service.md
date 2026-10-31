@@ -119,6 +119,18 @@ Uses the `db` fixture from `conftest.py` (see [test_plaid.md](test_plaid.md#shar
 
 **Why it's there:** `None` means "not enough history yet", so the daily run would retry forever and nobody would see the real error. Only a race, where another run's period now exists, is safe to swallow (found in the TPC-18 final review).
 
+## `test_load_txns_precedence`
+
+**What it does:** One user, a rule "costco → Food and drink", and six transactions on one day. The categories come out as: the user's own correction (Travel), the rule (beating the LLM's category), the LLM's category, Plaid's category, `SAVINGS_TRANSFER` for a `TRANSFER_OUT_SAVINGS` transfer, and plain `TRANSFER_OUT` for any other transfer. Only the first two are marked `overridden`. `resolve_category` reports their sources as `user`, `rule`, `plaid` and `plaid`.
+
+**Why it's there:** TPC-22 makes `load_txns` the one place a transaction's category is decided (user > rule > LLM > savings transfer > Plaid), so the fit, the pace check, close and the transactions list always agree.
+
+## `test_rule_matches_case_insensitively`
+
+**What it does:** A rule stored as `"costco"` matches a transaction from `"COSTCO "`.
+
+**Why it's there:** Plaid's merchant names vary in case and spacing; "Always for Costco" should still apply.
+
 ## Not covered
 
 - **The Alembic migration** is checked by hand, not by pytest: on a scratch SQLite file, `alembic upgrade head`, `alembic check` (no drift from the models), `alembic downgrade -1`, then `upgrade head` again.

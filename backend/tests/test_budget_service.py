@@ -4,8 +4,8 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.budget_service import initialize
-from app.budget_service.initialize import initialize_budget, load_txns
-from app.db.models import Account, Alert, BudgetLine, BudgetPeriod
+from app.budget_service.initialize import initialize_budget, load_txns, resolve_category
+from app.db.models import Account, Alert, BudgetLine, BudgetPeriod, CategoryRule
 from tests.factories import add_account, add_txn, add_user
 
 
@@ -230,3 +230,37 @@ def test_other_integrity_error_raises(db, monkeypatch):
         monkeypatch.setattr(initialize, "_latest_period", lambda session, user_id: None)
         with pytest.raises(IntegrityError):
             initialize_budget(s, "u1", TODAY)
+
+
+# user override > merchant rule > llm category > a transfer to savings > plaid's primary
+def test_load_txns_precedence(db):
+    day = date(2026, 8, 5)
+    with db() as s:
+        acct = user(s)
+        s.add(CategoryRule(user_id="u1", merchant_name="costco", category="FOOD_AND_DRINK"))
+        add_txn(s, acct, 100, "GENERAL_MERCHANDISE", merchant="Costco", day=day, user_category="TRAVEL")
+        add_txn(s, acct, 200, "GENERAL_MERCHANDISE", merchant="Costco", day=day, our_category="ENTERTAINMENT")
+        add_txn(s, acct, 300, "GENERAL_MERCHANDISE", merchant="Shop", day=day, our_category="ENTERTAINMENT")
+        add_txn(s, acct, 400, "GENERAL_MERCHANDISE", merchant="Shop", day=day)
+        add_txn(s, acct, 500, "TRANSFER_OUT", merchant="Savings", day=day, detailed="TRANSFER_OUT_SAVINGS")
+        add_txn(s, acct, 600, "TRANSFER_OUT", merchant="Rent pal", day=day)
+        s.commit()
+        got = sorted(load_txns(s, "u1", day, day), key=lambda t: t.amount_cents)
+        rows = {r.amount_cents: r for r in s.query(initialize.Transaction).filter_by(user_id="u1")}
+        rules = {"costco": "FOOD_AND_DRINK"}
+        sources = [resolve_category(rows[c], rules)[1] for c in (100, 200, 300, 500)]
+    assert [(t.category, t.overridden) for t in got] == [
+        ("TRAVEL", True), ("FOOD_AND_DRINK", True), ("ENTERTAINMENT", False), ("GENERAL_MERCHANDISE", False),
+        ("SAVINGS_TRANSFER", False), ("TRANSFER_OUT", False)]
+    assert sources == ["user", "rule", "plaid", "plaid"]
+
+
+def test_rule_matches_case_insensitively(db):
+    day = date(2026, 8, 5)
+    with db() as s:
+        acct = user(s)
+        s.add(CategoryRule(user_id="u1", merchant_name="costco", category="FOOD_AND_DRINK"))
+        add_txn(s, acct, 100, "GENERAL_MERCHANDISE", merchant="COSTCO ", day=day)
+        s.commit()
+        [got] = load_txns(s, "u1", day, day)
+    assert (got.category, got.overridden) == ("FOOD_AND_DRINK", True)

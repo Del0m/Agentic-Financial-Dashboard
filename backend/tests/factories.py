@@ -25,9 +25,10 @@ def add_account(s, item, name, type_="depository", balance=10000, mask=None, pla
 
 
 def add_txn(s, acct, amount, category, merchant="Shop", day=date(2026, 10, 10), removed=False, detailed=None,
-            our_category=None, plaid_id=None):
+            our_category=None, plaid_id=None, user_category=None):
     n = s.info.setdefault("n", 0)
     s.add(Transaction(user_id=acct.user_id, account_id=acct.id, plaid_txn_id=plaid_id or f"t-{acct.id}-{n}",
                       date=day, amount_cents=amount, merchant_name=merchant, pf_category_primary=category,
-                      pf_category_detailed=detailed, our_category=our_category, removed=removed))
+                      pf_category_detailed=detailed, our_category=our_category, user_category=user_category,
+                      removed=removed))
     s.info["n"] += 1
