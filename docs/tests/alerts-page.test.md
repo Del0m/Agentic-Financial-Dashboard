@@ -118,11 +118,11 @@ npm test -- app/alerts/page.test.tsx
 
 **Why it's there:** The server would refuse it anyway (one lock per user), and the page shouldn't offer it.
 
-## `month end on the last day advances one`
+## `month end on the last day goes to the next month's end`
 
-**What it does:** On Oct 31, **To month end** advances 1 day.
+**What it does:** On Oct 31, **To month end** advances 30 days, to Nov 30.
 
-**Why it's there:** It never sends 0, which the API rejects (plan Review Focus 3).
+**Why it's there:** It never sends 0, which the API rejects (plan Review Focus 3), and on the last day of a month it covers the next month instead of stopping on the 1st (review on #14).
 
 ## `a month-long advance is followed past 10 minutes`
 

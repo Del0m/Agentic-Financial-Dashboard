@@ -66,7 +66,7 @@ Run them from `backend/`:
 
 ## `test_reinject_is_idempotent`
 
-**What it does:** Injecting Oct 12 twice adds its transactions only once.
+**What it does:** Injecting Oct 12's generated rows twice adds them only once. `_inject` takes that day's rows; `advance_days` builds them.
 
 **Why it's there:** A retried day must never double a purchase, or the agent would see an overspend that didn't happen.
 
@@ -84,3 +84,9 @@ Run them from `backend/`:
 - there's an over-limit (`high`) alert from a run on or after Oct 12.
 
 **Why it's there:** It's the simulation with the real agent: data arriving day by day, the memory stopping repeats, and the escalation to over the limit still reported. Live it alerts twice: pace on Oct 10, and over the limit on Oct 12.
+
+## `test_profile_transactions_generated_once`
+
+**What it does:** Counts calls to `budget_users.transactions` during a 5-day advance, and expects 1.
+
+**Why it's there:** `_inject` regenerated and sorted the profile's whole multi-month history for every simulated day, just to keep that day's rows. A 31-day advance did that 31 times. `advance_days` now generates it once and groups it by day. The review on #14 found it.

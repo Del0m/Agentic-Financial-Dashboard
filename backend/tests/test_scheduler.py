@@ -22,8 +22,8 @@ def planted(pid):
     return next(p for p in PLANTED if p.id == pid)
 
 
-# three users the job should run (one with a budget, one with a real item, one with both),
-# one simulated user and one with nothing: neither is the scheduler's business
+# two users the job should run (one with a real item, one with a real item and a budget), a seeded user with a
+# budget but only its placeholder item, and a simulated user: neither of the last two is the scheduler's business
 @pytest.fixture
 def users(db):
     with db() as s:
@@ -42,13 +42,13 @@ def users(db):
 
 def test_eligible_users(db, users):
     with db() as s:
-        assert eligible_users(s) == sorted([users["budgeted"], users["real"], users["both"]])
+        assert eligible_users(s) == sorted([users["real"], users["both"]])
 
 
 def test_daily_job_runs_eligible(db, users, monkeypatch):
     monkeypatch.setattr("app.budget_service.daily.plaid_sync", lambda s, uid: {"items": 1, "errors": []})
     result = daily_budget_job(db, today=ONE, model=SchemaReplyModel(), checkpointer=None)
-    assert result == {"ran": sorted([users["budgeted"], users["real"], users["both"]]), "skipped": [], "failed": []}
+    assert result == {"ran": sorted([users["real"], users["both"]]), "skipped": [], "failed": []}
     with db() as s:
         assert s.query(AgentRun).filter_by(user_id=users["simulated"]).count() == 1      # only its own seed run
 
@@ -62,25 +62,25 @@ def test_daily_job_skips_locked_and_survives_failure(db, users, monkeypatch):
         return real_run(session_factory, user_id, today, **kw)
 
     monkeypatch.setattr(scheduler, "run_daily", flaky)
-    lock = user_lock(users["budgeted"])
+    lock = user_lock(users["both"])
     lock.acquire()
     try:
         result = daily_budget_job(db, today=ONE, model=SchemaReplyModel(), checkpointer=None)
     finally:
         lock.release()
-    assert result == {"ran": [users["both"]], "skipped": [users["budgeted"]], "failed": [users["real"]]}
+    assert result == {"ran": [], "skipped": [users["both"]], "failed": [users["real"]]}
 
 
 def test_month_end_job_closes_previous_month(db, users):
     result = month_end_job(db, today=date(2026, 11, 1))
-    assert result == {"closed": sorted([users["budgeted"], users["real"], users["both"]]), "skipped": [], "failed": []}
+    assert result == {"closed": sorted([users["real"], users["both"]]), "skipped": [], "failed": []}
     with db() as s:
         rows = s.query(AgentRun).filter_by(graph="close").all()
-        # "real" has no budget yet: nothing to close, nothing written
-        assert sorted(r.user_id for r in rows) == sorted([users["budgeted"], users["both"]])
+        # "real" has no budget yet: nothing to close, nothing written ("budgeted" is seeded, so not scheduled)
+        assert [r.user_id for r in rows] == [users["both"]]
         assert {r.summary_json["month"] for r in rows} == {"2026-10-01"}
         nov = s.query(BudgetPeriod).filter_by(start_date=date(2026, 11, 1)).all()
-        assert sorted(p.user_id for p in nov) == sorted([users["budgeted"], users["both"]])
+        assert [p.user_id for p in nov] == [users["both"]]
 
 
 # a run going for the user (the button, a simulation) means the 06:00 daily run closes instead
@@ -93,13 +93,13 @@ def test_month_end_skips_locked_user(db, users, monkeypatch):
         return real_close(session_factory, user_id, today)
 
     monkeypatch.setattr(scheduler, "close_due", flaky)
-    lock = user_lock(users["budgeted"])
+    lock = user_lock(users["real"])
     lock.acquire()
     try:
         result = month_end_job(db, today=date(2026, 11, 1))
     finally:
         lock.release()
-    assert result == {"closed": [users["real"]], "skipped": [users["budgeted"]], "failed": [users["both"]]}
+    assert result == {"closed": [], "skipped": [users["real"]], "failed": [users["both"]]}
 
 
 def test_build_scheduler_jobs():
@@ -164,22 +164,51 @@ def test_catch_up_jobs_after_the_slot():
         sched = build_scheduler()
         add_catch_up_jobs(sched, now)
         return sorted(j.id for j in sched.get_jobs() if j.id.startswith("catch_up"))
-    assert ids(datetime(2026, 10, 29, 9, 0, tzinfo=NY)) == ["catch_up_daily"]
+    assert ids(datetime(2026, 10, 29, 9, 0, tzinfo=NY)) == ["catch_up"]
     assert ids(datetime(2026, 10, 29, 4, 0, tzinfo=NY)) == []
-    assert ids(datetime(2026, 11, 1, 9, 0, tzinfo=NY)) == ["catch_up_daily", "catch_up_month_end"]
-    assert ids(datetime(2026, 11, 1, 5, 30, tzinfo=NY)) == ["catch_up_month_end"]
+    assert ids(datetime(2026, 11, 1, 9, 0, tzinfo=NY)) == ["catch_up"]
+    assert ids(datetime(2026, 11, 1, 5, 30, tzinfo=NY)) == ["catch_up"]
 
 
 def test_daily_catch_up_skips_users_already_run_today(db, users):
-    # the fixture ran "budgeted" and "both" moments ago (today, by the wall clock); "real" hasn't run
+    # the fixture ran "both" moments ago (today, by the wall clock); "real" hasn't run
     today = datetime.now(NY).date()
     result = daily_budget_job(db, today=today, model=SchemaReplyModel(), checkpointer=None, skip_done=True)
     assert result["ran"] == [users["real"]]
-    assert result["skipped"] == sorted([users["budgeted"], users["both"]])
+    assert result["skipped"] == [users["both"]]
 
 
 def test_month_end_rerun_closes_nothing(db, users):
     month_end_job(db, today=date(2026, 11, 1))
     month_end_job(db, today=date(2026, 11, 1))
     with db() as s:
-        assert s.query(AgentRun).filter_by(graph="close").count() == 2
+        assert s.query(AgentRun).filter_by(graph="close").count() == 1
+
+
+# review on #14: seeded users (a placeholder item, no simulation) never get real-date daily runs
+def test_seeded_users_not_scheduled(db, users):
+    with db() as s:
+        assert users["budgeted"] not in eligible_users(s)
+
+
+# a run at 23:30 in new york is stored as 03:30 utc the next day; it counts for the new york day it ran on
+def test_ran_today_uses_the_scheduler_day(db, users):
+    from datetime import datetime, timezone
+    with db() as s:
+        s.add(AgentRun(user_id=users["real"], graph="budget", status="ok",
+                       started_at=datetime(2026, 10, 29, 3, 30, tzinfo=timezone.utc)))
+        s.commit()
+        assert scheduler._ran_today(s, users["real"], date(2026, 10, 28)) is True
+        assert scheduler._ran_today(s, users["real"], date(2026, 10, 29)) is False
+
+
+# review on #14: on the 1st, one catch-up job closes the month before the day's budget runs
+def test_catch_up_closes_before_the_daily_run(monkeypatch):
+    order = []
+    monkeypatch.setattr(scheduler, "month_end_job", lambda sf, **kw: order.append(("close", kw["today"])))
+    monkeypatch.setattr(scheduler, "daily_budget_job", lambda sf, **kw: order.append(("daily", kw["today"])))
+    sched = build_scheduler()
+    add_catch_up_jobs(sched, datetime(2026, 11, 1, 9, 0, tzinfo=NY))
+    [job] = [j for j in sched.get_jobs() if j.id == "catch_up"]
+    job.func(*job.args, **job.kwargs)
+    assert order == [("close", date(2026, 11, 1)), ("daily", date(2026, 11, 1))]

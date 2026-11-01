@@ -19,6 +19,7 @@ Run them from `backend/`:
 - `setup(db, lines, start, style, **spend)` gives `u1` an open period (October by default) with rent $1,500 (fixed), food $600, entertainment $200, savings $500 (fixed) and free $1,400, a $4,200 paycheck every month from July, and the month's spending: rent $1,500, food $700, entertainment $100, travel $50 (no line, so free covers it) and a $500 transfer to savings.
 - With that October, a normal close gives November: rent $1,500, food $630 (0.7 × 600 + 0.3 × 700), entertainment $170 (clamped at −15%), savings $500, free $1,400.
 - `add_alert(db, pid, category, cents, status, run_status)` adds an `adjust_next_budget` alert with its advice row, optionally from a budget run in the given status.
+- `rent_paid_on(db, day, **spend)` runs `setup`, adds a $1,500 rent payment on `day`, closes October, and returns November's rent limit, its recorded actual and the summary's actual.
 
 ---
 
@@ -111,3 +112,15 @@ Run them from `backend/`:
 **What it does:** The user accepts a pending $900 food proposal while close is running, after close listed it as pending. The alert stays `accepted` with its advice `accepted`, the paused run isn't expired, the summary lists no expired alerts, and November's food line is the accepted $900.
 
 **Why it's there:** Found in the TPC-22 review. Expiry re-checks each alert's status inside the close's own commit, so a decision made in that window is never overwritten as expired.
+
+## `test_early_rent_not_adopted_doubled`
+
+**What it does:** October has its rent on Oct 1 and November's rent paid early on Oct 30. October's rent actual is $1,500, not $3,000, and November's rent line stays $1,500.
+
+**Why it's there:** The TPC-17 review (#15) moved a fixed bill paid in a month's last 3 days, within 10% of the usual bill, to the next month in fit, pace and close. TPC-22 rewrote close, and merging main into it would otherwise have dropped the rule: close would adopt a doubled rent as next month's fixed limit. `gather_month` now takes its actuals from `period_actuals`.
+
+## `test_rent_paid_early_counts_for_its_month`
+
+**What it does:** October's rent is paid on Sep 30 and nothing on Oct 1. October's rent actual is $1,500.
+
+**Why it's there:** The other half of the rule: close loads the month's transactions from 3 days before it starts, so a bill paid early for this month is counted here instead of disappearing.

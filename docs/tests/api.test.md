@@ -22,7 +22,7 @@ npm test -- lib/api.test.ts
 
 ## `streamChat decodes a character split across chunks`
 
-**What it does:** Splits the two UTF-8 bytes of `é` across two chunks, and checks that the token text is `café`.
+**What it does:** Splits the two UTF-8 bytes of `é` across two chunks, and checks that the token text is `café`. The wire ends with `done`, since a stream without one now throws.
 
 **Why it's there:** Decoding each chunk on its own turns a split character into `�`. Answers contain curly quotes and accented names, so the decoder has to run with `{stream: true}`.
 
@@ -37,6 +37,18 @@ npm test -- lib/api.test.ts
 **What it does:** Checks that a `500` response throws an `ApiError`.
 
 **Why it's there:** A failed request must reach the panel as an error, not as a silent empty answer.
+
+## `streamChat throws when the stream ends without done or error`
+
+**What it does:** Serves one token and then ends the body with no terminal event, and expects `streamChat` to reject with an error mentioning "ended".
+
+**Why it's there:** The server ends every turn with `done` or `error`. A body that just stops means the backend died or the proxy dropped the connection. `streamChat` used to resolve normally in that case, so the bubble kept its partial (often empty) text and no "Lost the connection" message ever showed. ChatPanel shows that message for any error that isn't an `ApiError`. The review on #9 found it. The HTTP error path and `request()` now share one `readBody` helper, so a fix to how error bodies are read can't miss one of them.
+
+## `streamChat an error event counts as the end`
+
+**What it does:** Serves only an `error` event and checks that it's delivered and `streamChat` resolves.
+
+**Why it's there:** `error` is a normal way for a turn to end (Ollama down, empty answer). It must not be reported a second time as a dropped connection.
 
 ## `streamChat posts thread_id and message as JSON to /api/chat`
 
@@ -81,6 +93,6 @@ npm test -- lib/api.test.ts
 
 ## `days to month end`
 
-**What it does:** Oct 3 is 28 days from October's end. Oct 31 and Feb 28 2028 (a leap year) both give 1, never 0.
+**What it does:** Oct 3 is 28 days from October's end, and Feb 28 2028 is 1 (2028 is a leap year). On a month's last day it's the next month's end instead: Oct 31 gives 30, Sep 30 gives 31, and Dec 31 gives 31.
 
-**Why it's there:** "To month end" on the last day must still advance one day, because the API rejects 0 (plan Review Focus 3).
+**Why it's there:** It never returns 0, which the API rejects (plan Review Focus 3). On the last day it used to return 1, and a newly seeded user always starts on a month's last day, so "To month end" only reached the 1st and missed the month where the planted overspend happens. The review on #14 found it.

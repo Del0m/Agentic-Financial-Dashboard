@@ -5,12 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.budget_engine.close import close_period
+from app.budget_engine.close import close_period, period_actuals
 from app.budget_engine.fit import HISTORY_MONTHS, fit_budget
 from app.budget_engine.groups import default_group, default_name
 from app.budget_engine.pace import BudgetLine as EngineLine
 from app.budget_engine.styles import StyleFact, apply_style
-from app.budget_engine.txns import FREE, SAVINGS, add_months, category_totals, month_end, savings, spending
+from app.budget_engine.txns import EARLY_DAYS, FREE, SAVINGS, add_months, category_totals, month_end, savings
 from app.budget_service.initialize import load_txns
 from app.budget_service.settings import user_style
 from app.db.models import AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, utcnow
@@ -78,8 +78,10 @@ def expire_proposals(session: Session, alert_ids: list[int]) -> list[int]:
 def gather_month(session: Session, period_id: int) -> dict:
     period = session.get(BudgetPeriod, period_id)
     start, end = period.start_date, period.end_date
-    txns = load_txns(session, period.user_id, start, end)
-    spent = category_totals(spending(txns), start, end)
+    # from a few days early: this month's fixed bill paid at the end of the last one counts for this month
+    txns = load_txns(session, period.user_id, start - timedelta(days=EARLY_DAYS), end)
+    spent = period_actuals([EngineLine(ln.category, ln.kind, ln.limit_cents, ln.group) for ln in period.lines],
+                           txns, start)
     saved = sum(category_totals(savings(txns), start, end).values())
     lined = {ln.category for ln in period.lines}
     unlined = {c: amount for c, amount in spent.items() if c not in lined and amount > 0}

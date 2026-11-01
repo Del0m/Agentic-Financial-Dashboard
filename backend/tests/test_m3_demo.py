@@ -55,7 +55,7 @@ def test_m3_demo(db):
     assert run_day[advice.run_id] <= first_flagged_day(db, uid) + timedelta(days=1)
     assert (alert.cause, alert.action) == ("recurring", "adjust_next_budget")
 
-    decide_alert(db, uid, alert.id, "accepted", checkpointer=ck, model=model)
+    decide_alert(db, uid, alert.id, "accepted", checkpointer=ck)
     advance_days(db, uid, 1, model=model, checkpointer=ck)
 
     with db() as s:

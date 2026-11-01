@@ -7,7 +7,7 @@ from langchain_core.language_models import BaseChatModel
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from sqlalchemy import select
 
-from app.budget_service.daily import run_daily_locked
+from app.budget_service.daily import run_daily_locked, sim_prefs
 from app.db.models import Account, AgentRun, Transaction, User
 
 # simulated days for synthetic users (tpc-21): each advanced day injects that day's generated transactions,
@@ -28,10 +28,9 @@ def _profiles():
     return budget_users
 
 
-# that day's generated transactions, skipping any already in (stable ids), so a retried day can't double up
-def _inject(session_factory, user_id: str, profile, day: date) -> int:
-    users = _profiles()
-    todays = [(n, row) for n, row in enumerate(users.transactions(profile)) if row[0] == day]
+# that day's generated transactions (index, row), skipping any already in (stable ids), so a retried day can't
+# double up
+def _inject(session_factory, user_id: str, users, profile, todays: list) -> int:
     if not todays:
         return 0
     with session_factory() as s:
@@ -52,8 +51,7 @@ def _inject(session_factory, user_id: str, profile, day: date) -> int:
 
 def _sim(session_factory, user_id: str) -> dict:
     with session_factory() as s:
-        user = s.get(User, user_id)
-        sim = (user.prefs_json or {}).get("sim") if user else None
+        sim = sim_prefs(s, user_id)
     if not sim:
         raise NotSimulated(user_id)
     return sim
@@ -78,13 +76,18 @@ def advance_days(session_factory, user_id: str, days: int, *, model: Optional[Ba
                  checkpointer: Optional[BaseCheckpointSaver], job_id: Optional[int] = None,
                  on_day: Optional[Callable[[dict], None]] = None) -> dict:
     sim = _sim(session_factory, user_id)
-    profile = next(p for p in _profiles().PROFILES + _profiles().PLANTED if p.id == sim["profile"])
+    users = _profiles()
+    profile = next(p for p in users.PROFILES + users.PLANTED if p.id == sim["profile"])
+    # the whole generated history once, grouped by day, instead of regenerating it for every simulated day
+    by_day: dict[date, list] = {}
+    for n, row in enumerate(users.transactions(profile)):
+        by_day.setdefault(row[0], []).append((n, row))
     day = date.fromisoformat(sim["date"])
     progress = {"days_requested": days, "days_done": 0, "start_date": day.isoformat(), "date": day.isoformat(),
                 "run_ids": [], "alerts_written": 0}
     for _ in range(days):
         day += timedelta(days=1)
-        injected = _inject(session_factory, user_id, profile, day)
+        injected = _inject(session_factory, user_id, users, profile, by_day.get(day, []))
         state = run_daily_locked(session_factory, user_id, day, model=model, checkpointer=checkpointer)
         _save_date(session_factory, user_id, day)        # only after the run, so a failed day can be retried
         alerts = len(state.get("alert_ids") or [])

@@ -250,11 +250,18 @@ def test_run_409_while_locked(api):
         lock.release()
 
 
+# an ollama outage ends in fallback alerts since the review on #12, so the crash comes from the engine
 def test_run_error_status(api):
+    from app.agents import budget_graph
+
+    def boom(*a, **k):
+        raise RuntimeError("bug")
+
     api.seed("overspend-one-time")
-    api.models.append(ScriptedChatModel(replies=[ConnectionError("down")]))
+    api.mp.setattr(budget_graph, "evaluate", boom)
+    api.models.append(ScriptedChatModel(replies=[]))
     body = wait(api, start(api))
-    assert (body["status"], body["error"]) == ("error", "ConnectionError")
+    assert (body["status"], body["error"]) == ("error", "RuntimeError")
     assert api.client.post("/budget/run", json={"date": "2026-10-20"}).status_code == 202   # lock released
 
 
@@ -484,3 +491,34 @@ def test_put_style_bad_targets(api):
     r = api.client.put("/budget/style", json={"style": "50_30_20", "targets": {"needs": 50, "wants": 50, "saving": 10}})
     assert (r.status_code, r.json()["detail"]) == (422, "Targets must add up to 100.")
     assert api.client.put("/budget/style", json={"style": "envelopes"}).status_code == 422
+
+
+# review on #13: an unreadable or missing checkpoint is reported, not a 500 or "waiting on 0 proposals"
+def test_run_status_with_a_broken_checkpoint(api):
+    api.seed("overspend-recurring")
+    api.models.append(ScriptedChatModel(replies=[RECUR, ADJUST]))
+    run_id = start(api)
+    wait(api, run_id)
+
+    class Unreadable(InMemorySaver):
+        def get_tuple(self, config):
+            raise RuntimeError("no such table")
+
+    for ck in (InMemorySaver(), Unreadable()):
+        api.mp.setattr(budget_hooks, "get_checkpointer", lambda ck=ck: ck)
+        r = api.client.get(f"/budget/runs/{run_id}")
+        assert r.status_code == 200
+        assert (r.json()["status"], r.json()["waiting_for"]) == ("error", [])
+
+
+# review on #13: deciding never runs a model, so a broken model setting can't block a decision
+def test_decide_needs_no_model(api):
+    uid = api.seed("overspend-recurring")
+    api.run(uid, RECUR, ADJUST, checkpointer=api.ck)
+    [aid] = alert_ids(api.db)
+
+    def no_model():
+        raise RuntimeError("bad OLLAMA_MODEL")
+
+    api.mp.setattr(budget_hooks, "make_model", no_model)
+    assert api.client.post(f"/alerts/{aid}/accept").status_code == 200

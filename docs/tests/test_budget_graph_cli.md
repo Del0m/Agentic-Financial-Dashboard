@@ -29,9 +29,9 @@ Run them from `backend/`:
 
 ## `test_cli_error_exit`
 
-**What it does:** When the model raises a connection error, the CLI prints the error type and returns 1.
+**What it does:** When the run crashes (here `evaluate` raises `RuntimeError`), the CLI prints the error type and returns 1.
 
-**Why it's there:** An Ollama outage should be a clear message and a failing exit code that a scheduler or script can act on, not a traceback.
+**Why it's there:** A crash should be a clear message and a failing exit code that a scheduler or script can act on, not a traceback. An Ollama outage used to be the example. Since the review on #12, an outage ends in fallback alerts instead of a crash (`test_model_unreachable_still_alerts`), so the test now crashes the run elsewhere.
 
 ## `test_cli_bad_date`
 
@@ -56,3 +56,9 @@ Run them from `backend/`:
 **What it does:** On the gym user, with a scripted `adjust_next_budget`, the CLI prints `status: awaiting_user (waiting for alert(s) …)`. Its checkpoints go to a file under `tmp_path`.
 
 **Why it's there:** A run paused for approval isn't finished, and the CLI has to say what it's waiting on. The CLI keeps its checkpoints in `BUDGET_CHECKPOINT_PATH`, so the API can resume the run later.
+
+## `test_tests_never_use_the_real_checkpoint_file`
+
+**What it does:** Checks that, under pytest, `BUDGET_CHECKPOINT_PATH` and `CHAT_CHECKPOINT_PATH` aren't the real `backend/data/` files.
+
+**Why it's there:** `main()` opens `config.BUDGET_CHECKPOINT_PATH`, and only one CLI test pointed it elsewhere. The others wrote to the developer's real file, and since the in-memory test database hands out run ids 1, 2 and so on, `run_budget` called `delete_thread("budget-1")` there, wiping a real paused run's checkpoint. The autouse `checkpoint_paths` fixture in `conftest.py` now gives every test its own files. The review on #13 found it.

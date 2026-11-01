@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Iterable, Literal, Optional
 
 from app.budget_engine.txns import (SAVINGS, Txn, add_months, category_totals, income_by_month, month_end,
-                                    month_start, round_cents, savings, spending)
+                                    month_start, round_cents, savings, shift_early_bills, spending)
 
 # initial budget from history (architecture 6.3). fixed lines take a typical month's amount; flexible lines
 # take the median month plus a small cushion, so one vacation doesn't inflate the budget.
@@ -14,6 +14,8 @@ FIXED_DEFAULT = frozenset({"RENT_AND_UTILITIES", "LOAN_PAYMENTS"})
 FLEX_MARKUP = 1.05
 OUTLIER_RATIO = 1.5
 HISTORY_MONTHS = 3
+# history that starts after this day of its first month only covers part of it
+FIRST_MONTH_DAY = 3
 
 
 @dataclass(frozen=True)
@@ -49,7 +51,9 @@ def fit_budget(txns: Iterable[Txn], today: date, fixed: frozenset[str] = FIXED_D
         return FitResult((), ())
     # complete months only (a partial month would drag every median down), and none before the history starts
     current = month_start(today)
-    first = max(add_months(current, -HISTORY_MONTHS), month_start(min(t.date for t in txns)))
+    earliest = min(t.date for t in txns)
+    start = month_start(earliest) if earliest.day <= FIRST_MONTH_DAY else add_months(month_start(earliest), 1)
+    first = max(add_months(current, -HISTORY_MONTHS), start)
     months = []
     m = first
     while m < current:
@@ -58,7 +62,7 @@ def fit_budget(txns: Iterable[Txn], today: date, fixed: frozenset[str] = FIXED_D
     if not months:
         return FitResult((), ())
 
-    spent = spending(txns)
+    spent = shift_early_bills(spending(txns), _usual_bills(spending(txns), fixed))
     per_month = [category_totals(spent, m, month_end(m)) for m in months]
     categories = sorted({cat for totals in per_month for cat, total in totals.items() if total > 0})
 
@@ -99,6 +103,20 @@ def fit_budget(txns: Iterable[Txn], today: date, fixed: frozenset[str] = FIXED_D
     spent_totals = [sum(totals.values()) for totals in per_month]
     fallback = round_cents(Decimal(str(statistics.median(spent_totals))) * Decimal(str(FLEX_MARKUP)))
     return FitResult(tuple(lines), tuple(skipped), tuple(months), round_cents(Decimal(str(income))) or None, fallback)
+
+
+# a fixed category's usual bill: the lower median of each month's largest charge. the largest, because rent and
+# utilities share a category and the rent is what gets paid early
+def _usual_bills(spent: list[Txn], fixed: frozenset[str]) -> dict[str, int]:
+    largest: dict[tuple[str, date], int] = {}
+    for t in spent:
+        if t.category in fixed and t.amount_cents > 0:
+            key = (t.category, month_start(t.date))
+            largest[key] = max(largest.get(key, 0), t.amount_cents)
+    by_cat: dict[str, list[int]] = {}
+    for (cat, _), cents in largest.items():
+        by_cat.setdefault(cat, []).append(cents)
+    return {cat: statistics.median_low(v) for cat, v in by_cat.items()}
 
 
 def _top_txns(spent: list[Txn], category: str, month: date) -> tuple[Txn, ...]:

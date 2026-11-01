@@ -43,3 +43,21 @@ Run them from `backend/`:
 **What it does:** `--style 50_30_20` stores the style before advancing and exits 0; an unknown style exits 2 (argparse `choices`).
 
 **Why it's there:** A simulated user can switch style mid-simulation and see it take effect at the next close.
+
+## `test_cli_refuses_while_another_process_runs`
+
+**What it does:** With a `simulate` run row in progress for the user, as an advance started from the alerts page would leave, the CLI exits 1 with "already in progress".
+
+**Why it's there:** The CLI's `user_lock` only exists in its own process, so the acquire always succeeded, even while the API server was advancing the same user. Both would then inject the same day and run the agent at once. The review on #14 found it. The CLI now also refuses while a `budget` or `simulate` row for the user is `running`.
+
+## `test_cli_ignores_a_stale_running_row`
+
+**What it does:** A `budget` row left `running` three hours ago doesn't stop the CLI. It gets past the guard and stops at "not a simulated user".
+
+**Why it's there:** A process that died leaves its row `running` until the API restarts. Rows older than two hours are treated as left over, so a crash can't block the CLI for good.
+
+## `test_cli_uses_the_app_checkpointer`
+
+**What it does:** Checks that the CLI hands `advance_days` the checkpointer from `budget_hooks.get_checkpointer()`.
+
+**Why it's there:** The CLI built its own `SqliteSaver` over the same file, a copy of the hooks' setup that could drift. The review on #14 found it. `_sim` also reads the simulation through `daily.sim_prefs` now, the same reader `sim_today` uses.

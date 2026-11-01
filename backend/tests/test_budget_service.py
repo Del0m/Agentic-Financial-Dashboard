@@ -333,3 +333,11 @@ def test_rule_moves_only_spending(db):
         got = {t.amount_cents: (t.category, t.overridden) for t in load_txns(s, "u1", day, day)}
     assert got == {-420000: ("INCOME", False), -5000: ("TRANSFER_IN", False),
                    8000: ("LOAN_PAYMENTS", False), 3000: ("GENERAL_MERCHANDISE", True)}
+
+
+# review on #11: the column is Double in the migration; a bare float maps to Float on sqlalchemy 2.0
+def test_last_pace_is_double():
+    from sqlalchemy import Double
+
+    from app.db.models import BudgetLine
+    assert type(BudgetLine.__table__.c.last_pace.type) is Double

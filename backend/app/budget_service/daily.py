@@ -27,9 +27,14 @@ def user_lock(user_id: str) -> threading.Lock:
 
 
 # a simulated user's "today" (prefs_json["sim"]["date"]); None for everyone living on the real date
-def sim_today(session: Session, user_id: str) -> Optional[date]:
+# a simulated user's prefs_json["sim"] ({"profile", "date"}); None for everyone else
+def sim_prefs(session: Session, user_id: str) -> Optional[dict]:
     user = session.get(User, user_id)
-    sim = (user.prefs_json or {}).get("sim") if user else None
+    return (user.prefs_json or {}).get("sim") if user else None
+
+
+def sim_today(session: Session, user_id: str) -> Optional[date]:
+    sim = sim_prefs(session, user_id)
     return date.fromisoformat(sim["date"]) if sim else None
 
 

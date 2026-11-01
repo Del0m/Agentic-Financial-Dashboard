@@ -278,3 +278,26 @@ def test_decision_during_close_is_kept(db, monkeypatch):
         assert s.get(AgentRun, run_id).status == "awaiting_user"
     assert summary["expired_alert_ids"] == []
     assert lines_of(period_at(db, NOV1))["FOOD_AND_DRINK"].limit_cents == 90000
+
+
+
+def rent_paid_on(db, day, **spend):
+    pid, acct_id = setup(db, **spend)
+    with db() as s:
+        add_txn(s, s.get(Account, acct_id), 150000, "RENT_AND_UTILITIES", merchant="Landlord", day=day)
+        s.commit()
+    [summary] = close_due(db, "u1", NOV1)
+    rent = lines_of(period_at(db, NOV1))["RENT_AND_UTILITIES"]
+    actual = next(ln for ln in summary["lines"] if ln["category"] == "RENT_AND_UTILITIES")["actual_cents"]
+    return rent.limit_cents, rent.fit_json["actual_cents"], actual
+
+
+# next month's rent paid in a month's last days is next month's (the tpc-17 review fix, kept through tpc-22's
+# close): november doesn't adopt a doubled rent
+def test_early_rent_not_adopted_doubled(db):
+    assert rent_paid_on(db, date(2026, 10, 30)) == (150000, 150000, 150000)
+
+
+# and october's rent paid on sep 30 still counts for october
+def test_rent_paid_early_counts_for_its_month(db):
+    assert rent_paid_on(db, date(2026, 9, 30), rent=0) == (150000, 150000, 150000)

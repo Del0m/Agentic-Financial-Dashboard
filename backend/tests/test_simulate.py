@@ -119,11 +119,13 @@ def test_not_simulated_raises(db):
 
 def test_reinject_is_idempotent(db):
     uid = seed(db)
+    from eval import budget_users
     p = profile("overspend-one-time")
-    assert simulate._inject(db, uid, p, date(2026, 10, 12)) >= 1
+    todays = [(n, row) for n, row in enumerate(transactions(p)) if row[0] == date(2026, 10, 12)]
+    assert simulate._inject(db, uid, budget_users, p, todays) >= 1
     with db() as s:
         before = s.query(Transaction).filter_by(user_id=uid).count()
-    assert simulate._inject(db, uid, p, date(2026, 10, 12)) == 0
+    assert simulate._inject(db, uid, budget_users, p, todays) == 0
     with db() as s:
         assert s.query(Transaction).filter_by(user_id=uid).count() == before
 
@@ -161,3 +163,13 @@ def test_live_simulated_week(db):
     severities = [sev for sev, _ in alerts]
     assert len(severities) == len(set(severities)), alerts          # no repeated alert at the same severity
     assert any(sev == "high" and when >= "2026-10-12" for sev, when in alerts), alerts
+
+
+# review on #14: the profile's history is generated once per advance, not once per day
+def test_profile_transactions_generated_once(db, monkeypatch):
+    from eval import budget_users
+    uid = seed(db)
+    calls, real = [], budget_users.transactions
+    monkeypatch.setattr(budget_users, "transactions", lambda p: calls.append(1) or real(p))
+    advance(db, uid, 5)
+    assert len(calls) == 1

@@ -91,11 +91,17 @@ Run them from `backend/`:
 
 **Why it's there:** The number the user accepts is computed by code, never written by the model, and TPC-22's close applies exactly that number.
 
-## `test_no_op_writes_nothing`
+## `test_no_op_without_an_earlier_alert_still_alerts`
 
-**What it does:** A `no_op` action writes no alert and no advice, but the run still records it.
+**What it does:** The model answers `no_op` for a flag with no earlier alert this month. The run writes the code-written alert ("Personal care is over its $… limit") and marks the action `escalated`.
 
-**Why it's there:** The model can judge a flag not worth bothering the user about, and the summary still shows that it did.
+**Why it's there:** This used to write nothing, so a model reply could hide an over-limit flag entirely, against the graph's "never hides an overspend" rule (review on #12). `no_op` now stands only when the user was already told at this severity (see `test_second_run_no_op_no_alert`).
+
+## `test_no_op_on_a_more_severe_flag_becomes_an_alert`
+
+**What it does:** After an earlier alert that was only a pace warning (`medium`), the model answers `no_op` for the same category now over its limit (`high`). A new `high` alert is written.
+
+**Why it's there:** The TPC-21 fix was a hint in the prompt, which a small model can ignore. Live, it let a pace warning stand when the category went over its limit. Code now enforces it, as it already does for the `adjust_next_budget` downgrade. The review on #14 found it.
 
 ## `test_diagnose_failure_still_alerts`
 
@@ -209,3 +215,27 @@ SQLite gives the new run the same id, and it still pauses, with its alert pendin
 **What it does:** Only the free line can flag (its limit is lowered to $1 and every other limit raised). The model diagnoses `recurring` and picks `adjust_next_budget`, but the alert is written as a plain `alert` with no proposed limit, marked `downgraded`, and the run finishes `ok` without pausing.
 
 **Why it's there:** The free line's limit is computed (whatever the other lines leave), so a proposed limit for it would be overwritten at close; the same goes for the saving line, which can't be overspent. Only a category line can be adjusted.
+
+## `test_model_unreachable_still_alerts`
+
+**What it does:** The model raises `ConnectionError` on both calls. The run still ends `ok`, with one alert written by code ("General merchandise is over its $… limit") and 2 LLM failures counted.
+
+**Why it's there:** Only a malformed reply used to fall back. An Ollama outage or timeout failed the whole run before `log_advice`, so every overspend was hidden that day, and every day the model stayed down. `invoke_structured` now treats an unreachable model like a bad reply. The review on #12 found it.
+
+## `test_no_budget_syncs_before_fitting`
+
+**What it does:** A user has an account but no stored transactions, and the sync stub adds July–September spending. The run ends `ok` and creates one budget period.
+
+**Why it's there:** `load_state` (which fits the first budget) ran before `sync`, and a user with no budget skipped straight to `persist_state`. So a user whose first webhook sync failed was never synced by the agent, and every run ended `no_budget`. Sync now runs first. The review on #12 found it.
+
+## `test_finished_runs_leave_no_checkpoint`
+
+**What it does:** A paused run keeps its checkpoint thread, and the thread is gone once the run is resumed to the end. A run that never pauses leaves no thread.
+
+**Why it's there:** Compiling with the checkpointer saved the full state (unscrubbed merchant facts and prompt contexts) for every run, in a plaintext SQLite file that was never cleaned. That's a second, unmanaged copy of transaction data, and the file grew without bound. Only a paused run needs its thread. The review on #13 found it.
+
+## `test_checkpointer_failure_marks_error`
+
+**What it does:** A checkpointer whose `delete_thread` raises makes `run_budget` raise, and the run row is `error`.
+
+**Why it's there:** `delete_thread` and the gateway were set up between the run row's insert and the `try`. A failure there left the row `running` until the next server restart, against the "a crash still leaves a run marked error" rule. All setup now sits inside the `try`. The review on #13 found it.
