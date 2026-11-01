@@ -29,6 +29,31 @@ To try it: open http://localhost:3000, click **Connect a bank**, pick **First Pl
 
 Linking returns immediately after saving the bank connection; its first full sync runs in the background. The dashboard polls while it is syncing and keeps **Retry sync** available if any step fails, including balances or liabilities. Run one API worker: per-item sync locks serialize webhook, initial and manual syncs within that process.
 
+## Run with Docker
+
+The backend and the frontend can also run as two containers on one Docker network, in dev mode with live reload. Ollama stays on the Mac, because Docker can't use the Apple GPU and `qwen2.5:14b` would crawl on the CPU.
+
+1. Start Ollama on the Mac (`ollama serve`, with the models pulled) and Docker Desktop.
+2. Stop the API and web servers from "Run locally" if they're running. They hold ports 8000 and 3000, and `docker compose up` fails with "port is already allocated" otherwise. Don't run both at once: they share `backend/dev.db`, and SQLite locking across the Docker mount isn't reliable.
+3. From the repo root:
+
+   ```bash
+   docker compose up --build        # -d to run in the background; docker compose down to stop
+   ```
+
+   Open http://localhost:3000. The API is still on http://localhost:8000 (`/docs`).
+
+The repo is mounted into both containers, so they use the same `.env`, `dev.db`, checkpoints and `kb/chroma` as running locally, and edits reload like `--reload` and `npm run dev`. The backend runs `alembic upgrade head` every time it starts. The frontend reaches the backend at `http://backend:8000` over the Compose network, and the backend reaches Ollama at `host.docker.internal:11434`.
+
+One-off commands run inside the backend container, where it's `python`, not `../venv/bin/python`:
+
+```bash
+docker compose exec backend python scripts/seed_budget_user.py --profile overspend-recurring --replace
+docker compose exec backend python -m pytest -q -k "not live and not sandbox"
+```
+
+After changing `backend/requirements.txt`, run `docker compose build backend`. After changing `frontend/package-lock.json`, run `docker compose build frontend && docker compose down -v`. The container's `node_modules` lives in a volume (the Mac's native packages don't run in Linux), and `down -v` drops it so the new packages show up.
+
 ## Knowledge base
 
 The chat agent's `search_kb` tool reads public financial guidance from a local Chroma store. One-time setup, from `backend/`:
