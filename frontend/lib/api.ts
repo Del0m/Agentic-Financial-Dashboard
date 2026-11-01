@@ -166,6 +166,36 @@ export function getRun(runId: number): Promise<RunStatus> {
   return request<RunStatus>(`/budget/runs/${runId}`);
 }
 
+// the payoff planner (tpc-32): every number comes from the backend's simulation
+export type PlanPayoff = { account_id: number; name: string; month: number; date: string; interest_cents: number };
+
+export type Plan = {
+  strategy: "avalanche" | "snowball";
+  extra_monthly_cents: number;
+  months: number | null;            // null when a debt is never paid off
+  debt_free: string | null;
+  total_interest_cents: number;
+  order: PlanPayoff[];
+  never: { account_id: number; name: string }[];   // debts never paid off: not in order
+};
+
+export type PlanExcluded = { account_id: number; name: string; reason: "no_apr" | "no_minimum" | "mortgage" };
+
+export type DebtPlan = {
+  avalanche: Plan;
+  snowball: Plan;
+  baseline: { avalanche: Plan; snowball: Plan };
+  excluded: PlanExcluded[];
+  start: string;
+};
+
+export function debtPlan(extraMonthlyCents: number, includeMortgage = false): Promise<DebtPlan> {
+  return request<DebtPlan>("/debt-plan", {
+    method: "POST",
+    body: JSON.stringify({ extra_monthly_cents: extraMonthlyCents, include_mortgage: includeMortgage }),
+  });
+}
+
 export function getAlerts(status: "pending_user" | "all" = "all"): Promise<Alert[]> {
   return request<Alert[]>(`/alerts?status=${status}`);
 }

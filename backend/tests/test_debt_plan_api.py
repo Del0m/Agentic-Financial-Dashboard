@@ -70,3 +70,11 @@ def test_excluded_named(client, db):
     body = client.post("/debt-plan", json={"extra_monthly_cents": 0}).json()
     assert [(e["name"], e["reason"]) for e in body["excluded"]] == [("Store Card", "no_apr")]
     assert [p["name"] for p in body["avalanche"]["order"]] == ["Platinum Card"]
+
+
+# a debt that's never paid off isn't in the payoff order, so the plan names it itself
+def test_never_debt_named(client, db):
+    seed_debts(db, ("Old Card", 1000000, {"kind": "credit", "apr": 30.0, "min_payment_cents": 10000}))
+    body = client.post("/debt-plan", json={"extra_monthly_cents": 0}).json()
+    assert body["avalanche"]["months"] is None
+    assert [(n["name"], n["account_id"] > 0) for n in body["avalanche"]["never"]] == [("Old Card", True)]

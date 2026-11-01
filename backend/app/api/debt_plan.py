@@ -35,6 +35,11 @@ class PayoffOut(BaseModel):
     interest_cents: int
 
 
+class DebtRef(BaseModel):
+    account_id: int
+    name: str
+
+
 class PlanOut(BaseModel):
     strategy: str
     extra_monthly_cents: int
@@ -42,7 +47,7 @@ class PlanOut(BaseModel):
     debt_free: Optional[Date]
     total_interest_cents: int
     order: list[PayoffOut]
-    never: list[int]
+    never: list[DebtRef]          # a debt never paid off isn't in order, so it carries its name here
 
 
 class BaselineOut(BaseModel):
@@ -64,12 +69,12 @@ class DebtPlanResponse(BaseModel):
     start: Date
 
 
-def _plan(plan: Plan) -> PlanOut:
+def _plan(plan: Plan, names: dict[int, str]) -> PlanOut:
     return PlanOut(strategy=plan.strategy, extra_monthly_cents=plan.extra_monthly_cents, months=plan.months,
                    debt_free=plan.debt_free, total_interest_cents=plan.total_interest_cents,
                    order=[PayoffOut(account_id=p.key, name=p.name, month=p.month, date=p.date,
                                     interest_cents=p.interest_cents) for p in plan.order],
-                   never=list(plan.never))
+                   never=[DebtRef(account_id=key, name=names[key]) for key in plan.never])
 
 
 @router.post("/debt-plan", response_model=DebtPlanResponse)
@@ -80,9 +85,9 @@ def debt_plan(body: DebtPlanRequest, user: User = Depends(get_current_user),
     plans = compare(debts, body.extra_monthly_cents, start=start, include_mortgage=body.include_mortgage)
     names = {d.key: d.name for d in debts}
     return DebtPlanResponse(
-        avalanche=_plan(plans["avalanche"]), snowball=_plan(plans["snowball"]),
-        baseline=BaselineOut(avalanche=_plan(plans["baseline_avalanche"]),
-                             snowball=_plan(plans["baseline_snowball"])),
+        avalanche=_plan(plans["avalanche"], names), snowball=_plan(plans["snowball"], names),
+        baseline=BaselineOut(avalanche=_plan(plans["baseline_avalanche"], names),
+                             snowball=_plan(plans["baseline_snowball"], names)),
         excluded=[ExcludedOut(account_id=key, name=names[key], reason=reason)
                   for key, reason in plans["avalanche"].excluded],
         start=start,

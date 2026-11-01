@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import AccountsTable from "@/components/AccountsTable";
 import BalanceChart from "@/components/BalanceChart";
 import BudgetPaceBar from "@/components/BudgetPaceBar";
+import DebtPlanCompare from "@/components/DebtPlanCompare";
 import DebtsTable from "@/components/DebtsTable";
 import NetWorthSummary from "@/components/NetWorthSummary";
 import PlaidLinkButton from "@/components/PlaidLinkButton";
@@ -262,6 +263,11 @@ export default function DashboardPage() {
           <Card title="Debts by APR">
             <DebtsTable debts={data.debts} />
           </Card>
+          {data.debts.length > 0 && (
+            <Card title="Paying off your debts">
+              <DebtPlanCompare />
+            </Card>
+          )}
           <Card title="Accounts">
             <AccountsTable accounts={data.accounts} />
           </Card>

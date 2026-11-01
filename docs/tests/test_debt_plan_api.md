@@ -39,3 +39,9 @@ Run them from `backend/`:
 **What it does:** A store card with no APR comes back in `excluded` with its name and reason `no_apr`, and only the Platinum Card is planned.
 
 **Why it's there:** The user must see which debts the plan leaves out and why, instead of a plan that silently ignores them.
+
+## `test_never_debt_named`
+
+**What it does:** A $10,000 card at 30% with a $100 minimum and no extra is never paid off. Its plan has no months, and `never` lists the card by account id and name.
+
+**Why it's there:** A debt that's never paid off isn't in the payoff order, so the dashboard had no name to say which debt can't be paid. Found while writing the card's tests (TPC-32), when the first version needed a "Debt 1" fallback.
