@@ -4,3 +4,7 @@ venv/
 __pycache__/
 *.db
 logs/
+kb/chroma/
+kb/sources/local/
+backend/data/
+docs/to-do/

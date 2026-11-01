@@ -3,9 +3,12 @@ from datetime import date, timedelta
 
 import pytest
 
-from app.db.models import Account, Liability, PlaidItem, Transaction, User
+from tests.factories import add_account, add_txn, add_user
 from app.privacy import gateway as gw
-from app.privacy.gateway import ACCOUNT_FIELDS, DEBT_FIELDS, TXN_FIELDS, PrivacyGateway
+from app.budget_engine.diagnose import overspend_facts
+from app.budget_engine.pace import PaceResult
+from app.budget_engine.txns import Txn
+from app.privacy.gateway import ACCOUNT_FIELDS, DEBT_FIELDS, DIAGNOSE_FIELDS, TXN_FIELDS, PrivacyGateway
 
 TODAY = date(2026, 10, 21)
 PII = ["Jane", "Doe", "jane.doe@example.com", "4321", "acc-secret-1", "item-secret-1", "u-jane"]
@@ -15,31 +18,6 @@ PII = ["Jane", "Doe", "jane.doe@example.com", "4321", "acc-secret-1", "item-secr
 @pytest.fixture(autouse=True)
 def fixed_today(monkeypatch):
     monkeypatch.setattr(gw, "_today", lambda: TODAY)
-
-
-def add_user(s, user_id, email):
-    s.add(User(id=user_id, email=email, password_hash="!"))
-    item = PlaidItem(user_id=user_id, plaid_item_id=f"item-{user_id}", access_token_enc="x")
-    s.add(item)
-    s.flush()
-    return item
-
-
-def add_account(s, item, name, type_="depository", balance=10000, mask=None, plaid_id=None, liability=None):
-    acct = Account(user_id=item.user_id, item_id=item.id, plaid_account_id=plaid_id or f"acc-{item.id}-{name}",
-                   name=name, mask=mask, type=type_, current_balance_cents=balance)
-    s.add(acct)
-    s.flush()
-    if liability:
-        s.add(Liability(user_id=item.user_id, account_id=acct.id, balance_cents=balance, **liability))
-    return acct
-
-
-def add_txn(s, acct, amount, category, merchant="Shop", day=date(2026, 10, 10), removed=False, detailed=None):
-    s.add(Transaction(user_id=acct.user_id, account_id=acct.id, plaid_txn_id=f"t-{acct.id}-{s.info.setdefault('n', 0)}",
-                      date=day, amount_cents=amount, merchant_name=merchant, pf_category_primary=category,
-                      pf_category_detailed=detailed, removed=removed))
-    s.info["n"] += 1
 
 
 # the spec's Jane Doe: PII in the email, the account name, the mask, plaid ids and a Zelle merchant
@@ -255,6 +233,84 @@ def test_unknown_purpose_raises(db, tmp_path):
             PrivacyGateway(s, "u-1", audit_path=tmp_path / "a.jsonl").build_context("transactions")
 
 
+
+# --- purpose "diagnose" (TPC-19) ---
+
+GM = "GENERAL_MERCHANDISE"
+OCT = date(2026, 10, 1)
+
+
+def gm(day, cents, merchant="Shop", cat=GM):
+    return Txn(date=date(2026, 10, day), amount_cents=cents, category=cat, merchant=merchant)
+
+
+def diagnose_prompt(db, tmp_path, txns, audit="a.jsonl"):
+    spent = sum(t.amount_cents for t in txns if t.category == GM)
+    flag = PaceResult(category=GM, kind="flexible", limit_cents=15750, spent_cents=spent, days_elapsed=20,
+                      days_in_period=31, pace=None, flagged=True, reason="over_limit")
+    facts = overspend_facts(flag, {"monthly_totals": [15000, 14800, 15200], "outliers": []}, txns, [], OCT)
+    uid = seed_pii_user(db)
+    with db() as s:
+        g = PrivacyGateway(s, uid, audit_path=tmp_path / audit)
+        return g, g.build_context("diagnose", facts=facts, transactions=txns)
+
+
+def test_diagnose_allowlist(db, tmp_path):
+    _, prompt = diagnose_prompt(db, tmp_path, [gm(12, 60000, "ElectroMart"), gm(5, 3500)])
+    d = data(prompt)
+    assert set(d) == set(DIAGNOSE_FIELDS)
+    assert (d["limit"], d["spent"], d["month"], d["day"], d["days_in_month"]) == (157.5, 635.0, "October 2026", 20, 31)
+    assert d["largest"] == {"date": "2026-10-12", "amount": 600.0, "merchant": "ElectroMart", "share_of_spent": 0.94,
+                            "times_typical": None}
+    assert d["history"][0] == {"month": "July 2026", "total": 150.0}
+    assert d["merchants"][0]["pattern"] == "new"
+
+
+def test_diagnose_scrubs_merchants(db, tmp_path):
+    _, prompt = diagnose_prompt(db, tmp_path, [gm(12, 60000, "Paid jane.doe@example.com")])
+    assert "jane.doe@example.com" not in prompt
+
+
+def test_diagnose_category_only_capped_newest_first(db, tmp_path):
+    txns = [gm(d, 1000 + d) for d in range(1, 26)] + [gm(3, 5000, "Diner", "FOOD_AND_DRINK") for _ in range(3)]
+    rows = data(diagnose_prompt(db, tmp_path, txns)[1])["transactions"]
+    assert len(rows) == 20
+    assert "Diner" not in {r["merchant"] for r in rows}
+    assert [r["date"] for r in rows] == sorted((r["date"] for r in rows), reverse=True)
+
+
+def test_diagnose_audited(db, tmp_path):
+    g, _ = diagnose_prompt(db, tmp_path, [gm(12, 60000, "ElectroMart")])
+    line = audit_lines(tmp_path / "a.jsonl")[-1]
+    assert (line["purpose"], line["params"], line["pseudonym"]) == ("diagnose", {"category": GM}, g.pseudonym)
+    assert "u-jane" not in json.dumps(line)
+
+
+def test_diagnose_unnamed_merchant(db, tmp_path):
+    d = data(diagnose_prompt(db, tmp_path, [gm(12, 60000, None)])[1])
+    assert d["merchants"][0]["merchant"] is None
+    assert d["transactions"][0]["merchant"] is None
+
+
+
+def test_diagnose_memory_keys(db, tmp_path):
+    txns = [gm(12, 60000, "ElectroMart")]
+    g, prompt = diagnose_prompt(db, tmp_path, txns)
+    d = data(prompt)
+    assert (d["this_month_alerts"], d["past_advice"]) == ([], [])
+    from app.budget_engine.diagnose import overspend_facts as of
+    flag = PaceResult(category=GM, kind="flexible", limit_cents=15750, spent_cents=60000, days_elapsed=20,
+                      days_in_period=31, pace=None, flagged=True, reason="over_limit")
+    d = data(g.build_context("diagnose", facts=of(flag, None, txns, [], OCT), transactions=txns,
+                             this_month_alerts=[{"severity": "high", "action": "alert", "status": "pending_user",
+                                                 "message": "secret text"}],
+                             past_advice=[{"month": "September 2026", "action": "adjust_next_budget",
+                                           "outcome": "dismissed", "message": "secret text"}]))
+    assert d["this_month_alerts"] == [{"severity": "high", "action": "alert", "status": "pending_user"}]
+    assert d["past_advice"] == [{"month": "September 2026", "action": "adjust_next_budget", "outcome": "dismissed"}]
+    assert "secret text" not in json.dumps(d)
+
+
 # review on #6: transfers and card payments move money that's already counted, so they aren't spending
 def test_spending_leaves_out_transfers_and_card_payments(db, tmp_path):
     with db() as s:
@@ -325,3 +381,22 @@ def test_audit_file_private_and_rotated(db, tmp_path, monkeypatch):
     assert path.stat().st_mode & 0o777 == 0o600
     assert [l["purpose"] for l in audit_lines(path)] == ["debts"]
     assert [l["purpose"] for l in audit_lines(path.with_name("a.jsonl.1"))] == ["accounts"]
+
+
+# review on #12: the diagnose rows go through the same spending filter as the facts, so a card payment that
+# isn't in "spent" isn't quoted as evidence either
+def test_diagnose_rows_leave_out_card_payments(db, tmp_path):
+    loans = "LOAN_PAYMENTS"
+    txns = [Txn(date=date(2026, 10, 5), amount_cents=200000, category=loans, merchant="Card Payment",
+                detailed="LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"),
+            Txn(date=date(2026, 10, 9), amount_cents=40000, category=loans, merchant="Student Loan",
+                detailed="LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT")]
+    flag = PaceResult(category=loans, kind="fixed", limit_cents=30000, spent_cents=40000, days_elapsed=20,
+                      days_in_period=31, pace=None, flagged=True, reason="over_limit")
+    facts = overspend_facts(flag, None, txns, [], date(2026, 10, 1))
+    uid = seed_pii_user(db)
+    with db() as s:
+        rows = data(PrivacyGateway(s, uid, audit_path=tmp_path / "a.jsonl")
+                    .build_context("diagnose", facts=facts, transactions=txns))["transactions"]
+
+    assert [r["merchant"] for r in rows] == ["Student Loan"]

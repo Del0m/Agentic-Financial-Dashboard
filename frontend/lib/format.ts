@@ -21,3 +21,17 @@ export function formatDate(iso: string | null): string {
 export function accountLabel(name: string, mask: string | null): string {
   return mask ? `${name} ••${mask}` : name;
 }
+
+// plaid's category enum for people: "GENERAL_MERCHANDISE" -> "General merchandise"
+export function categoryLabel(category: string): string {
+  const words = category.toLowerCase().replaceAll("_", " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+// days from an iso date to the last day of its month. on the last day it's the next month's end instead: a seeded
+// user starts on a month's last day, and one day would only reach the 1st (never 0, which the api rejects)
+export function daysToMonthEnd(iso: string): number {
+  const [y, m, d] = iso.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return d < last ? last - d : new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+}

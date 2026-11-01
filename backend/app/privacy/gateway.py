@@ -5,10 +5,12 @@ import secrets
 import threading
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Optional, Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from .. import config
+from ..budget_engine.diagnose import OverspendFacts
+from ..budget_engine.txns import Txn, add_months, spending
 from ..db.models import Account, Liability, Transaction
 from ..finance import avalanche_key
 from .scrub import scrub_account_name, scrub_merchant
@@ -17,12 +19,20 @@ from .scrub import scrub_account_name, scrub_merchant
 # rows are built field by field from these allowlists, never by serializing a model object,
 # so a column added later can't leak by accident.
 
-Purpose = Literal["accounts", "debts", "spending"]
+Purpose = Literal["accounts", "debts", "spending", "diagnose"]
 
 ACCOUNT_FIELDS = ("name", "type", "subtype", "balance", "available", "limit")
 DEBT_FIELDS = ("name", "kind", "apr", "balance", "min_payment", "next_due_date")
 TXN_FIELDS = ("date", "amount", "merchant")
 TXN_LIMIT = 50
+# the budget graph's diagnose step: one flagged category's facts and its rows (spec: tpc-19)
+DIAGNOSE_FIELDS = ("category", "reason", "kind", "month", "limit", "spent", "pace", "day", "days_in_month",
+                   "projected", "largest", "merchants", "history", "outlier_months", "transactions",
+                   "this_month_alerts", "past_advice")
+# the agent's memory of a category (tpc-20): what it already alerted and what the user decided, never the text
+ALERT_MEMORY_FIELDS = ("severity", "action", "status")
+ADVICE_MEMORY_FIELDS = ("month", "action", "outcome")
+TXN_LIMIT_DIAGNOSE = 20
 DEFAULT_SPENDING_DAYS = 30
 EXCLUDED_PRIMARY = frozenset({"INCOME", "TRANSFER_IN", "TRANSFER_OUT"})
 CARD_PAYMENT = "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"
@@ -39,6 +49,10 @@ def _dollars(cents: Optional[int]) -> Optional[float]:
     return None if cents is None else round(cents / 100, 2)
 
 
+def _month_name(d: date) -> str:
+    return d.strftime("%B %Y")
+
+
 class PrivacyGateway:
     # one instance per chat session: the pseudonym lives (and dies) with it
     # a chat session spans many requests, each with its own db session, so the caller passes
@@ -53,8 +67,15 @@ class PrivacyGateway:
         self.pseudonym = pseudonym or "user_" + secrets.token_hex(2)
 
     def build_context(self, purpose: Purpose, *, start: Optional[date] = None,
-                      end: Optional[date] = None, category: Optional[str] = None) -> str:
-        if purpose == "accounts":
+                      end: Optional[date] = None, category: Optional[str] = None,
+                      facts: Optional[OverspendFacts] = None, transactions: Optional[list[Txn]] = None,
+                      this_month_alerts: Sequence[dict] = (), past_advice: Sequence[dict] = ()) -> str:
+        if purpose == "diagnose":
+            data = self._diagnose(facts, transactions or [])
+            data["this_month_alerts"] = [{k: a.get(k) for k in ALERT_MEMORY_FIELDS} for a in this_month_alerts]
+            data["past_advice"] = [{k: a.get(k) for k in ADVICE_MEMORY_FIELDS} for a in past_advice]
+            category = facts.category
+        elif purpose == "accounts":
             data = self._accounts()
         elif purpose == "debts":
             data = self._debts()
@@ -131,6 +152,35 @@ class PrivacyGateway:
             "count": len(matching), "truncated": len(matching) > TXN_LIMIT,
             "transactions": [{"date": t.date, "amount": _dollars(-t.amount_cents if inflow else t.amount_cents),
                               "merchant": None if inflow else scrub_merchant(t.merchant_name)} for t in rows],
+        }
+
+    # one flagged category only (architecture section 7: a dining diagnosis sees dining). built from the facts
+    # the budget engine computed, field by field; merchants scrubbed, money in dollars
+    def _diagnose(self, facts: OverspendFacts, transactions: list[Txn]) -> dict:
+        # the same spending filter as the facts: a card payment left out of "spent" isn't quoted as evidence
+        rows = sorted((t for t in spending(transactions) if t.category == facts.category), key=lambda t: t.date,
+                      reverse=True)[:TXN_LIMIT_DIAGNOSE]
+        n = len(facts.monthly_totals)
+        largest = facts.largest
+        return {
+            "category": facts.category, "reason": facts.reason, "kind": facts.kind,
+            "month": _month_name(facts.month), "limit": _dollars(facts.limit_cents),
+            "spent": _dollars(facts.spent_cents),
+            "pace": None if facts.pace is None else round(facts.pace, 2),
+            "day": facts.days_elapsed, "days_in_month": facts.days_in_period,
+            "projected": _dollars(facts.projected_cents),
+            "largest": None if largest is None else {
+                "date": largest.date, "amount": _dollars(largest.amount_cents),
+                "merchant": scrub_merchant(largest.merchant), "share_of_spent": round(facts.largest_share, 2),
+                "times_typical": None if facts.largest_vs_typical is None else round(facts.largest_vs_typical, 1)},
+            "merchants": [{"merchant": scrub_merchant(m.merchant), "this_month": _dollars(m.period_cents),
+                           "charges": m.charges, "months_seen_before": m.prior_months, "pattern": m.pattern,
+                           "typical": _dollars(m.typical_cents)} for m in facts.merchants],
+            "history": [{"month": _month_name(add_months(facts.month, i - n)), "total": _dollars(total)}
+                        for i, total in enumerate(facts.monthly_totals)],
+            "outlier_months": [_month_name(m) for m in facts.outlier_months],
+            "transactions": [{"date": t.date, "amount": _dollars(t.amount_cents),
+                              "merchant": scrub_merchant(t.merchant)} for t in rows],
         }
 
     # append-only record of exactly what left the system; pseudonym only, never the user id

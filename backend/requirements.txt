@@ -7,3 +7,9 @@ alembic
 cryptography
 pytest
 langchain-ollama
+trafilatura
+lxml_html_clean
+chromadb
+langgraph
+langgraph-checkpoint-sqlite
+apscheduler>=3.10,<4

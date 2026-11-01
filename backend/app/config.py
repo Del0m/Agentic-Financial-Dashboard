@@ -21,14 +21,45 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")
 
 # local LLM (architecture section 3); agents/llm.py is the only reader
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
 # 0 keeps eval runs repeatable; chat can pass its own temperature
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE") or "0")
-LLM_NUM_CTX = int(os.getenv("LLM_NUM_CTX") or "8192")
-LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS") or "300")
 
 # every prompt the privacy gateway builds is appended here (git-ignored)
 # `or`, not a getenv default: .env.example leaves it blank, and Path("") would be the cwd
 PROMPT_AUDIT_PATH = Path(os.getenv("PROMPT_AUDIT_PATH") or Path(__file__).parent.parent / "logs" / "prompt_audit.jsonl")
 # Keep the current log and one rotated backup, both owner-readable/writable only.
 PROMPT_AUDIT_MAX_BYTES = int(os.getenv("PROMPT_AUDIT_MAX_BYTES") or str(8 * 1024 * 1024))
+
+# embedding model for the knowledge base (architecture section 8); agents/llm.py is the only reader
+OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+# knowledge base root: sources.json, sources/ (committed), sources/local/ and chroma/ (git-ignored)
+KB_DIR = Path(os.getenv("KB_DIR") or Path(__file__).parent.parent.parent / "kb")
+# context window for the chat model; ollama's smaller default would silently cut long chats (search_kb adds ~2k tokens)
+LLM_NUM_CTX = int(os.getenv("LLM_NUM_CTX") or "8192")
+# langgraph checkpointer file: chat threads survive a backend restart (git-ignored by *.db)
+CHAT_CHECKPOINT_PATH = Path(os.getenv("CHAT_CHECKPOINT_PATH") or Path(__file__).parent.parent / "data" / "checkpoints.db")
+# cap on tokens per model reply: a repetition loop would otherwise run (and hold the user's chat lock) forever
+LLM_NUM_PREDICT = int(os.getenv("LLM_NUM_PREDICT") or "1024")
+# seconds the ollama client waits on a response; a cold 14b model on a busy machine can take minutes
+LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS") or "300")
+
+# the api's single user until real auth. point it at a seeded user's email (e.g. overspend-one-time@eval.local)
+# to run the ui as that user; only the default is created when missing
+DEV_USER_EMAIL = os.getenv("DEV_USER_EMAIL", "dev@localhost")
+
+# langgraph checkpointer for budget runs waiting on the user's approval (git-ignored by *.db)
+BUDGET_CHECKPOINT_PATH = Path(os.getenv("BUDGET_CHECKPOINT_PATH") or Path(__file__).parent.parent / "data" / "budget_checkpoints.db")
+
+
+def _flag(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in ("1", "true", "yes")
+
+
+# the agent's own schedule (tpc-21): off unless asked for, so dev servers and tests never run it by surprise
+ENABLE_SCHEDULER = _flag("ENABLE_SCHEDULER")
+DAILY_RUN_TIME = os.getenv("DAILY_RUN_TIME", "06:00")
+CLOSE_RUN_TIME = os.getenv("CLOSE_RUN_TIME", "05:00")       # on the 1st, before that day's budget run
+SCHEDULER_TZ = os.getenv("SCHEDULER_TZ", "America/New_York")
+# /admin routes (advancing simulated users); never on for real use
+ENABLE_ADMIN = _flag("ENABLE_ADMIN")
