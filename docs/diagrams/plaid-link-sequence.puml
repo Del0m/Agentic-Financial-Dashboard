@@ -1,0 +1,47 @@
+@startuml
+title Link an account, sync it, then read the dashboard
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 15
+skinparam maxMessageSize 180
+actor User
+participant "Browser + Next.js proxy" as UI
+participant "FastAPI" as API
+participant "Plaid service" as Service
+participant "Plaid Sandbox" as Plaid
+database "App SQLite" as DB
+User -> UI : Connect a bank
+UI -> API : POST /plaid/link-token
+API -> Plaid : create_link_token(user UUID)
+Plaid --> UI : link_token (through API)
+UI -> Plaid : Open Plaid Link\ncredentials stay with Plaid
+Plaid --> UI : public_token
+UI -> API : POST /plaid/exchange
+API -> Plaid : exchange public_token
+Plaid --> API : access_token + item_id
+API -> DB : Store Fernet-encrypted token\ncommit item before sync
+API -> Service : sync_item
+Service -> Plaid : /transactions/sync\nall pages from saved cursor
+Plaid --> Service : added + modified + removed\nnext_cursor
+Service -> DB : Upsert / soft-remove transactions\ncommit rows + cursor together
+Service -> Plaid : /accounts/balance/get\n/liabilities/get
+Service -> DB : Refresh balances and debts
+API --> UI : item_id + synced true/false
+note over API, DB
+Sync failure keeps the linked item.
+User can retry POST /plaid/items/{id}/sync.
+end note
+UI -> API : GET /dashboard
+API -> DB : Read saved accounts + liabilities
+API --> UI : Net worth + balances + debts
+== Later transaction updates ==
+Plaid -> API : POST /plaid/webhook\nSYNC_UPDATES_AVAILABLE
+API --> Plaid : 200 quickly
+API -> Service : Background sync_transactions
+Service -> DB : Update transactions + cursor
+note over Service, DB
+Webhook refreshes transactions only.
+Balances, liabilities and budget evaluation
+need their own refresh / run.
+end note
+@enduml

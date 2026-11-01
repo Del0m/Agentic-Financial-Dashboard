@@ -1,0 +1,43 @@
+@startuml
+title An accepted proposal is saved now and applied at period close
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 15
+skinparam maxMessageSize 170
+participant "Budget graph" as Graph
+database "App DB" as DB
+database "Budget checkpoint DB" as CP
+actor User
+participant "Decision service + API\nfrontend in progress" as Decisions
+participant "PLANNED\nPeriod-close service" as Close
+Graph -> DB : Store pending_user alert\n+ linked advice + proposed cents
+Graph -> CP : interrupt(waiting_for alert IDs)
+Graph -> DB : Run status = awaiting_user
+User -> Decisions : Accept or dismiss alert
+Decisions -> DB : Check ownership + pending status
+Decisions -> DB : Commit alert.status\n+ advice_log.outcome
+note over DB, CP
+Decision and checkpoint are separate writes.
+The saved decision must survive a failed resume.
+end note
+Decisions -> CP : Read waiting IDs
+Decisions -> Graph : resume_budget_run(alert_id, decision)
+alt Other proposals remain
+  Graph -> CP : interrupt again
+else All proposals decided
+  Graph -> DB : persist_state -> ok\nrecord decisions
+end
+note over Graph, Decisions
+Acceptance does not change today's limit.
+Graph resume records completion;
+the decision service saves alert status.
+end note
+== At period end: planned orchestration ==
+Close -> DB : Load final actuals + accepted proposals
+Close -> Close : Existing pure close_period function:\naccepted number wins; otherwise fixed actual\nor 70% old + 30% actual, clamped +/-15%
+Close -> DB : PLANNED atomic close old period\n+ create next period and lines
+note over Decisions, Close
+Still specify recovery after failed resume,
+late decisions, and conflicting proposals.
+end note
+@enduml

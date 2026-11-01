@@ -1,0 +1,44 @@
+@startuml
+title Planned autonomous lifecycle and inputs that must agree
+top to bottom direction
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 15
+component "PLANNED scheduler (TPC-21)\nuser + timezone + due date\nretry / catch-up / overlap policy" as schedule
+component "Existing sync service\ntransactions + balances + debts" as sync
+component "Existing budget graph\nfit / pace / diagnose / decide" as budget
+component "PLANNED recurring detector\n180-day transaction window" as recurring
+component "PLANNED cash forecast\nchecking cash + scheduled bills\n+ income + everyday spending" as forecast
+component "PLANNED debt-payoff planner\nminimums + APR + extra amount" as payoff
+component "PLANNED goal graph\npropose affordable goals" as goal
+component "Existing approval core + API\nfrontend in progress" as approval
+component "PLANNED period-close service\nexisting pure close maths\n+ DB rollover + accepted proposals" as close
+schedule ..> sync : daily
+sync --> budget : current balances / transactions
+sync ..> recurring
+recurring ..> forecast : future inflows / outflows
+recurring ..> budget : new / changed streams
+forecast ..> payoff : monthly surplus
+payoff ..> goal : computed plans
+goal ..> approval
+budget --> approval : proposed next limit
+schedule ..> close : month end
+approval ..> close : accepted cents
+close ..> budget : next month's persisted lines
+note bottom of recurring
+Design gap: 3 annual occurrences cannot
+fit in a 180-day lookback. Choose longer
+history, fewer observations, or defer annual.
+end note
+note bottom of forecast
+Define pending vs posted, checking vs card
+spend, duplicate card payments, currency,
+and the income floor before trusting surplus.
+end note
+legend bottom
+Dashed = planned integration / component
+Solid = existing callable building blocks
+No service moves money.
+endlegend
+@enduml
