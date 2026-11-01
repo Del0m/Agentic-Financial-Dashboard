@@ -399,12 +399,13 @@ The LLM (inside `decide_action`, section 6a.4) writes the message and picks `ale
 
 ### 6a.3 Debt-payoff planner
 
-**Simulation** (`budget_engine/payoff.py`): `simulate(debts, extra_monthly_cents, strategy) -> Plan`, month by month.
-1. Interest each month = balance × APR / 12. Cards really compound daily on the average daily balance; monthly is close enough for planning, and the simplification is documented.
-2. Pay every debt's minimum, then put the extra on the target: highest APR for **avalanche**, smallest balance for **snowball**. When a debt is paid off, its minimum rolls into the extra (that's what makes both methods snowball).
+**Simulation** (`budget_engine/payoff.py`, TPC-32): `simulate(debts, extra_monthly_cents, strategy, *, start) -> Plan`, month by month, in integer cents. `compare` runs both strategies with the extra and again with $0, the baseline.
+1. Interest each month = balance × APR / 12, rounded to the cent. Cards really compound daily on the average daily balance; monthly is close enough for planning, and the simplification is documented.
+2. Every month pays one budget: the extra plus every included debt's original minimum. Minimums go first, each capped at what the debt owes. The rest goes to the target: highest APR for **avalanche** (ties by `avalanche_key`), smallest balance for **snowball** (then higher APR). What's left after clearing a debt spills to the next target that month. So a paid-off debt's minimum, and the unused part of a minimum bigger than its balance, roll over (that's what makes both methods snowball).
 3. Hold minimums at Plaid's current figure. Real card minimums shrink as the balance drops, so this is the conservative choice; say so in the output.
-4. Stop when every balance is 0 or after 600 months. If a debt's payment never covers its interest, the plan returns `never` and names that debt.
-5. Debts with no APR are left out and listed. Mortgages are left out unless `include_mortgage=True`.
+4. Stop when every balance is 0 or after 600 months. Any debt still open then is in `never` (its minimum doesn't cover its interest and nothing else reaches it), and the plan has no debt-free date.
+5. Debts with no APR or no minimum payment are left out and listed with the reason; the planner never invents either. Mortgages are left out unless `include_mortgage=True`. A 0% APR is a real rate and is planned. A balance of $0 or less (an overpaid card) is skipped silently.
+6. The plan starts on the 1st of next month. The balance is the account's current balance, the same number as the dashboard's, through one loader (`budget_service/debts.load_debts`) shared by the API and the gateway.
 
 The output gives each strategy's months to debt-free, total interest, and payoff order with dates, plus the difference an extra amount makes ("+$200/mo: 14 months sooner, $1,930 less interest").
 
@@ -413,7 +414,9 @@ The output gives each strategy's months to debt-free, total interest, and payoff
 - **Goal Agent (M4):** proposes a `debt_payoff` goal whose monthly amount fits within part of `monthly_surplus_cents`, with the strategy chosen and explained. The `cfpb-reduce-debt` KB page covers both methods.
 - **Daily run:** if a debt-payoff goal is accepted and the forecast shows more surplus than the goal assumed, propose an `extra_payment` alert. It is a proposal only.
 
-**Benchmark value:** every question has an exact answer, so the eval can check the agent's numbers by rule (months match, interest within $1) instead of with a judge.
+**Benchmark value:** every question has an exact answer, so the eval can check the agent's numbers by rule (months match, interest within $1) instead of with a judge. The `debt-plan-extra-200` scenario does that, with its facts generated from the planner (and a test that fails if they drift).
+
+**Live (TPC-32, `qwen2.5:14b`, 2026-11-01):** "How fast am I debt-free if I add $200 a month?" on the `debt-highest-apr` user (a $3,200 card at 24.99% and an $18,400 loan at 5.5%). The model called `plan_debt_payoff` every time. It answered "debt-free by November 2030", "49 months" and "$4,168.74 saved in interest", all the planner's figures. Sometimes it gave the date and the savings rather than the month count and the total ($2,941.08), so the live test accepts either form of each.
 
 ### 6a.4 Wiring into the daily run
 
@@ -656,7 +659,9 @@ GET  /alerts?status=pending_user|all ; POST /alerts/{id}/accept | /dismiss   (40
 GET  /goals ; POST /goals/generate ; POST /goals/{id}/accept
 GET  /recurring                 -> active and stale streams, newest changes first
 GET  /forecast?days=            -> daily expected/low/high balance, scheduled events, buffer, monthly surplus
-POST /debt-plan                 { extra_monthly_cents, include_mortgage } -> avalanche and snowball plans
+POST /debt-plan                 { extra_monthly_cents: 0..100_000_000, include_mortgage? } -> { avalanche, snowball,
+                                    baseline: { avalanche, snowball }, excluded, start }; each plan has months,
+                                    debt_free, total_interest_cents, order (payoff month per debt), never (TPC-32)
 POST /chat                      { thread_id, message } -> text/event-stream: sources, tool_call, tool_result, token, done | error
 GET  /chat/{thread_id}          -> the conversation so far, grouped into turns (tools and sources per answer)
 POST /admin/run/{graph}?user_id (dev only: trigger an agent run manually)
@@ -992,6 +997,9 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 | 2026-11-01 | Bitemporal edges (valid time + transaction time) in two app-DB tables, not Graphiti or a graph database | Corrections such as retroactive recategorization must not rewrite what the agent knew when it acted. Same DB, migrations and tests; nothing new to run |
 | 2026-11-01 | The user half is projected by code; only the guidance half is LLM-extracted, offline, against a fixed ontology, then reviewed and committed | Keeps "the LLM never does arithmetic that matters"; pins the cited facts the way `kb/sources/` pins the text |
 | 2026-11-01 | The chat agent gets `get_connections` and an on-demand `refresh_accounts`; the daily sync stays a fixed node | The agent should know how fresh its data is and fix it when asked. The rate limit and per-item lock keep a small model from hammering Plaid |
+| 2026-11-01 | Debt payoff: every month pays one budget (extra + all original minimums); minimums first, the rest to the target and spilling to the next | What makes both methods snowball, and no money is lost in the month a debt clears. The first draft only rolled over minimums of debts paid off in earlier months, which dropped the unused part (TPC-32) |
+| 2026-11-01 | A debt with no APR or no minimum is left out and listed, never estimated; the balance is the account's current one, from one loader for the API and the gateway | A guessed rate or minimum makes the plan look exact when it isn't. One loader means the card and chat can't disagree |
+| 2026-11-01 | `plan_debt_payoff` runs the planner inside the gateway (`debt_plan` purpose); the model gets only computed results, scrubbed names and the stated assumptions | The model never does the amortization. Live, `qwen2.5:14b` quoted the planner's numbers exactly, with no prompt change |
 | 2026-11-01 | The graph's value is shown by ablation (graph off vs on for budget decisions; vector vs graph vs hybrid for chat), not by a UI | The user's choice: numbers for the report |
 | | | |
 

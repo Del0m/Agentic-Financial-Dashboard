@@ -94,6 +94,10 @@ Two styles: `caps` (the default, above) and `50_30_20`, which sets needs, wants 
 
 The API has `PUT /budget/style`, `PATCH /budget/lines/{id}` (rename a line, or move it between needs and wants) and `GET`/`PATCH /transactions`; the UI for styles and renaming comes later.
 
+## Debt payoff
+
+The dashboard's **Paying off your debts** card compares the two usual ways to pay off debt: **avalanche** (highest APR first) and **snowball** (smallest balance first). Type an extra amount per month and it shows each method's months to debt-free, total interest, the month each debt is paid off, and what the extra saves. In chat, ask "How fast am I debt-free if I add $200 a month?" and the answer comes from the same simulation. It charges interest monthly at APR/12 and holds minimum payments at today's amounts, so it's for comparing plans, not predicting a statement. Debts with no APR or minimum on file are listed and left out. The API is `POST /debt-plan`.
+
 ## Run the agent every morning
 
 Set `ENABLE_SCHEDULER=1` and the API runs each real user's budget check daily at `DAILY_RUN_TIME` (06:00), plus the month-end close on the 1st at `CLOSE_RUN_TIME` (05:00), in `SCHEDULER_TZ`. If the server starts after today's slot, it runs it once at startup for anyone not yet checked today. Earlier missed days aren't replayed. Run a single uvicorn worker (the default); the scheduler lives inside it.
