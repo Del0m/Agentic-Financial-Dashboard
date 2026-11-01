@@ -126,9 +126,11 @@ liabilities      id, user_id, account_id, kind (credit|student|mortgage), apr,
 transactions     id, user_id, account_id, plaid_txn_id (unique), date, amount_cents,
                  merchant_name, pf_category_primary, pf_category_detailed,
                  our_category, is_recurring, pending, removed
-budget_periods   id, user_id, start_date, end_date, status (open|closed)
+budget_periods   id, user_id, start_date, end_date, status (open|closed), fit_json, created_at
+                 unique (user_id, start_date)
 budget_lines     id, period_id, category, kind (fixed|flexible), limit_cents,
-                 spent_cents, last_pace, source (init|adapted|user)
+                 spent_cents, last_pace, source (init|adapted|user), fit_json
+                 unique (period_id, category)
 alerts           id, user_id, period_id, kind (overspend|new_subscription|price_increase|
                  income_change|low_balance|extra_payment), category, severity,
                  cause (one_time|seasonal|recurring), action (alert|suggest_cuts|
@@ -149,6 +151,7 @@ Notes:
 - `plaid_txn_id` is unique so re-syncing is idempotent (upsert).
 - `/transactions/sync` returns `added`, `modified`, `removed`; handle all three. Pending transactions get replaced by posted ones with a new id.
 - Plaid amounts are **positive for money leaving the account**.
+- **Budget tables (TPC-18):** `budget_periods.fit_json` holds the months fitted and the categories skipped (`null` for a period opened by period close). `budget_lines.fit_json` holds the monthly totals and the outlier months, with their top transactions, behind each limit. The unique constraints mean a re-run or a race can never create two budgets for one month or two lines for one category. Alert `kind`, `cause`, `action`, `status` and `severity` and `advice_log.outcome` are plain strings, so a new kind needs no migration (the allowed values are `Literal`s in `models.py`). `alerts.stream_id` arrives with `recurring_streams` (TPC-33).
 - **Sign convention (decided):** `transactions.amount_cents` keeps Plaid's sign as-is: **positive = money out** (purchases, bills, transfers out), **negative = money in** (paychecks, refunds, transfers in). Store Plaid's amount converted to cents without flipping it. When summing spending for a category, add up the positive amounts, and flip the sign only when displaying.
 
 ---
@@ -194,12 +197,16 @@ Use **structured output** (Pydantic models) for `diagnose` and `decide_action` s
 
 When creating the Plaid link token, set `transactions.days_requested` to at least 180: the budget uses the last 90 days, and recurring detection (section 6a.1) needs longer to catch monthly streams reliably.
 
-1. Drop transfers, income, and credit-card payments (they're not spending; they'd double count).
-2. Mark **fixed** categories (rent, utilities, loan payments, insurance, and subscriptions found by the recurring detector in section 6a.1). Budget = the most recent amount.
-3. For **flexible** categories, compute monthly totals for each of the last 3 months. Budget = **median** × 1.05. Median, not mean, so one vacation doesn't inflate the budget.
-4. Store which transactions you treated as outliers so the agent can explain the budget.
+The maths is `budget_engine/fit.py` (`fit_budget`), a pure function over the transactions and `today`. The shared spending filter and month helpers are in `budget_engine/txns.py`.
 
-Learning exercise: compare median vs mean vs trimmed mean on your benchmark users and record the "initial budget accuracy" metric for each.
+1. Drop transfers, income, and credit-card payments (they're not spending; they'd double count). Refunds are **netted** within a category (purchases − refunds, floored at $0): a returned purchase isn't spending.
+2. Mark **fixed** categories (rent, utilities, loan payments, insurance, and subscriptions found by the recurring detector in section 6a.1). Budget = the **lower median of the months that had the bill**, with no markup. Rent paid a day early puts two rents in one month and none in the next (`$1,500 / $3,000 / $0`); the result is still one rent. Months with no payment (before a new lease, or the month after an early payment) don't count, and the lower median keeps an even count (`$1,500 / $3,000`) from averaging one rent with two. A rent increase is adopted at period close, where a fixed line follows the actual amount. **Early-paid bills:** a fixed category's charge in a month's last 3 days, within 10% of its usual bill, counts toward the next month (`shift_early_bills` in `txns.py`), so rent paid on Aug 31 for September is September's. Fit's usual bill is the lower median of each month's largest charge in the category. Pace and close use the line's limit.
+3. For **flexible** categories, compute monthly totals for each of the last 3 **complete** calendar months (the current partial month is never fitted; shorter history uses fewer months). The first month of history counts only if its earliest transaction is on day 1–3; history that starts later covers part of that month, which would drag every median down. Budget = **median** × 1.05. Median, not mean, so one vacation doesn't inflate the budget. A flexible category whose median is $0 (an occasional purchase) gets no line and is listed as skipped, since a $0 limit would flag every time.
+4. Store the outliers so the agent can explain the budget. An outlier is a **month** above 1.5× the category median, kept with its 3 largest transactions ("Travel was $1,900 in August and was left out"). It's for explanation only; the median is unchanged.
+
+**Storing it (TPC-18):** `budget_service/initialize.py` (`initialize_budget`) loads the user's non-removed transactions (an LLM-assigned `our_category` wins over Plaid's), fits them, and stores an open period for the current month with one `init` line per fitted category. The evidence goes in `fit_json`. It runs only when the user has no period at all; opening later months is period close's job. It commits (like `sync_transactions`), so call it with nothing else pending. If two runs race, the loser returns the winner's period; any other integrity error is raised. With no complete month of history (or every category skipped) it writes nothing and returns `None`, so the next run tries again.
+
+**Median vs mean (measured, TPC-18):** on the five synthetic budget users, pooled initial-budget MAPE is **7.1% for the median and 17.7% for the mean**. The mean is 1-2 points better on users with no outliers, but 58.8% vs 9.4% on the user with a $1,900 trip, and it gives a one-off purchase a line that the next month can't use. The median stays. A trimmed mean is the median at 3 months. Run it with `venv/bin/python eval/budget_accuracy.py` (section 10).
 
 ### 6.4 Overspend detection
 
@@ -212,10 +219,18 @@ flag if pace >= 1.10 and days_elapsed >= 5     # flexible categories
 flag if spent > limit                          # any category, any day
 ```
 
-The `days_elapsed >= 5` guard avoids flagging on day 1 because of one grocery trip. Fixed categories are lumpy (rent lands on the 1st), so judge them only against their limit, not pace. Tune these thresholds with the benchmark, then record the chosen values in the decision log.
+The `days_elapsed >= 5` guard avoids flagging on day 1 because of one grocery trip. Fixed categories are lumpy (rent lands on the 1st), so judge them only against their limit, not pace. Next month's bill paid early (see 6.3) doesn't count toward this month, so it never raises a false over-limit alert. Tune these thresholds with the benchmark, then record the chosen values in the decision log.
+
+This is `budget_engine/pace.py` (`evaluate`). Spending in a category with no budget line is reported to the graph as `unbudgeted` and never flagged; the graph (TPC-19) decides whether to suggest a line.
 
 ### 6.5 Period close and adaptation
 At the end of each calendar month: for each line, compare `limit` vs actual. Apply any `adjust_next_budget` actions the user accepted. For lines without an action, nudge toward actual with smoothing: `new = 0.7 * old + 0.3 * actual`, clamped to ±15% per period. This keeps the budget from chasing one bad month. The "does the budget improve over time" benchmark checks this works.
+
+This is `budget_engine/close.py` (`close_period`):
+- An accepted value is used as-is, with no clamp.
+- A **fixed** line follows the actual amount (a rent increase is adopted, not smoothed toward), and keeps its old limit when the actual is $0.
+- `period_actuals` computes each category's actual for a month with the 6.3 early-bill rule, so next month's rent paid early can't be adopted as a doubled limit. Period close (TPC-22) calls it.
+- Amounts round half up to the cent.
 
 ### 6.6 Human in the loop
 Anything that changes the user's money or their budget without being asked goes through LangGraph's `interrupt()` and becomes an alert with status `pending_user`. The agent proposes; the user disposes.
@@ -328,6 +343,8 @@ Implementation steps:
 
 Because the LLM runs locally (Ollama), prompts never leave your machine, which removes the main leak risk from the proposal. Keep the gateway anyway: it still limits what ends up in logs and traces, it keeps prompts small (which matters a lot for an 8B model's accuracy and speed), and it means a hosted model can be swapped in for comparison without a privacy regression. In the report, say clearly that the privacy guarantee comes from local inference *plus* minimization, and that a hosted model would rely on minimization alone.
 
+**Follow-up:** `get_spending` leaves out income, transfers and credit-card payments the way the budget engine does (fixed on TPC-12 after review), but it still excludes refunds, while the budget engine nets them (section 6.3). Until `get_spending` nets them too, a chat spending total can differ from the budget's pace for the same category.
+
 ---
 
 ## 8. Knowledge base (RAG)
@@ -375,6 +392,12 @@ Build the harness **early** (alongside Milestone 2), even with only two scenario
 - **Scenarios:** each scenario in `eval/scenarios/<id>.json` has a synthetic user (accounts and liabilities in dollars, transactions with `days_ago`), a question, a golden answer, and `expect`: required facts, forbidden strings, expected tools and expected sources.
 - **What a run does:** the harness seeds the user into a throwaway in-memory database. It runs the same graph and tools `POST /chat` builds, scores the answer, and writes one JSON file per run as it finishes.
 - **Results:** `summary.json` and `config.json` go to `eval/results/<date>/<model>/`. A second run on the same day gets a `-2` folder instead of overwriting.
+
+**As built (TPC-18), initial budget accuracy:** `venv/bin/python eval/budget_accuracy.py`.
+- **Users:** five synthetic budget users (`eval/budget_users.py`), generated from seeded spending patterns: steady, vacation, early rent, rising groceries, and occasional.
+- **What a run does:** for each user, it runs the real `initialize_budget` and prints the stored budget. It fits May-July with the median and with the mean, and scores each against August.
+- **Scoring:** MAPE over lines whose category had August spending, plus counts of lines with $0 actual and of spending with no line.
+- **Results** go to `eval/results/<date>/budget_accuracy/results.json`. There's no LLM, so it runs in seconds.
 
 ### 10.1 Test data
 - **Synthetic users:** JSON fixtures of accounts, liabilities and ~6 months of transactions with known ground truth (e.g., "Dining spend jumps 40% in month 5 because of a recurring new subscription"). Load them straight into the DB, bypassing Plaid, so tests are fast and deterministic.
@@ -452,6 +475,7 @@ plaid-agent/
 │       ├── privacy/             # gateway.py, scrub.py
 │       ├── budget_engine/       # fit.py, pace.py, close.py, recurring.py, forecast.py, payoff.py
 │       │                        # (pure functions, unit-tested)
+│       ├── budget_service/      # initialize.py: loads history, stores the fitted budget (db side)
 │       ├── agents/
 │       │   ├── llm.py           # model wrapper
 │       │   ├── tools.py
@@ -586,6 +610,14 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 | 2026-10-27 | Eval judge is `gemma3:12b` (Ollama, temperature 0) | `qwen2.5:14b` became the chat model, and `llama3.1:8b` and `mistral` are the comparison agents. A fourth family grades all three without grading itself; ~8 GB fits next to qwen in 24 GB and stays local |
 | 2026-10-27 | Golden-answer match is a rule check on listed facts, not an LLM verdict | Deterministic and free; a wrong number fails loudly. The judge covers how the answer reads |
 | 2026-10-27 | The eval harness runs in-process (the same graph and tools as `POST /chat`, one throwaway DB per run), not through the HTTP API | Synthetic users are possible (the API only knows the dev user and `dev.db`), there's no server to manage, and it tests the real agent code |
+| 2026-10-27 | Budget totals net refunds within a category (purchases − refunds, floored at $0) | A returned purchase isn't spending, and counting it would raise false overspend alerts. `get_spending` still excludes refunds until it's aligned (section 7 follow-up) |
+| 2026-10-27 | Budget outliers are months above 1.5× the category median, kept with their top 3 transactions for explanation only | Keeps the median × 1.05 maths exactly; the agent can still say "Travel was $1,900 in August and was left out" |
+| 2026-10-27 | A fixed budget line is the latest non-zero month with no markup, and follows the actual amount at period close (keeping its limit on a $0 month) | Rent paid a day early lands in the previous month; a rent increase should be adopted, not smoothed toward. **Fit rule superseded 2026-10-28** |
+| 2026-10-28 | A fixed line's initial limit is the lower median (`statistics.median_low`) of the months that had the bill (supersedes "latest non-zero month"); close still follows the actual amount | The month rent is paid early holds two rents: `$1,500 / $3,000 / $0` and `$1,500 / $1,500 / $3,000` both fitted at $3,000, 100% off the next month. A plain median from the first paying month still failed on even counts at first link (`$0 / $1,500 / $3,000` → $2,250). The lower median of paying months gives one rent in every case; a rent increase waits one period for close to adopt it |
+| 2026-10-28 | Fit evidence is stored as JSON: `budget_lines.fit_json` (monthly totals, outlier months with their top transactions) and `budget_periods.fit_json` (window, skipped) | The agent explains a budget from what it was actually built from; re-fitting later could drift once transactions change. Nothing needs to query it, so a JSON column beats three tables |
+| 2026-10-28 | Alert `kind`/`cause`/`action`/`status`/`severity` and `advice_log.outcome` are plain strings with `Literal` aliases; small stable sets (period status, line kind, line source) are `Enum`s | Alert kinds and actions keep growing (TPC-31/32/33); a Postgres native enum would need an `ALTER TYPE` migration for each |
+| 2026-10-28 | Initial budgets keep the **median** (× 1.05 for flexible lines) | Measured on five synthetic users: pooled MAPE 7.1% (median) vs 17.7% (mean). The mean is 1-2 points better when there's no outlier but 58.8% vs 9.4% with one trip, and it budgets one-off purchases. `eval/results/2026-10-28/budget_accuracy/` |
+| 2026-10-30 | A fixed category's charge in a month's last 3 days, within 10% of its usual bill, counts toward the next month (fit, pace, close and the next-month proposal); history that starts after the 3rd of its first month doesn't fit that month | Review on #15: early rent doubled one month's total, which raised a false over-limit alert and would be adopted at close. A partial first month dragged every median down |
 | | | |
 
 ---
