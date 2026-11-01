@@ -48,6 +48,12 @@ Run them from `backend/`:
 
 **Why it's there:** It's the mean's known weakness, and it only shows up in `zero_actual_lines`, not in the MAPE. Checking it here makes sure the report surfaces it.
 
+## `test_accuracy_ignores_saving_and_free`
+
+**What it does:** For the `steady` profile, neither the stored budget nor the median fit listed in the results includes the saving or free line.
+
+**Why it's there:** The eval measures how well category limits predict next month's spending. A saving target and the free remainder aren't predictions, and including them would change the numbers compared across runs (pooled MAPE stays 7.1% median / 17.7% mean).
+
 ## `test_history_window_follows_history_months`
 
 **What it does:** Sets `fit.HISTORY_MONTHS` to 4, runs the vacation profile on Sep 1, and records the history passed to each scored fit. Every fit's history must start in May, four months back.

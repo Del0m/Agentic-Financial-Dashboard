@@ -3,8 +3,8 @@ from decimal import Decimal
 
 import pytest
 
-from app.budget_engine.txns import (Txn, add_months, category_totals, month_end, month_start, round_cents,
-                                    spending)
+from app.budget_engine.txns import (SAVINGS, Txn, add_months, category_totals, income_by_month, month_end,
+                                    month_start, normalize_merchant, round_cents, savings, spending)
 
 
 def t(day, cents, cat="FOOD_AND_DRINK", detailed=None, month=10, year=2026):
@@ -62,3 +62,32 @@ def test_round_cents_half_up():
     assert round_cents(Decimal("1010.5")) == 1011
     assert round_cents(Decimal("1010.49")) == 1010
     assert round_cents(Decimal("47250.00")) == 47250
+
+
+def test_spending_drops_savings():
+    food = t(4, 4210)
+    assert spending([t(16, 50000, SAVINGS), food]) == [food]
+
+
+# a user who moves a card payment into a line means it; plaid's detailed category no longer excludes it
+def test_spending_keeps_overridden_card_payment():
+    moved = Txn(date=date(2026, 10, 3), amount_cents=8000, category="FOOD_AND_DRINK",
+                detailed="LOAN_PAYMENTS_CREDIT_CARD_PAYMENT", overridden=True)
+    plain = t(3, 8000, "LOAN_PAYMENTS", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT")
+    assert spending([moved, plain]) == [moved]
+
+
+def test_savings_selects_transfers():
+    saved = t(16, 50000, SAVINGS)
+    assert savings([t(2, 50000, "TRANSFER_OUT"), saved, t(4, 4210)]) == [saved]
+
+
+def test_income_by_month():
+    txns = [t(15, -420000, "INCOME", month=8), t(15, -420000, "INCOME", month=9), t(3, 4210, month=9),
+            t(20, 1000, "INCOME", month=9)]     # a reversed deposit nets the month down
+    months = [date(2026, 8, 1), date(2026, 9, 1), date(2026, 10, 1)]
+    assert income_by_month(txns, months) == [420000, 419000, 0]
+
+
+def test_normalize_merchant():
+    assert normalize_merchant("  COSTCO ") == normalize_merchant("Costco") == "costco"

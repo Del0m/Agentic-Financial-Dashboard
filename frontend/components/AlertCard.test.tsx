@@ -57,4 +57,18 @@ describe("AlertCard", () => {
     draw(alert({ action: "adjust_next_budget", proposed_limit_cents: 13500 }));
     expect(screen.queryByText(/waiting for your decision/)).toBeNull();
   });
+
+  test("shows close's over_income and group_over_target alerts", () => {
+    draw(alert({ kind: "over_income", category: null, severity: "medium", cause: null,
+                 message: "Your budget lines add up to $5,300.00, $1,100.00 more than your typical income of $4,200.00." }));
+    expect(screen.getByText("Budget")).toBeTruthy();
+    expect(screen.getByText("Over income")).toBeTruthy();
+    expect(screen.getByText(/more than your typical income/)).toBeTruthy();
+    expect(screen.queryByText("Ahead of pace")).toBeNull();
+    cleanup();
+    draw(alert({ kind: "group_over_target", category: null, severity: "medium", cause: null,
+                 message: "Needs are 58% of income, above the 50% target." }));
+    expect(screen.getByText("Over target")).toBeTruthy();
+    expect(screen.getByText("Needs are 58% of income, above the 50% target.")).toBeTruthy();
+  });
 });

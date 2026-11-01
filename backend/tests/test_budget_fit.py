@@ -196,6 +196,38 @@ def test_fit_window_crosses_year():
     assert food.limit_cents == 47250
 
 
+SAVED = monthly("SAVINGS_TRANSFER", 50000, 50000, 0)
+PAY = monthly("INCOME", -420000, -420000, -420000)
+
+
+# like rent: only months that had a transfer count, and the lower median is a real month's amount
+def test_saving_line_lower_median():
+    saving = line(fit_budget([*NORMAL, *SAVED], TODAY), "SAVINGS_TRANSFER")
+    assert (saving.kind, saving.limit_cents, saving.monthly_totals) == ("fixed", 50000, (50000, 50000, 0))
+
+
+def test_no_transfers_no_saving_line():
+    assert [ln.category for ln in fit_budget(NORMAL, TODAY).lines] == ["FOOD_AND_DRINK"]
+
+
+def test_income_median():
+    pay = monthly("INCOME", -400000, -420000, -430000)
+    assert fit_budget([*NORMAL, *pay], TODAY).income_cents == 420000
+
+
+# one paycheck in three months (a new job) isn't typical income; the total falls back instead of becoming $0
+def test_income_none_when_median_zero():
+    assert fit_budget([*NORMAL, *monthly("INCOME", 0, 0, -420000)], TODAY).income_cents is None
+    assert fit_budget(NORMAL, TODAY).income_cents is None
+
+
+# the fallback total: the median month of all spending plus the flexible cushion, rounded half up
+def test_spending_total_fallback():
+    txns = [*NORMAL, *monthly("TRAVEL", 10010, 0, 0), *PAY, *SAVED]
+    # monthly spending 50010 / 45000 / 50000 -> median 50000 -> 52500
+    assert fit_budget(txns, TODAY).spending_total_cents == 52500
+
+
 # review on #15: history that starts after the 3rd covers only part of its first month, which isn't fitted
 def test_first_month_after_the_3rd_not_fitted():
     txns = [t(2026, 8, 25, 10000), t(2026, 9, 10, 45000)]

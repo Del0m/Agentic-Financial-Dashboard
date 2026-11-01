@@ -92,12 +92,18 @@ def seed_profile(session: Session, profile: Profile, until: Optional[date] = Non
     acct = add_account(session, item, "Checking")
     for n, (day, cents, category, merchant) in enumerate(transactions(profile)):
         if until is None or day <= until:
-            add_txn(session, acct, cents, category, merchant=merchant, day=day, plaid_id=txn_id(profile, n))
+            add_txn(session, acct, cents, category, merchant=merchant, day=day, plaid_id=txn_id(profile, n),
+                    detailed=detailed_for(category, merchant))
     if until is not None:
         user = session.get(User, user_id)
         user.prefs_json = {**(user.prefs_json or {}), "sim": {"profile": profile.id, "date": until.isoformat()}}
     session.commit()
     return user_id
+
+
+# plaid labels a transfer to the user's own savings; the saving line tracks it (tpc-22)
+def detailed_for(category: str, merchant: str) -> Optional[str]:
+    return "TRANSFER_OUT_SAVINGS" if (category, merchant) == ("TRANSFER_OUT", "Savings") else None
 
 
 def txn_id(profile: Profile, n: int) -> str:

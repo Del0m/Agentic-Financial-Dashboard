@@ -176,6 +176,36 @@ Run them from `backend/`:
 
 **Why it's there:** Every January the window runs back across the year. A month-arithmetic slip would fit the wrong months or none.
 
+## `test_saving_line_lower_median`
+
+**What it does:** $500 transfers to savings in July and August and none in September give a fixed `SAVINGS_TRANSFER` line of $500, with the monthly totals `(50000, 50000, 0)`.
+
+**Why it's there:** The saving line (TPC-22) is fitted like rent: a month without a transfer is a missed month, not a $0 goal, so only months with a transfer count.
+
+## `test_no_transfers_no_saving_line`
+
+**What it does:** History with no transfers to savings gives no saving line.
+
+**Why it's there:** A $0 saving line would mean nothing; the user gets one only when their history shows saving.
+
+## `test_income_median`
+
+**What it does:** Paychecks of $4,000, $4,200 and $4,300 give an income of $4,200.
+
+**Why it's there:** The budget's total is typical income, and the median ignores one unusual month.
+
+## `test_income_none_when_median_zero`
+
+**What it does:** One paycheck in three months, or none at all, gives `income_cents = None`.
+
+**Why it's there:** A median of $0 would set the total to $0 and leave no free money. With no typical income, the total falls back to spending instead.
+
+## `test_spending_total_fallback`
+
+**What it does:** Monthly spending of $500.10, $450 and $500 (income and savings transfers left out) gives a fallback total of $525: the median month plus the 5% cushion.
+
+**Why it's there:** This is the total for users with no income history, such as seeded profiles without paychecks.
+
 ## `test_first_month_after_the_3rd_not_fitted`
 
 **What it does:** History starts Aug 25 ($100 of food), with $450 in September. Only September is fitted, giving totals `(45000,)` and a $472.50 limit.

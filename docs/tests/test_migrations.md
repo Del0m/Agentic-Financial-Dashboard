@@ -1,6 +1,8 @@
 # Tests: `backend/tests/test_migrations.py`
 
-These tests check Alembic migrations against databases the test suite doesn't run. Run them from `backend/`:
+These tests check Alembic migrations against databases the test suite doesn't run: real data on an older revision, run through a throwaway SQLite file, and Postgres, rendered as SQL. A migration that works on an empty test database (`Base.metadata.create_all`) can still fail on either.
+
+Run them from `backend/`:
 
 ```bash
 ../venv/bin/python -m pytest tests/test_migrations.py -v
@@ -8,10 +10,18 @@ These tests check Alembic migrations against databases the test suite doesn't ru
 
 ## Shared setup
 
+- `alembic_config()` points Alembic at `backend/alembic` without `alembic.ini`. The ini's logging setup would switch off every logger the rest of the suite relies on.
+- The upgrade test patches `app.db.session.DATABASE_URL` (which `alembic/env.py` reads) to a file under `tmp_path`.
 - `load(name)` imports one file from `alembic/versions/` as a module.
 - `postgres_downgrade_sql(name)` runs that migration's `downgrade()` in Alembic's offline mode with the `postgresql` dialect and returns the SQL it would run. It needs no Postgres server and no driver.
 
 ---
+
+## `test_upgrade_backfills_and_downgrades`
+
+**What it does:** Upgrades to the revision before TPC-22, inserts a user, a period and two lines (`FOOD_AND_DRINK`, `ENTERTAINMENT`), then upgrades to `head`. The lines get the names "Food and drink" and "Entertainment" and the groups `needs` and `wants`. `category_rules` exists, periods have `income_cents` and `total_cents`, and transactions have `user_category`. Downgrading removes them all again.
+
+**Why it's there:** TPC-22 makes `budget_lines.name` and `.group` required. Existing budgets (the demo and seeded users) must be backfilled from the category, using the migration's own copy of the default mapping, or the upgrade fails on their rows.
 
 ## `test_budget_tables_downgrade_drops_enum_types`
 

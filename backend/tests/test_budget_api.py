@@ -10,7 +10,8 @@ from app import config
 from app.agents.budget_graph import run_budget
 from app.api import budget_hooks
 from app.budget_service.alerts import decide_alert
-from app.db.models import Alert, User
+from app.budget_service.close import close_due
+from app.db.models import Alert, BudgetLine, User
 from eval.budget_users import PLANTED, seed_profile
 from tests.fakes import ScriptedChatModel
 
@@ -194,7 +195,7 @@ def test_budget_lines_match_evaluate(api):
     body = api.client.get("/budget").json()
     with api.db() as s:
         period = s.query(BudgetPeriod).one()
-        expected = evaluate([EngineLine(ln.category, ln.kind, ln.limit_cents) for ln in period.lines],
+        expected = evaluate([EngineLine(ln.category, ln.kind, ln.limit_cents, ln.group) for ln in period.lines],
                             load_txns(s, uid, period.start_date, ONE), ONE)
     assert body["period"] == {"start": "2026-10-01", "end": "2026-10-31"}
     assert (body["days_elapsed"], body["days_in_period"]) == (20, 31)
@@ -410,6 +411,86 @@ def test_startup_closes_interrupted_simulation(api):
     with api.db() as s:
         row = s.query(AgentRun).filter_by(graph="simulate").one()
     assert (row.status, row.summary_json) == ("error", {"error": "Interrupted"})
+
+
+# --- the budget model in the api (TPC-22) ---
+
+def line_ids(db):
+    with db() as s:
+        return {ln.category: ln.id for ln in s.query(BudgetLine)}
+
+
+def test_budget_has_model_fields(api):
+    uid = api.seed("overspend-one-time")
+    api.run(uid, DIAG, ALERT)
+    api.mp.setattr(budget_api, "_today", lambda: ONE)
+    body = api.client.get("/budget").json()
+    assert (body["income_cents"], body["total_cents"], body["style"]) == (420000, 420000, "caps")
+    lines = {ln["category"]: ln for ln in body["lines"]}
+    assert (lines["FREE"]["name"], lines["FREE"]["group"]) == ("Free", "free")
+    assert (lines["RENT_AND_UTILITIES"]["name"], lines["RENT_AND_UTILITIES"]["group"]) == ("Rent and utilities",
+                                                                                          "needs")
+    assert {ln["id"] for ln in body["lines"]} == set(line_ids(api.db).values())
+
+
+def test_rename_line(api):
+    uid = api.seed("overspend-one-time")
+    api.run(uid, DIAG, ALERT)
+    gm = line_ids(api.db)["GENERAL_MERCHANDISE"]
+    r = api.client.patch(f"/budget/lines/{gm}", json={"name": "  Shopping  "})
+    assert r.status_code == 200 and (r.json()["name"], r.json()["group"]) == ("Shopping", "wants")
+    for bad in ("   ", "x" * 41):
+        assert api.client.patch(f"/budget/lines/{gm}", json={"name": bad}).status_code == 422
+
+
+def test_regroup_needs_wants(api):
+    uid = api.seed("overspend-one-time")
+    api.run(uid, DIAG, ALERT)
+    gm = line_ids(api.db)["GENERAL_MERCHANDISE"]
+    r = api.client.patch(f"/budget/lines/{gm}", json={"group": "needs"})
+    assert r.status_code == 200 and r.json()["group"] == "needs"
+
+
+def test_regroup_saving_rejected(api):
+    uid = api.seed("overspend-one-time")
+    api.run(uid, DIAG, ALERT)
+    ids = line_ids(api.db)
+    for line_id, group in ((ids["SAVINGS_TRANSFER"], "wants"), (ids["FREE"], "needs"),
+                           (ids["GENERAL_MERCHANDISE"], "saving")):
+        r = api.client.patch(f"/budget/lines/{line_id}", json={"group": group})
+        assert (r.status_code, r.json()["detail"]) == (422, "Only needs and wants lines can change group.")
+    assert api.client.patch(f"/budget/lines/{ids['FREE']}", json={"name": "Fun money"}).json()["name"] == "Fun money"
+
+
+def test_edit_closed_period_line_404(api):
+    uid = api.seed("overspend-one-time")
+    api.run(uid, DIAG, ALERT)
+    gm = line_ids(api.db)["GENERAL_MERCHANDISE"]
+    close_due(api.db, uid, date(2026, 11, 1))
+    r = api.client.patch(f"/budget/lines/{gm}", json={"name": "Shopping"})
+    assert (r.status_code, r.json()["detail"]) == (404, "Not found.")
+    assert api.client.patch("/budget/lines/999999", json={"name": "Shopping"}).status_code == 404
+
+
+def test_put_style(api):
+    uid = api.seed("overspend-one-time")
+    api.mp.setattr(budget_api, "_today", lambda: ONE)
+    r = api.client.put("/budget/style", json={"style": "50_30_20"})
+    assert r.json() == {"style": "50_30_20", "targets": {"needs": 50, "wants": 30, "saving": 20},
+                        "effective_from": "2026-11-01"}
+    with api.db() as s:
+        user = s.get(User, uid)
+        user.prefs_json = {**user.prefs_json, "sim": {"profile": "overspend-one-time", "date": "2026-12-05"}}
+        s.commit()
+    r = api.client.put("/budget/style", json={"style": "caps", "targets": {"needs": 60, "wants": 25, "saving": 15}})
+    assert r.json()["effective_from"] == "2027-01-01" and r.json()["targets"]["needs"] == 60
+
+
+def test_put_style_bad_targets(api):
+    api.seed("overspend-one-time")
+    r = api.client.put("/budget/style", json={"style": "50_30_20", "targets": {"needs": 50, "wants": 50, "saving": 10}})
+    assert (r.status_code, r.json()["detail"]) == (422, "Targets must add up to 100.")
+    assert api.client.put("/budget/style", json={"style": "envelopes"}).status_code == 422
 
 
 # review on #13: an unreadable or missing checkpoint is reported, not a 500 or "waiting on 0 proposals"

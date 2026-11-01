@@ -7,10 +7,10 @@ from langchain_core.messages import AIMessage
 
 from app import config
 from app.budget_service import daily
-from app.budget_service.daily import close_month, run_daily, run_daily_locked, sim_today, user_lock
-from app.db.models import AgentRun, PlaidItem
+from app.budget_service.daily import run_daily, run_daily_locked, sim_today, user_lock
+from app.db.models import AgentRun, BudgetPeriod, PlaidItem
 from eval.budget_users import PLANTED, seed_profile
-from tests.fakes import ScriptedChatModel
+from tests.fakes import SchemaReplyModel, ScriptedChatModel
 
 ONE = date(2026, 10, 20)
 
@@ -59,14 +59,29 @@ def test_run_daily_locked_syncs_only_real_items(db, monkeypatch):
     assert calls == [uid]
 
 
-def test_close_month_placeholder_row(db):
+# every daily run closes any month that ended first (tpc-22), so a missed month-end heals on the next run
+def test_daily_closes_before_budget(db):
     uid = seed(db)
-    run_id = close_month(db, uid, date(2026, 10, 1))
+    run_daily_locked(db, uid, ONE, model=SchemaReplyModel(), checkpointer=None)
+    state = run_daily_locked(db, uid, date(2026, 11, 2), model=SchemaReplyModel(), checkpointer=None)
     with db() as s:
-        row = s.get(AgentRun, run_id)
-        assert (row.graph, row.status, row.user_id) == ("close", "skipped", uid)
-        assert row.summary_json == {"month": "2026-10-01", "note": "period close arrives with TPC-22"}
-        assert row.finished_at is not None
+        [close] = s.query(AgentRun).filter_by(graph="close").all()
+        budget = s.get(AgentRun, state["run_id"])
+        nov = s.query(BudgetPeriod).filter_by(user_id=uid, start_date=date(2026, 11, 1)).one()
+        assert state["close_run_ids"] == [close.id] and close.id < budget.id
+        assert (budget.status, budget.summary_json["period_id"]) == ("ok", nov.id)
+
+
+def test_failed_close_still_runs_budget(db, monkeypatch):
+    uid = seed(db)
+    run_daily_locked(db, uid, ONE, model=SchemaReplyModel(), checkpointer=None)
+
+    def boom(*a, **k):
+        raise RuntimeError("close broke")
+
+    monkeypatch.setattr(daily, "close_due", boom)
+    state = run_daily_locked(db, uid, date(2026, 11, 2), model=SchemaReplyModel(), checkpointer=None)
+    assert (state["status"], state["close_run_ids"]) == ("period_ended", [])
 
 
 def test_sim_today(db):

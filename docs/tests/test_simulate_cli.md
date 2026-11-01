@@ -38,6 +38,12 @@ Run them from `backend/`:
 
 - **The lock is in-process.** A CLI run doesn't see an API server's locks in another process. Don't simulate a user from the terminal while the API is advancing it.
 
+## `test_simulate_sets_style`
+
+**What it does:** `--style 50_30_20` stores the style before advancing and exits 0; an unknown style exits 2 (argparse `choices`).
+
+**Why it's there:** A simulated user can switch style mid-simulation and see it take effect at the next close.
+
 ## `test_cli_refuses_while_another_process_runs`
 
 **What it does:** With a `simulate` run row in progress for the user, as an advance started from the alerts page would leave, the CLI exits 1 with "already in progress".

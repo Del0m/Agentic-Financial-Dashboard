@@ -4,8 +4,9 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.budget_service import initialize
-from app.budget_service.initialize import initialize_budget, load_txns
-from app.db.models import Account, Alert, BudgetLine, BudgetPeriod
+from app.budget_service.initialize import initialize_budget, load_txns, resolve_category
+from app.budget_service.settings import set_user_style, user_style
+from app.db.models import Account, Alert, BudgetLine, BudgetPeriod, CategoryRule
 from tests.factories import add_account, add_txn, add_user
 
 
@@ -27,8 +28,8 @@ def test_one_line_per_category(db):
         p = period()
         s.add(p)
         s.flush()
-        s.add_all([BudgetLine(period_id=p.id, category="FOOD_AND_DRINK", kind="flexible", limit_cents=1,
-                              source="init") for _ in range(2)])
+        s.add_all([BudgetLine(period_id=p.id, category="FOOD_AND_DRINK", name="Food and drink", group="needs",
+                              kind="flexible", limit_cents=1, source="init") for _ in range(2)])
         with pytest.raises(IntegrityError):
             s.commit()
 
@@ -39,7 +40,8 @@ def test_period_defaults(db):
         p = period()
         s.add(p)
         s.flush()
-        s.add(BudgetLine(period_id=p.id, category="TRAVEL", kind="flexible", limit_cents=100, source="init"))
+        s.add(BudgetLine(period_id=p.id, category="TRAVEL", name="Travel", group="wants", kind="flexible",
+                         limit_cents=100, source="init"))
         s.commit()
         assert p.status == "open" and p.fit_json is None
         assert p.lines[0].spent_cents == 0 and p.lines[0].last_pace is None
@@ -93,7 +95,7 @@ def test_initialize_creates_period_and_lines(db):
         lines = {ln.category: ln for ln in p.lines}
         assert {c: (ln.kind, ln.limit_cents) for c, ln in lines.items()} == {
             "FOOD_AND_DRINK": ("flexible", 47250), "RENT_AND_UTILITIES": ("fixed", 150000),
-            "TRAVEL": ("flexible", 26250)}
+            "TRAVEL": ("flexible", 26250), "FREE": ("flexible", 12750)}    # no income: free is the fallback's room
         assert all(ln.source == "init" and ln.spent_cents == 0 and ln.last_pace is None for ln in p.lines)
         assert lines["TRAVEL"].fit_json == {
             "monthly_totals": [20000, 190000, 25000],
@@ -143,7 +145,7 @@ def test_current_month_ignored(db):
         add_txn(s, acct, 500000, "FOOD_AND_DRINK", day=date(2026, 8, 1))
         s.commit()
         p = initialize_budget(s, "u1", date(2026, 8, 1))
-        assert [(ln.category, ln.limit_cents) for ln in p.lines] == [("FOOD_AND_DRINK", 10500)]
+        assert [(ln.category, ln.limit_cents) for ln in p.lines] == [("FOOD_AND_DRINK", 10500), ("FREE", 0)]
 
 
 def test_second_call_returns_same_period(db):
@@ -152,7 +154,7 @@ def test_second_call_returns_same_period(db):
         s.commit()
         first = initialize_budget(s, "u1", TODAY).id
         assert initialize_budget(s, "u1", TODAY).id == first
-    assert counts(db) == (1, 3)
+    assert counts(db) == (1, 4)       # three category lines and the free line
 
 
 def test_existing_older_period_returned(db):
@@ -229,6 +231,108 @@ def test_other_integrity_error_raises(db, monkeypatch):
         monkeypatch.setattr(initialize, "_latest_period", lambda session, user_id: None)
         with pytest.raises(IntegrityError):
             initialize_budget(s, "u1", TODAY)
+
+
+# user override > merchant rule > llm category > a transfer to savings > plaid's primary
+def test_load_txns_precedence(db):
+    day = date(2026, 8, 5)
+    with db() as s:
+        acct = user(s)
+        s.add(CategoryRule(user_id="u1", merchant_name="costco", category="FOOD_AND_DRINK"))
+        add_txn(s, acct, 100, "GENERAL_MERCHANDISE", merchant="Costco", day=day, user_category="TRAVEL")
+        add_txn(s, acct, 200, "GENERAL_MERCHANDISE", merchant="Costco", day=day, our_category="ENTERTAINMENT")
+        add_txn(s, acct, 300, "GENERAL_MERCHANDISE", merchant="Shop", day=day, our_category="ENTERTAINMENT")
+        add_txn(s, acct, 400, "GENERAL_MERCHANDISE", merchant="Shop", day=day)
+        add_txn(s, acct, 500, "TRANSFER_OUT", merchant="Savings", day=day, detailed="TRANSFER_OUT_SAVINGS")
+        add_txn(s, acct, 600, "TRANSFER_OUT", merchant="Rent pal", day=day)
+        s.commit()
+        got = sorted(load_txns(s, "u1", day, day), key=lambda t: t.amount_cents)
+        rows = {r.amount_cents: r for r in s.query(initialize.Transaction).filter_by(user_id="u1")}
+        rules = {"costco": "FOOD_AND_DRINK"}
+        sources = [resolve_category(rows[c], rules)[1] for c in (100, 200, 300, 500)]
+    assert [(t.category, t.overridden) for t in got] == [
+        ("TRAVEL", True), ("FOOD_AND_DRINK", True), ("ENTERTAINMENT", False), ("GENERAL_MERCHANDISE", False),
+        ("SAVINGS_TRANSFER", False), ("TRANSFER_OUT", False)]
+    assert sources == ["user", "rule", "plaid", "plaid"]
+
+
+def test_rule_matches_case_insensitively(db):
+    day = date(2026, 8, 5)
+    with db() as s:
+        acct = user(s)
+        s.add(CategoryRule(user_id="u1", merchant_name="costco", category="FOOD_AND_DRINK"))
+        add_txn(s, acct, 100, "GENERAL_MERCHANDISE", merchant="COSTCO ", day=day)
+        s.commit()
+        [got] = load_txns(s, "u1", day, day)
+    assert (got.category, got.overridden) == ("FOOD_AND_DRINK", True)
+
+
+# --- the full budget model at init (TPC-22) ---
+
+def planted(s, pid="overspend-one-time"):
+    from eval.budget_users import PLANTED, seed_profile
+    return seed_profile(s, next(p for p in PLANTED if p.id == pid))
+
+
+def test_init_writes_groups_names_income_total_free(db):
+    with db() as s:
+        uid = planted(s)
+        period = initialize_budget(s, uid, date(2026, 10, 1))
+        lines = {ln.category: ln for ln in period.lines}
+        others = sum(ln.limit_cents for c, ln in lines.items() if c != "FREE")
+        assert (period.income_cents, period.total_cents) == (420000, 420000)
+        saving = lines["SAVINGS_TRANSFER"]
+        assert (saving.name, saving.group, saving.kind, saving.limit_cents) == ("Savings", "saving", "fixed", 50000)
+        assert (lines["RENT_AND_UTILITIES"].name, lines["RENT_AND_UTILITIES"].group) == ("Rent and utilities", "needs")
+        free = lines["FREE"]
+        assert (free.name, free.group, free.kind, free.source) == ("Free", "free", "flexible", "init")
+        assert free.limit_cents == 420000 - others and free.fit_json == {"rule": "remainder"}
+
+
+def test_init_503020(db):
+    with db() as s:
+        uid = planted(s)
+        set_user_style(s, uid, "50_30_20")
+        s.commit()
+        period = initialize_budget(s, uid, date(2026, 10, 1))
+        lines = {ln.category: ln for ln in period.lines}
+    assert lines["SAVINGS_TRANSFER"].limit_cents == 84000        # 20% of $4,200, not the fitted $500
+    assert user_style_of(db, uid) == ("50_30_20", {"needs": 50, "wants": 30, "saving": 20})
+
+
+def user_style_of(db, uid):
+    with db() as s:
+        return user_style(s, uid)
+
+
+def test_set_user_style_validates(db):
+    with db() as s:
+        add_user(s, "u1", "u1@x")
+        assert user_style(s, "u1") == ("caps", {"needs": 50, "wants": 30, "saving": 20})
+        with pytest.raises(ValueError, match="Targets must add up to 100."):
+            set_user_style(s, "u1", "50_30_20", {"needs": 50, "wants": 30, "saving": 30})
+        with pytest.raises(ValueError):
+            set_user_style(s, "u1", "envelopes")
+        set_user_style(s, "u1", "50_30_20", {"needs": 60, "wants": 25, "saving": 15})
+        s.commit()
+        assert user_style(s, "u1") == ("50_30_20", {"needs": 60, "wants": 25, "saving": 15})
+
+
+# "always for target" means target purchases: a paycheck, a transfer or a card payment from the same merchant
+# keeps its own category, or income would vanish and spending go negative (tpc-22 review)
+def test_rule_moves_only_spending(db):
+    day = date(2026, 8, 5)
+    with db() as s:
+        acct = user(s)
+        s.add(CategoryRule(user_id="u1", merchant_name="target", category="GENERAL_MERCHANDISE"))
+        add_txn(s, acct, -420000, "INCOME", merchant="Target", day=day)
+        add_txn(s, acct, -5000, "TRANSFER_IN", merchant="Target", day=day)
+        add_txn(s, acct, 8000, "LOAN_PAYMENTS", merchant="Target", day=day, detailed="LOAN_PAYMENTS_CREDIT_CARD_PAYMENT")
+        add_txn(s, acct, 3000, "ENTERTAINMENT", merchant="Target", day=day)
+        s.commit()
+        got = {t.amount_cents: (t.category, t.overridden) for t in load_txns(s, "u1", day, day)}
+    assert got == {-420000: ("INCOME", False), -5000: ("TRANSFER_IN", False),
+                   8000: ("LOAN_PAYMENTS", False), 3000: ("GENERAL_MERCHANDISE", True)}
 
 
 # review on #11: the column is Double in the migration; a bare float maps to Float on sqlalchemy 2.0

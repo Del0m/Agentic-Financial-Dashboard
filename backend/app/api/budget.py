@@ -11,9 +11,11 @@ from sqlalchemy import select
 
 from ..agents.budget_graph import waiting_for
 from ..budget_engine.pace import BudgetLine as EngineLine, evaluate
+from ..budget_engine.txns import add_months, month_start
 from ..budget_service.daily import run_daily_locked, sim_today, user_lock
 from ..budget_service.initialize import load_txns
-from ..db.models import AdviceLog, AgentRun, BudgetPeriod, User
+from ..budget_service.settings import set_user_style, user_style
+from ..db.models import AdviceLog, AgentRun, BudgetLine, BudgetPeriod, User
 from . import budget_hooks
 from .deps import get_current_user
 
@@ -40,7 +42,10 @@ class PeriodOut(BaseModel):
     end: Date
 
 class LineOut(BaseModel):
+    id: int
     category: str
+    name: str
+    group: str
     kind: str
     limit_cents: int
     spent_cents: int
@@ -59,6 +64,30 @@ class BudgetOut(BaseModel):
     days_in_period: int
     lines: list[LineOut]
     unbudgeted: list[UnbudgetedOut]
+    income_cents: Optional[int] = None
+    total_cents: Optional[int] = None
+    style: str = "caps"
+
+class LineEdit(BaseModel):
+    name: Optional[str] = None
+    group: Optional[str] = None
+
+class LineInfo(BaseModel):
+    id: int
+    category: str
+    name: str
+    group: str
+    kind: str
+    limit_cents: int
+
+class StyleIn(BaseModel):
+    style: str
+    targets: Optional[dict[str, int]] = None
+
+class StyleOut(BaseModel):
+    style: str
+    targets: dict[str, int]
+    effective_from: Date
 
 class RunRequest(BaseModel):
     date: Optional[Date] = None
@@ -77,22 +106,64 @@ def get_budget(user: User = Depends(get_current_user)):
     with budget_hooks.session_factory() as s:
         today = sim_today(s, user.id) or _today()      # a simulated user's dashboard follows the simulation
         days = calendar.monthrange(today.year, today.month)[1]
+        style, _ = user_style(s, user.id)
         period = s.scalars(select(BudgetPeriod).where(BudgetPeriod.user_id == user.id)
                            .order_by(BudgetPeriod.start_date.desc()).limit(1)).first()
         if period is None or not (period.start_date <= today <= period.end_date):
             ended = PeriodOut(start=period.start_date, end=period.end_date) \
                 if period is not None and period.end_date < today else None
             return BudgetOut(period=None, ended_period=ended, days_elapsed=today.day, days_in_period=days, lines=[],
-                             unbudgeted=[])
-        results = evaluate([EngineLine(ln.category, ln.kind, ln.limit_cents) for ln in period.lines],
+                             unbudgeted=[], style=style)
+        results = evaluate([EngineLine(ln.category, ln.kind, ln.limit_cents, ln.group) for ln in period.lines],
                            load_txns(s, user.id, period.start_date, today), today)
+        stored = {ln.category: ln for ln in period.lines}
         out = PeriodOut(start=period.start_date, end=period.end_date)
+        income, total = period.income_cents, period.total_cents
     return BudgetOut(
         period=out, ended_period=None, days_elapsed=today.day, days_in_period=days,
-        lines=[LineOut(category=r.category, kind=r.kind, limit_cents=r.limit_cents, spent_cents=r.spent_cents,
-                       pace=r.pace, flagged=r.flagged, reason=r.reason) for r in results if r.kind != "unbudgeted"],
+        lines=[LineOut(id=stored[r.category].id, category=r.category, name=stored[r.category].name,
+                       group=stored[r.category].group, kind=r.kind, limit_cents=r.limit_cents,
+                       spent_cents=r.spent_cents, pace=r.pace, flagged=r.flagged, reason=r.reason)
+               for r in results if r.kind != "unbudgeted"],
         unbudgeted=[UnbudgetedOut(category=r.category, spent_cents=r.spent_cents)
-                    for r in results if r.kind == "unbudgeted"])
+                    for r in results if r.kind == "unbudgeted"],
+        income_cents=income, total_cents=total, style=style)
+
+
+# rename a line, or move it between needs and wants (tpc-22). only the open period's lines; close carries the
+# change into the next month. saving and free lines keep their group, so the style rules always find them
+@router.patch("/budget/lines/{line_id}", response_model=LineInfo)
+def edit_line(line_id: int, edit: LineEdit, user: User = Depends(get_current_user)):
+    with budget_hooks.session_factory() as s:
+        line = s.get(BudgetLine, line_id)
+        if line is None or line.period.user_id != user.id or line.period.status != "open":
+            raise HTTPException(404, "Not found.")
+        if edit.name is not None:
+            name = edit.name.strip()
+            if not 1 <= len(name) <= 40:
+                raise HTTPException(422, "Names are 1 to 40 characters.")
+            line.name = name
+        if edit.group is not None and edit.group != line.group:
+            if {line.group, edit.group} - {"needs", "wants"}:
+                raise HTTPException(422, "Only needs and wants lines can change group.")
+            line.group = edit.group
+        s.commit()
+        return LineInfo(id=line.id, category=line.category, name=line.name, group=line.group, kind=line.kind,
+                        limit_cents=line.limit_cents)
+
+
+# the budget style; it applies from the next close (or the first budget), never to the month under way
+@router.put("/budget/style", response_model=StyleOut)
+def put_style(req: StyleIn, user: User = Depends(get_current_user)):
+    with budget_hooks.session_factory() as s:
+        try:
+            set_user_style(s, user.id, req.style, req.targets)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        s.commit()
+        style, targets = user_style(s, user.id)
+        today = sim_today(s, user.id) or _today()
+    return StyleOut(style=style, targets=targets, effective_from=add_months(month_start(today), 1))
 
 
 @router.post("/budget/run", status_code=202)

@@ -7,8 +7,7 @@ from langchain_core.language_models import BaseChatModel
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from sqlalchemy import select
 
-from app.budget_engine.txns import add_months
-from app.budget_service.daily import close_month, run_daily_locked, sim_prefs
+from app.budget_service.daily import run_daily_locked, sim_prefs
 from app.db.models import Account, AgentRun, Transaction, User
 
 # simulated days for synthetic users (tpc-21): each advanced day injects that day's generated transactions,
@@ -43,7 +42,8 @@ def _inject(session_factory, user_id: str, users, profile, todays: list) -> int:
             if users.txn_id(profile, n) in have:
                 continue
             s.add(Transaction(user_id=user_id, account_id=account_id, plaid_txn_id=users.txn_id(profile, n),
-                              date=when, amount_cents=cents, merchant_name=merchant, pf_category_primary=category))
+                              date=when, amount_cents=cents, merchant_name=merchant, pf_category_primary=category,
+                              pf_category_detailed=users.detailed_for(category, merchant)))
             added += 1
         s.commit()
     return added
@@ -87,9 +87,6 @@ def advance_days(session_factory, user_id: str, days: int, *, model: Optional[Ba
                 "run_ids": [], "alerts_written": 0}
     for _ in range(days):
         day += timedelta(days=1)
-        if day.day == 1:
-            # the month that just ended closes before the new month's first run
-            close_month(session_factory, user_id, add_months(day, -1))
         injected = _inject(session_factory, user_id, users, profile, by_day.get(day, []))
         state = run_daily_locked(session_factory, user_id, day, model=model, checkpointer=checkpointer)
         _save_date(session_factory, user_id, day)        # only after the run, so a failed day can be retried

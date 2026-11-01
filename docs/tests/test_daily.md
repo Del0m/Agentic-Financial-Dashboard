@@ -3,8 +3,7 @@
 These tests cover `app/budget_service/daily.py` (TPC-21), the one way a user's daily budget run happens, whoever starts it: the scheduler, the run button, or a simulated day.
 - **`user_lock`:** a per-user lock, so those can never overlap.
 - **`run_daily`:** takes the lock, or returns `None` if it's held.
-- **`run_daily_locked`:** the run itself. It syncs Plaid only for users with a real item.
-- **`close_month`:** the month-end slot's placeholder, until TPC-22's close.
+- **`run_daily_locked`:** the run itself. It first closes any month that ended (TPC-22), then syncs Plaid only for users with a real item and runs the budget check.
 - **`sim_today`:** a simulated user's date.
 
 The settings the scheduler and admin routes read are also checked here.
@@ -35,11 +34,17 @@ Run them from `backend/`:
 
 **Why it's there:** Real users must be checked against fresh Plaid data. A seeded user's fake token would only record a sync error on every simulated day.
 
-## `test_close_month_placeholder_row`
+## `test_daily_closes_before_budget`
 
-**What it does:** `close_month` records an `agent_runs` row (`close`, `skipped`) with the month and a note that close arrives with TPC-22.
+**What it does:** After an Oct 20 run creates October's budget, a run on Nov 2 first closes October (its close run id is returned in `close_run_ids` and comes before the budget run), then checks November: the budget run is `ok` on the new period.
 
-**Why it's there:** The month-end slot runs on schedule and in simulations now, and the record shows it ran. TPC-22 replaces the body without touching the wiring.
+**Why it's there:** Every route to a daily run (scheduler, button, simulated day) closes first, so a missed month-end heals on the next run instead of the user being stuck at `period_ended`.
+
+## `test_failed_close_still_runs_budget`
+
+**What it does:** When `close_due` raises, the daily run still happens and ends `period_ended`, with no close run ids.
+
+**Why it's there:** A broken close mustn't stop the daily check; the budget graph's `period_ended` routing is the safety net, and the next run retries the close.
 
 ## `test_sim_today`
 

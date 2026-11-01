@@ -68,3 +68,33 @@ Run them from `backend/`:
 **What it does:** 1010.5¢ rounds to 1011, 1010.49¢ to 1010, and 47250.00¢ stays 47250.
 
 **Why it's there:** Python's `round()` rounds halves to even, so it would give 1010. People expect money to round half up, and every limit the engine computes goes through this function.
+
+## `test_spending_drops_savings`
+
+**What it does:** A `SAVINGS_TRANSFER` transaction is left out of spending; a food purchase stays.
+
+**Why it's there:** Money moved to savings is saving, counted by the saving line (TPC-22). Counting it as spending would flag every month the user saves.
+
+## `test_spending_keeps_overridden_card_payment`
+
+**What it does:** A credit card payment the user moved into Food and drink (`overridden=True`) counts as spending; an ordinary card payment still doesn't.
+
+**Why it's there:** The card-payment exclusion stops double counting purchases. A user who corrects one into a line has said it's spending, and their correction wins over Plaid.
+
+## `test_savings_selects_transfers`
+
+**What it does:** `savings()` returns only `SAVINGS_TRANSFER` rows, not other transfers or purchases.
+
+**Why it's there:** The saving line's actual amount comes from this list; a transfer to a friend isn't saving.
+
+## `test_income_by_month`
+
+**What it does:** Two $4,200 paychecks in August and September give `[420000, 419000, 0]`; September's $10 reversed deposit nets its month down, and October has none.
+
+**Why it's there:** The budget's total is typical income (TPC-22). Plaid signs money in as negative, so the sign is flipped, and a month is never below $0.
+
+## `test_normalize_merchant`
+
+**What it does:** `"  COSTCO "` and `"Costco"` both become `"costco"`.
+
+**Why it's there:** A remembered merchant should match however Plaid spells it that day.

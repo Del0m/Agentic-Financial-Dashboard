@@ -1,0 +1,56 @@
+@startuml
+title Current system and the remaining connections
+top to bottom direction
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 15
+skinparam wrapWidth 190
+skinparam maxMessageSize 160
+actor "User" as user
+component "Browser\nDashboard + Chat" as browser
+component "Next.js :3000\n/api/* proxy" as next
+component "FastAPI :8000\nPlaid / Dashboard / Chat\nBudget / Alerts" as api
+component "Plaid service\nlink, sync, balances, debts" as service
+cloud "Plaid Sandbox" as plaid
+database "App SQLite\naccounts, transactions, budgets,\nalerts, advice, runs" as db
+component "Privacy gateway\nallowlisted financial context" as gateway
+component "Chat graph\nretrieve -> agent <-> tools" as chat
+component "Budget graph\nCLI / HTTP + approval core" as budget
+component "Ollama :11434\nqwen2.5:14b\nnomic-embed-text" as ollama
+database "Local Chroma\npublic guidance" as kb
+database "Checkpoint SQLite\nchat + budget files" as checkpoints
+component "PLANNED\nScheduler + close orchestration" as scheduler #FFF0D5
+component "IN PROGRESS\nBudget / Alerts frontend" as ui #FFF0D5
+user --> browser
+browser --> next : same origin
+next --> api : HTTP / SSE
+api --> service
+service <--> plaid
+service --> db : upsert
+api --> db : dashboard reads
+api --> chat
+api --> budget : run / accept / dismiss
+chat --> gateway : account / debt / spending tools
+gateway --> db : scoped reads
+gateway --> chat : minimized JSON
+chat --> kb : retrieve every question
+chat --> ollama : chat calls
+kb --> ollama : embeddings
+chat --> checkpoints
+budget --> db : evaluate + write advice
+budget --> gateway : diagnose context
+budget --> ollama : classify + decide
+budget --> checkpoints : pause / resume
+scheduler ..> budget : daily trigger
+ui ..> browser : pages being built
+note bottom of db
+No money movement.
+Auth is a single demo user.
+end note
+legend bottom
+Solid = present in reviewed code
+Dashed / PLANNED = a remaining connection
+IN PROGRESS = partially implemented TPC-20
+endlegend
+@enduml

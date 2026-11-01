@@ -6,8 +6,8 @@ import type { BudgetLine } from "@/lib/api";
 afterEach(cleanup);
 
 function line(over: Partial<BudgetLine> = {}): BudgetLine {
-  return { category: "FOOD_AND_DRINK", kind: "flexible", limit_cents: 47200, spent_cents: 23600, pace: 0.8,
-           flagged: false, reason: null, ...over };
+  return { id: 1, category: "FOOD_AND_DRINK", name: "Food and drink", group: "needs", kind: "flexible",
+           limit_cents: 47200, spent_cents: 23600, pace: 0.8, flagged: false, reason: null, ...over };
 }
 
 function draw(l: BudgetLine) {
@@ -48,5 +48,11 @@ describe("BudgetPaceBar", () => {
   test("fixed lines say so", () => {
     draw(line({ category: "RENT_AND_UTILITIES", kind: "fixed", pace: null, limit_cents: 150000, spent_cents: 150000 }));
     expect(screen.getByText(/\(fixed\)/)).toBeTruthy();
+  });
+
+  test("shows the line's name", () => {
+    draw(line({ name: "Groceries" }));
+    expect(screen.getByText("Groceries")).toBeTruthy();
+    expect(screen.getByRole("meter", { name: "Groceries spent" })).toBeTruthy();
   });
 });

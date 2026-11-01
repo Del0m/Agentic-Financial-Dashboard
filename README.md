@@ -55,7 +55,7 @@ Answers stream in as they're written; the chips under each answer show which too
 
 ## Budget agent and alerts
 
-The budget agent checks spending against this month's budget. It asks the local model (`qwen2.5:14b`) why a category is overspent and what to do about it, and posts alerts to `/alerts`. A proposal to change next month's budget waits for your Accept or Dismiss. The dashboard's **Budget** card shows each category's pace.
+The budget agent checks spending against this month's budget. It asks the local model (`qwen2.5:14b`) why a category is overspent and what to do about it, and posts alerts to `/alerts`. A proposal to change next month's budget waits for your Accept or Dismiss. The dashboard's **Budget** card shows each line's pace, and the **Transactions** card shows this month's transactions with the line each one counts against: pick another line to correct one, then **Always for <merchant>?** to remember it.
 
 To try it on a synthetic user with a planted overspend:
 
@@ -79,9 +79,24 @@ cd backend
 
 With Ollama running, each flagged day takes a few seconds of model time, so a month takes several minutes. To drive it from the browser, start the API with `ENABLE_ADMIN=1 DEV_USER_EMAIL=overspend-one-time@eval.local`; the Alerts page then shows the simulated date with **Advance 1 day**, **Advance 7 days** and **To month end**.
 
+## Month-end close and budget styles
+
+On the 1st, every daily run first closes the month that ended. Each line's next limit comes from what was spent: a proposal you accepted is used as-is, fixed bills (rent, savings) follow the actual amount, and everything else moves 30% of the way toward it, by at most 15%. A proposal you never answered expires. If the server missed a month-end, the next run closes each missed month in order.
+
+The budget's total is your typical monthly income. Besides the category lines it has a **Savings** line (fitted from transfers to savings) and a **Free** line: whatever income the other lines leave, never below $0, which also covers spending in categories without a line. If the lines add up to more than your income, close tells you instead of cutting anything.
+
+Two styles: `caps` (the default, above) and `50_30_20`, which sets needs, wants and savings targets from income (free is the room left in wants). Choose one when seeding, or switch a simulated user; it applies from the next close:
+
+```bash
+../venv/bin/python scripts/seed_budget_user.py --profile overspend-recurring --replace --start default --style 50_30_20
+../venv/bin/python scripts/simulate.py --user budget-overspend-recurring --days 32 --style caps
+```
+
+The API has `PUT /budget/style`, `PATCH /budget/lines/{id}` (rename a line, or move it between needs and wants) and `GET`/`PATCH /transactions`; the UI for styles and renaming comes later.
+
 ## Run the agent every morning
 
-Set `ENABLE_SCHEDULER=1` and the API runs each real user's budget check daily at `DAILY_RUN_TIME` (06:00), plus the month-end slot on the 1st at `CLOSE_RUN_TIME` (05:00), in `SCHEDULER_TZ`. If the server starts after today's slot, it runs it once at startup for anyone not yet checked today. Earlier missed days aren't replayed. Run a single uvicorn worker (the default); the scheduler lives inside it.
+Set `ENABLE_SCHEDULER=1` and the API runs each real user's budget check daily at `DAILY_RUN_TIME` (06:00), plus the month-end close on the 1st at `CLOSE_RUN_TIME` (05:00), in `SCHEDULER_TZ`. If the server starts after today's slot, it runs it once at startup for anyone not yet checked today. Earlier missed days aren't replayed. Run a single uvicorn worker (the default); the scheduler lives inside it.
 
 ## Demo on a phone
 

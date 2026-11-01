@@ -28,9 +28,11 @@ from sqlalchemy import select
 
 from app.agents.llm import get_chat_model
 from app.api import budget_hooks
-from app.db.models import AgentRun
+from app.budget_engine.styles import STYLES
 from app.budget_service.daily import user_lock
+from app.budget_service.settings import set_user_style
 from app.budget_service.simulate import NotSimulated, advance_days
+from app.db.models import AgentRun
 
 
 # a run row older than this is left over from a process that died, not one still going
@@ -55,10 +57,15 @@ def main(argv=None, session_factory=None, model=None) -> int:
     parser.add_argument("--user", required=True)
     parser.add_argument("--days", type=int, required=True)
     parser.add_argument("--model", help="ollama model, default OLLAMA_MODEL")
+    parser.add_argument("--style", choices=STYLES, help="switch the budget style; it applies from the next close")
     args = parser.parse_args(argv)
     if session_factory is None:
         from app.db.session import SessionLocal
         session_factory = SessionLocal
+    if args.style:
+        with session_factory() as s:
+            set_user_style(s, args.user, args.style)
+            s.commit()
     lock = user_lock(args.user)          # in-process only, so the run rows are checked too
     if _running_elsewhere(session_factory, args.user) or not lock.acquire(blocking=False):
         print("A budget run is already in progress.")

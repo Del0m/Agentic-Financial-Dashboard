@@ -44,9 +44,15 @@ The `users` fixture seeds four planted users:
 
 ## `test_month_end_job_closes_previous_month`
 
-**What it does:** On Nov 1, the job records the month-end slot for October for each of the two eligible users.
+**What it does:** On Nov 1 the month-end job runs close for the two real users and reports them as closed, with none skipped or failed. The one with an October budget gets an `ok` close run for October and an open November; the one with no budget yet gets nothing written. The seeded user isn't scheduled, so it isn't closed.
 
-**Why it's there:** Close has to run for the month that just ended, before that day's budget check. TPC-22 fills in what it does.
+**Why it's there:** The month-end slot now runs the real period close (TPC-22) for every real user, and leaves simulated users to their own simulation.
+
+## `test_month_end_skips_locked_user`
+
+**What it does:** With one user's lock held and close raising for the other, the job reports the first as skipped and the second as failed.
+
+**Why it's there:** A run already going for the user (the button, a simulation) must not overlap with close; the 06:00 daily run closes first instead. One user's failure is reported, not raised.
 
 ## `test_build_scheduler_jobs`
 
@@ -76,11 +82,11 @@ The `users` fixture seeds four planted users:
 
 **Why it's there:** The catch-up must not run a second check for someone who already had one today, whether from the scheduler, the button or an earlier start.
 
-## `test_month_end_catch_up_skips_closed`
+## `test_month_end_rerun_closes_nothing`
 
-**What it does:** After November's month-end slot has closed October for both eligible users, a catch-up with `skip_done` closes nobody again.
+**What it does:** Running the month-end job twice on Nov 1 leaves one close run, not two.
 
-**Why it's there:** A restart on the 1st must not record a second close for the same month. TPC-22's real close must be idempotent per user and month.
+**Why it's there:** A restart on the 1st runs the catch-up again. Close does nothing for a month already closed, so it replaced TPC-21's `skip_done` scan of run summaries.
 
 ## `test_seeded_users_not_scheduled`
 

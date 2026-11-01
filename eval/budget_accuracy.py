@@ -25,6 +25,7 @@ os.environ.setdefault("FERNET_KEY", Fernet.generate_key().decode())
 
 from app.budget_engine import fit
 from app.budget_engine.fit import fit_budget
+from app.budget_engine.groups import default_group
 from app.budget_engine.txns import add_months, category_totals, month_end, month_start, spending
 from app.budget_service.initialize import initialize_budget, load_txns
 from eval.budget_users import PROFILES, Profile, seed_profile
@@ -33,6 +34,8 @@ from eval.metrics import mape
 from eval.run_eval import RESULTS_DIR, _git_commit, _write, results_dir
 
 CENTERS = ("median", "mean")
+# saving and free lines aren't predictions of spending (tpc-22); only category lines are scored
+SCORED = ("needs", "wants")
 
 
 # lines vs next month's actuals. a line whose category had $0 can't be scored by a percentage, so it's
@@ -60,7 +63,7 @@ def run_profile(profile: Profile) -> dict:
         budget = {
             "lines": [{"category": ln.category, "kind": ln.kind, "limit_cents": ln.limit_cents,
                        "outlier_months": [o["month"] for o in ln.fit_json["outliers"]]}
-                      for ln in sorted(period.lines, key=lambda ln: ln.category)],
+                      for ln in sorted(period.lines, key=lambda ln: ln.category) if ln.group in SCORED],
             "skipped": period.fit_json["skipped"],
         }
         # the same window initialize_budget fits (read at call time, so it follows HISTORY_MONTHS)
@@ -69,7 +72,9 @@ def run_profile(profile: Profile) -> dict:
                                   current, month_end(current))
     result = {"id": profile.id, "description": profile.description, "budget": budget}
     for center in CENTERS:
-        result[center] = score(fit_budget(history, profile.today, center=center).lines, actuals)
+        lines = [ln for ln in fit_budget(history, profile.today, center=center).lines
+                 if default_group(ln.category) in SCORED]
+        result[center] = score(lines, actuals)
     return result
 
 

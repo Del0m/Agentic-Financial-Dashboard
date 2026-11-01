@@ -11,9 +11,9 @@ from sqlalchemy.orm import Session
 
 from . import config
 from .api import budget_hooks
-from .budget_engine.txns import add_months, month_start
 from .budget_service.alerts import SEED_TOKEN
-from .budget_service.daily import close_month, run_daily
+from .budget_service.close import close_due
+from .budget_service.daily import run_daily, user_lock
 from .db.models import AgentRun, BudgetPeriod, PlaidItem, User
 
 logger = logging.getLogger(__name__)
@@ -73,21 +73,30 @@ def daily_budget_job(session_factory, *, today: Optional[date] = None, model=Non
     return result
 
 
-# skip_done (the startup catch-up): leave out users whose close for that month is already recorded
-def month_end_job(session_factory, *, today: Optional[date] = None, skip_done: bool = False) -> dict:
-    previous = add_months(month_start(today or _today()), -1)
+# closes the month that just ended for every real user. close_due does nothing for a month already closed, so the
+# startup catch-up can call it again. a user whose run is going is skipped: the 06:00 daily run closes first
+def month_end_job(session_factory, *, today: Optional[date] = None) -> dict:
+    today = today or _today()
     with session_factory() as s:
         user_ids = eligible_users(s)
-        if skip_done:
-            # a close for that month is recorded on or after its 1st, so older rows needn't be read at all
-            since = datetime.combine(previous, time(), timezone.utc)
-            closed = {r.user_id for r in s.scalars(select(AgentRun).where(AgentRun.graph == "close",
-                                                                        AgentRun.started_at >= since))
-                      if (r.summary_json or {}).get("month") == previous.isoformat()}
-            user_ids = [u for u in user_ids if u not in closed]
+    result = {"closed": [], "skipped": [], "failed": []}
     for user_id in user_ids:
-        close_month(session_factory, user_id, previous)
-    return {"closed": user_ids}
+        lock = user_lock(user_id)
+        if not lock.acquire(blocking=False):
+            result["skipped"].append(user_id)
+            continue
+        try:
+            close_due(session_factory, user_id, today)
+        except Exception:
+            logger.warning("month-end close failed for one user", exc_info=True)
+            result["failed"].append(user_id)
+            continue
+        finally:
+            lock.release()
+        result["closed"].append(user_id)
+    logger.info("month-end job: %d closed, %d skipped, %d failed",
+                len(result["closed"]), len(result["skipped"]), len(result["failed"]))
+    return result
 
 
 def _at(hhmm: str) -> dict:
@@ -111,7 +120,7 @@ def build_scheduler() -> BackgroundScheduler:
 # slots and simulated days keep)
 def catch_up(session_factory, *, today: date, close: bool, daily: bool) -> None:
     if close:
-        month_end_job(session_factory, today=today, skip_done=True)
+        month_end_job(session_factory, today=today)
     if daily:
         daily_budget_job(session_factory, today=today, skip_done=True)
 

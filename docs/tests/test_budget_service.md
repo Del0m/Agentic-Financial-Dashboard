@@ -49,7 +49,7 @@ Uses the `db` fixture from `conftest.py` (see [test_plaid.md](test_plaid.md#shar
 
 ## `test_initialize_creates_period_and_lines`
 
-**What it does:** With the shared history, `initialize_budget` opens an October period. Read back in a new session, it has three `init` lines: food $472.50 (flexible), rent $1,500 (fixed) and travel $262.50 (flexible). Travel's `fit_json` holds its monthly totals and August as an outlier, with both August purchases as ISO dates and integer cents. The period's `fit_json` lists the three window months.
+**What it does:** With the shared history, `initialize_budget` opens an October period. Read back in a new session, it has three `init` category lines: food $472.50 (flexible), rent $1,500 (fixed) and travel $262.50 (flexible), plus the free line (TPC-22) at $127.50, the room the spending fallback leaves since this history has no income. Travel's `fit_json` holds its monthly totals and August as an outlier, with both August purchases as ISO dates and integer cents. The period's `fit_json` lists the three window months.
 
 **Why it's there:** It's the done-when: a user with history gets a sensible first budget. Reading in a fresh session matters because a `date` left inside the JSON would only fail when written, and the identity map would hide it.
 
@@ -67,13 +67,13 @@ Uses the `db` fixture from `conftest.py` (see [test_plaid.md](test_plaid.md#shar
 
 ## `test_current_month_ignored`
 
-**What it does:** Initializing on Aug 1 with $100 of food each in May, June and July and $5,000 on Aug 1 gives a $105 food line.
+**What it does:** Initializing on Aug 1 with $100 of food each in May, June and July and $5,000 on Aug 1 gives a $105 food line (and a $0 free line).
 
 **Why it's there:** The current month is partial, even when today is its first day. A purchase on the 1st must not reach the fit.
 
 ## `test_second_call_returns_same_period`
 
-**What it does:** Calling `initialize_budget` twice returns the same period, and there is still one period with three lines.
+**What it does:** Calling `initialize_budget` twice returns the same period, and there is still one period with four lines (three categories and free).
 
 **Why it's there:** The budget graph runs every day and calls this first. It must be safe to call again.
 
@@ -118,6 +118,42 @@ Uses the `db` fixture from `conftest.py` (see [test_plaid.md](test_plaid.md#shar
 **What it does:** The commit fails on the unique constraint, but no period can be found afterwards (the lookup is patched to miss). `initialize_budget` re-raises the `IntegrityError` instead of returning `None`.
 
 **Why it's there:** `None` means "not enough history yet", so the daily run would retry forever and nobody would see the real error. Only a race, where another run's period now exists, is safe to swallow (found in the TPC-18 final review).
+
+## `test_load_txns_precedence`
+
+**What it does:** One user, a rule "costco → Food and drink", and six transactions on one day. The categories come out as: the user's own correction (Travel), the rule (beating the LLM's category), the LLM's category, Plaid's category, `SAVINGS_TRANSFER` for a `TRANSFER_OUT_SAVINGS` transfer, and plain `TRANSFER_OUT` for any other transfer. Only the first two are marked `overridden`. `resolve_category` reports their sources as `user`, `rule`, `plaid` and `plaid`.
+
+**Why it's there:** TPC-22 makes `load_txns` the one place a transaction's category is decided (user > rule > LLM > savings transfer > Plaid), so the fit, the pace check, close and the transactions list always agree.
+
+## `test_rule_matches_case_insensitively`
+
+**What it does:** A rule stored as `"costco"` matches a transaction from `"COSTCO "`.
+
+**Why it's there:** Plaid's merchant names vary in case and spacing; "Always for Costco" should still apply.
+
+## `test_init_writes_groups_names_income_total_free`
+
+**What it does:** Initializing the planted `overspend-one-time` user stores income $4,200 and a total of $4,200; a fixed "Savings" line of $500 in the `saving` group; "Rent and utilities" in `needs`; and a "Free" line (`flexible`, `free`, `init`) at $4,200 minus every other line, with `fit_json = {"rule": "remainder"}`.
+
+**Why it's there:** TPC-22's budget model starts at init: every line has a name and a group, and free is the room left in income after the other lines.
+
+## `test_init_503020`
+
+**What it does:** With the user's style set to 50/30/20 before init, the saving line is $840 (20% of $4,200), not the fitted $500, and the style reads back with the default targets.
+
+**Why it's there:** The style is a per-user setting that init honours.
+
+## `test_set_user_style_validates`
+
+**What it does:** A user with no setting reads as `caps` with 50/30/20 targets. Targets that sum to 110 raise "Targets must add up to 100.", an unknown style raises, and valid custom targets are stored.
+
+**Why it's there:** The API and CLIs write the setting through this function, so bad input stops here.
+
+## `test_rule_moves_only_spending`
+
+**What it does:** With a rule "target → General merchandise", a Target paycheck, a transfer in and a card payment keep their own categories and aren't marked overridden; only a Target purchase moves to General merchandise.
+
+**Why it's there:** Found in the TPC-22 review. "Always for Target" means Target purchases. Applied to a paycheck, the rule turned income into negative shopping, so the line could never flag and close lost the user's income.
 
 ## Not covered
 

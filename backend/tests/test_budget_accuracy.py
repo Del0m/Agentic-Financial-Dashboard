@@ -50,6 +50,13 @@ def test_occasional_mean_has_zero_actual_line():
     assert r["budget"]["skipped"] == ["GENERAL_MERCHANDISE"]
 
 
+# the eval scores how well category limits predict spending; saving and free lines aren't predictions (tpc-22)
+def test_accuracy_ignores_saving_and_free():
+    r = run_profile(profile("steady"))
+    for cats in ([ln["category"] for ln in r["budget"]["lines"]], [ln["category"] for ln in r["median"]["lines"]]):
+        assert "SAVINGS_TRANSFER" not in cats and "FREE" not in cats
+
+
 # review on #11: the scored fits load the same history window initialize_budget uses
 def test_history_window_follows_history_months(monkeypatch):
     from dataclasses import replace

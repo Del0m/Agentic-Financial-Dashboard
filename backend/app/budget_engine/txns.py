@@ -2,7 +2,7 @@ import calendar
 from dataclasses import dataclass, replace
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Sequence
 
 # the budget engine's input: plain values the caller (TPC-18) builds from `transactions` rows.
 # no DB or clock in here, so every budget rule is testable with literals.
@@ -15,16 +15,40 @@ class Txn:
     category: str                # pf_category_primary; the caller maps None to "UNCATEGORIZED"
     detailed: Optional[str] = None
     merchant: Optional[str] = None
+    overridden: bool = False     # the user's correction or merchant rule chose the category, not plaid
+
+
+# reserved line categories (tpc-22): the saving line tracks transfers to savings, the free line is the room left
+SAVINGS = "SAVINGS_TRANSFER"
+FREE = "FREE"
+SAVINGS_DETAILED = "TRANSFER_OUT_SAVINGS"     # plaid's label for a transfer to the user's savings
 
 
 # not spending: income isn't, a transfer moves money between your own accounts,
 # and a card payment pays for purchases already counted
-EXCLUDED_PRIMARY = frozenset({"INCOME", "TRANSFER_IN", "TRANSFER_OUT"})
+# and a transfer to savings is saving. a user who moved a card payment into a line means it
+EXCLUDED_PRIMARY = frozenset({"INCOME", "TRANSFER_IN", "TRANSFER_OUT", SAVINGS})
 EXCLUDED_DETAILED = frozenset({"LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"})
 
 
 def spending(txns: Iterable[Txn]) -> list[Txn]:
-    return [t for t in txns if t.category not in EXCLUDED_PRIMARY and t.detailed not in EXCLUDED_DETAILED]
+    return [t for t in txns if t.category not in EXCLUDED_PRIMARY
+            and (t.overridden or t.detailed not in EXCLUDED_DETAILED)]
+
+
+def savings(txns: Iterable[Txn]) -> list[Txn]:
+    return [t for t in txns if t.category == SAVINGS]
+
+
+# money in per month, as positive cents (plaid signs income negative); months are firsts of the month
+def income_by_month(txns: Iterable[Txn], months: Sequence[date]) -> list[int]:
+    income = [t for t in txns if t.category == "INCOME"]
+    return [max(-sum(t.amount_cents for t in income if m <= t.date <= month_end(m)), 0) for m in months]
+
+
+# "Costco" and "COSTCO " are one merchant for a category rule
+def normalize_merchant(name: str) -> str:
+    return name.strip().casefold()
 
 
 # next month's rent paid a day or two early would put two bills in one month and none in the next. a fixed

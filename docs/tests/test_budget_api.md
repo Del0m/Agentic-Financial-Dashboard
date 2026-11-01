@@ -216,6 +216,48 @@ Run them from `backend/`:
 
 **Why it's there:** A simulation's thread dies with the server, like a run's. Otherwise the Alerts panel would poll it forever.
 
+## `test_budget_has_model_fields`
+
+**What it does:** After a run creates the planted user's October budget, `GET /budget` reports income $4,200, a total of $4,200 and style `caps`. Each line carries its `id`, `name` and `group` ("Free" in `free`, "Rent and utilities" in `needs`), and the ids are the stored lines'.
+
+**Why it's there:** The dashboard shows the line's name, and the line routes and the category button need its id (TPC-22).
+
+## `test_rename_line`
+
+**What it does:** Renaming the shopping line to `"  Shopping  "` stores "Shopping" and keeps its group; a blank name or one over 40 characters is a 422.
+
+**Why it's there:** Names are the user's labels; they're trimmed and bounded so the UI can always show them.
+
+## `test_regroup_needs_wants`
+
+**What it does:** Moving general merchandise from wants to needs succeeds.
+
+**Why it's there:** The default mapping can't know the user's life (food mixes groceries and dining), so the user can move a line between needs and wants.
+
+## `test_regroup_saving_rejected`
+
+**What it does:** Moving the saving line to wants, the free line to needs, or a wants line to saving each gives a 422 "Only needs and wants lines can change group."; renaming the free line "Fun money" still works.
+
+**Why it's there:** The style rules find the saving and free lines by group; they can be renamed, never regrouped.
+
+## `test_edit_closed_period_line_404`
+
+**What it does:** After October closes, editing one of its lines (or an id that doesn't exist) is a 404 "Not found.".
+
+**Why it's there:** Only the open month's lines change; close carries them forward, and a closed month stays as it was.
+
+## `test_put_style`
+
+**What it does:** `PUT /budget/style` with 50/30/20 returns the default targets and `effective_from` Nov 1 (the month after today, Oct 20). For a simulated user on Dec 5, custom targets apply from Jan 1 2027.
+
+**Why it's there:** The style applies from the next close, and the response tells the caller when.
+
+## `test_put_style_bad_targets`
+
+**What it does:** Targets that add up to 110 are a 422 "Targets must add up to 100."; an unknown style is a 422.
+
+**Why it's there:** Bad settings stop at the API, before a close tries to use them.
+
 ## `test_run_status_with_a_broken_checkpoint`
 
 **What it does:** Pauses a run, then reads `GET /budget/runs/{id}` with an empty checkpointer and with one that raises. Both give a 200 with `status: "error"` and `waiting_for: []`.

@@ -1,0 +1,84 @@
+@startuml
+allowmixing
+title Persisted application data and separate agent memory
+hide circle
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 15
+skinparam linetype ortho
+entity users {
+  * id
+  email
+}
+entity plaid_items {
+  * id
+  user_id
+  access_token_enc
+  txn_cursor
+}
+entity accounts {
+  * id
+  user_id / item_id
+  balance_cents
+}
+entity transactions {
+  * id
+  account_id / user_id
+  plaid_txn_id [unique]
+  amount_cents / date
+  categories / pending / removed
+}
+entity liabilities {
+  * id
+  account_id [unique]
+  apr / min_payment_cents
+}
+entity budget_periods {
+  * id
+  user_id / start / end
+  status / fit_json
+  [unique user + start]
+}
+entity budget_lines {
+  * id
+  period_id / category
+  kind / limit / spent / pace
+  fit_json
+  [unique period + category]
+}
+entity alerts {
+  * id
+  user_id / period_id
+  cause / action / status
+  proposed_limit_cents
+}
+entity advice_log {
+  * id
+  user_id / run_id / alert_id
+  advice_text / outcome
+}
+entity agent_runs {
+  * id
+  user_id / graph / status
+  summary_json
+}
+database "Chat checkpoint DB\nuser_id:thread_id\nmessages + tool results + sources" as chat
+database "Budget checkpoint DB\nbudget-run_id\ngraph state + pending interrupts" as budget
+users ||--o{ plaid_items
+plaid_items ||--o{ accounts
+accounts ||--o{ transactions
+accounts ||--o| liabilities
+users ||--o{ budget_periods
+budget_periods ||--o{ budget_lines
+budget_periods |o--o{ alerts : optional period
+users ||--o{ agent_runs
+agent_runs |o--o{ advice_log : optional run
+alerts |o--o{ advice_log : optional alert
+note bottom of budget_lines
+Money = integer cents; Plaid sign retained.
+Transactions: positive out, negative in / refund.
+User FKs on other tables omitted for readability.
+Goals and recurring_streams are planned tables.
+Checkpoints are not application-table FKs.
+end note
+@enduml

@@ -106,7 +106,10 @@ export async function syncItem(itemId: number): Promise<void> {
 // alerts the user accepts or dismisses
 
 export type BudgetLine = {
+  id: number;
   category: string;
+  name: string; // the user's label; the budget rules read the group (tpc-22)
+  group: "needs" | "wants" | "saving" | "free";
   kind: "fixed" | "flexible";
   limit_cents: number;
   spent_cents: number;
@@ -122,6 +125,9 @@ export type Budget = {
   days_in_period: number;
   lines: BudgetLine[];
   unbudgeted: { category: string; spent_cents: number }[];
+  income_cents: number | null;
+  total_cents: number | null;
+  style: string;
 };
 
 export type Alert = {
@@ -170,6 +176,26 @@ export function acceptAlert(id: number): Promise<Alert> {
 
 export function dismissAlert(id: number): Promise<Alert> {
   return request<Alert>(`/alerts/${id}/dismiss`, { method: "POST" });
+}
+
+// the transactions table (tpc-22): each row with the budget line it counts against, and corrections
+export type Txn = {
+  id: number;
+  date: string;
+  merchant: string | null;
+  amount_cents: number;
+  category: string;
+  line_name: string | null; // null: counts against no line (income, transfers)
+  source: "plaid" | "rule" | "user";
+};
+
+export function getTransactions(month?: string): Promise<Txn[]> {
+  return request<Txn[]>(month ? `/transactions?month=${month}` : "/transactions");
+}
+
+// remember: also apply this category to the merchant's other transactions, past and future
+export function correctTransaction(id: number, category: string, remember: boolean): Promise<Txn> {
+  return request<Txn>(`/transactions/${id}`, { method: "PATCH", body: JSON.stringify({ category, remember }) });
 }
 
 // simulated users (tpc-21, admin only): a synthetic user's simulated date, and jobs that advance it
