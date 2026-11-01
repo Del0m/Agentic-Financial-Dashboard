@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
+from ..budget_service.alerts import SEED_TOKEN
 from ..db.models import Account, Liability, PlaidItem, User
 from ..db.session import get_session
 from ..finance import avalanche_key
@@ -99,11 +100,12 @@ def get_dashboard(user: User = Depends(get_current_user), session: Session = Dep
     # avalanche order: highest APR first, unknown APR last, bigger balance first on a tie
     debt_rows.sort(key=lambda d: avalanche_key(d.apr, d.balance_cents))
 
-    # A cursor only proves transactions succeeded. Later balance/liability failures stay retryable.
+    # a cursor only proves transactions succeeded, so a later balance/liability failure stays retryable.
+    # a seeded user's placeholder item has no bank behind it, so a retry could never work
     unsynced = session.scalars(
-        select(PlaidItem).where(PlaidItem.user_id == user.id,
-                               or_(PlaidItem.txn_cursor.is_(None),
-                                   PlaidItem.status.in_(("syncing", "sync_failed")))).order_by(PlaidItem.id)
+        select(PlaidItem).where(PlaidItem.user_id == user.id, PlaidItem.access_token_enc != SEED_TOKEN,
+                                or_(PlaidItem.txn_cursor.is_(None),
+                                    PlaidItem.status.in_(("syncing", "sync_failed")))).order_by(PlaidItem.id)
     ).all()
 
     return DashboardResponse(

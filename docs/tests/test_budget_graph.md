@@ -91,11 +91,17 @@ Run them from `backend/`:
 
 **Why it's there:** The number the user accepts is computed by code, never written by the model, and TPC-22's close applies exactly that number.
 
-## `test_no_op_writes_nothing`
+## `test_no_op_without_an_earlier_alert_still_alerts`
 
-**What it does:** A `no_op` action writes no alert and no advice, but the run still records it.
+**What it does:** The model answers `no_op` for a flag with no earlier alert this month. The run writes the code-written alert ("Personal care is over its $… limit") and marks the action `escalated`.
 
-**Why it's there:** The model can judge a flag not worth bothering the user about, and the summary still shows that it did.
+**Why it's there:** This used to write nothing, so a model reply could hide an over-limit flag entirely, against the graph's "never hides an overspend" rule (review on #12). `no_op` now stands only when the user was already told at this severity (see `test_second_run_no_op_no_alert`).
+
+## `test_no_op_on_a_more_severe_flag_becomes_an_alert`
+
+**What it does:** After an earlier alert that was only a pace warning (`medium`), the model answers `no_op` for the same category now over its limit (`high`). A new `high` alert is written.
+
+**Why it's there:** The TPC-21 fix was a hint in the prompt, which a small model can ignore. Live, it let a pace warning stand when the category went over its limit. Code now enforces it, as it already does for the `adjust_next_budget` downgrade. The review on #14 found it.
 
 ## `test_diagnose_failure_still_alerts`
 
