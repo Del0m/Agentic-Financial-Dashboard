@@ -31,23 +31,31 @@ The same daily run also looks past the budget (section 6a). It finds **recurring
 
 ## 2. Diagrams
 
-All sources are PlantUML in [`diagrams/`](diagrams/). Rendered PNG and SVG sit next to each source.
+Start with the [AI agent pipelines](agent-pipelines.md) for the budget decision loop, chat tool loop, and autonomous budget check. The [current implementation walkthrough and gap checklist](system-walkthrough.md) distinguishes implemented, in-progress, and planned behavior. The rendered diagrams below use PlantUML sources in [`diagrams/`](diagrams/), with PNG and SVG beside each source; the agent pipelines use Mermaid embedded in Markdown.
 
 | Diagram | What it shows |
 |---|---|
-| [`system-design.puml`](diagrams/system-design.puml) | Every component and how data flows between them |
-| [`plaid-link-sequence.puml`](diagrams/plaid-link-sequence.puml) | Linking an account and the first transaction sync (Milestone 1) |
-| [`budget-agent-loop.puml`](diagrams/budget-agent-loop.puml) | One scheduled run of the budget agent as LangGraph nodes (Milestone 3) |
+| [`system-design.puml`](diagrams/system-design.puml) | Current components and remaining connections |
+| [`plaid-link-sequence.puml`](diagrams/plaid-link-sequence.puml) | Linking, first sync, dashboard reads, and webhook updates |
+| [`chat-flow.puml`](diagrams/chat-flow.puml) | Guidance retrieval, financial tools, privacy boundary, and streaming |
+| [`budget-agent-loop.puml`](diagrams/budget-agent-loop.puml) | Current budget graph, arithmetic, exits, and approval branch |
+| [`approval-lifecycle.puml`](diagrams/approval-lifecycle.puml) | Saved decisions, checkpoint resume, and planned application at close |
+| [`data-model.puml`](diagrams/data-model.puml) | Current application tables and separate checkpoint stores |
+| [`remaining-lifecycle.puml`](diagrams/remaining-lifecycle.puml) | Planned scheduling, recurring charges, forecast, goals, and rollover |
+| [`evaluation-flow.puml`](diagrams/evaluation-flow.puml) | Current evaluations and missing longitudinal validation |
 
 To re-render after editing:
 
 ```bash
-# needs Java + Graphviz (brew install graphviz / apt install graphviz)
+# needs PlantUML + Java + Graphviz
+plantuml -tsvg -failfast2 docs/diagrams/*.puml
+plantuml -tpng -failfast2 docs/diagrams/*.puml
+# Alternatively, with a standalone PlantUML jar:
 java -jar plantuml.jar -tsvg docs/diagrams/*.puml
 # or use the PlantUML extension in VS Code (Alt+D to preview)
 ```
 
-![System design](diagrams/system-design.png)
+![System design](diagrams/system-design.svg)
 
 ---
 
