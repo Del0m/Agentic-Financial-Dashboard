@@ -1,6 +1,6 @@
 # Tests: `backend/tests/test_gateway.py`
 
-These tests cover `app/privacy/gateway.py`, the only code path that turns user data into LLM prompt text (architecture section 7). They check the per-purpose field allowlists, the per-session pseudonym, scrubbing of free-text fields, spending minimization, and the JSONL audit log. Run them from `backend/`:
+These tests cover `app/privacy/gateway.py`, the only code path that turns user data into LLM prompt text (architecture section 7). They check the per-purpose field allowlists (`accounts`, `debts`, `spending`, `diagnose`, and `debt_plan` for the payoff planner), the per-session pseudonym, scrubbing of free-text fields, spending minimization, and the JSONL audit log. Run them from `backend/`:
 
 ```bash
 ../venv/bin/python -m pytest tests/test_gateway.py -v
@@ -210,3 +210,43 @@ The budget graph's `diagnose` step asks the LLM why one category is overspent. T
 **What it does:** A LOAN_PAYMENTS flag whose transactions include a $2,000 credit-card payment and a $400 student-loan payment. The prompt's transactions list only the student loan.
 
 **Why it's there:** The diagnose rows were filtered by category only, so a card payment that `overspend_facts` left out of "spent" was still quoted as evidence, and the rows didn't add up to the facts. The rows now go through the same `spending()` filter. The review on #12 found it.
+
+## Payoff planner (`debt_plan`, TPC-32)
+
+`seed_debts(db)` gives `u-1` a $3,200 card named "Jane Doe's Visa ••4421" (24.99%, $95 minimum), an $18,400 student loan (5.5%, $210 minimum) and a $500 store card with no APR. `plan_context(db, tmp_path, **kw)` builds the `debt_plan` context and also runs `payoff.compare` directly on `load_debts`, starting 2026-11-01 (the month after the fixed today), for the tests to compare against.
+
+## `test_debt_plan_matches_compare_and_scrubs`
+
+**What it does:** With $200 extra, the payload has `extra_monthly` 200.0 and `start` `2026-11`. For both strategies, its months, total interest, debt-free month and each payoff's (name, month, interest) equal the planner's, with names through `scrub_account_name`. "Jane" and "4421" appear nowhere in the prompt. The store card is listed as excluded with "no APR on file", and no plan has a `never` debt.
+
+**Why it's there:** The model must get exactly the planner's numbers (the TPC-32 done-when compares chat's answer with `payoff.py`) and none of the user's PII.
+
+## `test_debt_plan_one_strategy`
+
+**What it does:** With `strategy="snowball"`, the payload has exactly one plan, the snowball one.
+
+**Why it's there:** A question about one method gets only that method's numbers, which keeps the prompt small.
+
+## `test_debt_plan_difference_and_assumptions`
+
+**What it does:** The avalanche plan's `without_extra` is the $0-extra baseline's months and interest. `difference` is the baseline minus the plan: months sooner and interest saved in dollars. `assumptions` is the spec's sentence, verbatim.
+
+**Why it's there:** "+$200/mo: 14 months sooner, $1,930 less interest" is computed by code, so the model only quotes it. The assumptions let the model state the simplifications instead of guessing them.
+
+## `test_debt_plan_never`
+
+**What it does:** A $10,000 card at 30% with a $100 minimum and no extra never gets paid off. Its plan has no months, no debt-free month and no `difference`, and its `never` list names the card, scrubbed.
+
+**Why it's there:** A plan that never ends has no "sooner" to report. The model must be told which debt can't be paid off, without the name leaking. `never` is per plan because which debts outlast 600 months can depend on the strategy.
+
+## `test_debt_plan_audited_with_params`
+
+**What it does:** One audit line, purpose `debt_plan`, with params `{"extra_monthly_cents": 20000}`.
+
+**Why it's there:** Every prompt that leaves the system is audited with the arguments that shaped it, like `start` and `end` for spending.
+
+## `test_debt_plan_unknown_strategy_raises`
+
+**What it does:** `strategy="cheapest"` raises `ValueError`.
+
+**Why it's there:** The chat tool validates first, so this is the gateway's own guard against a caller passing a bad strategy.

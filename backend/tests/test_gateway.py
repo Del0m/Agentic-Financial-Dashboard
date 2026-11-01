@@ -400,3 +400,92 @@ def test_diagnose_rows_leave_out_card_payments(db, tmp_path):
                     .build_context("diagnose", facts=facts, transactions=txns))["transactions"]
 
     assert [r["merchant"] for r in rows] == ["Student Loan"]
+
+
+# --- the payoff planner (tpc-32): computed results only, names scrubbed ---
+
+from app.budget_engine.payoff import compare
+from app.budget_service.debts import load_debts
+from app.privacy.scrub import scrub_account_name
+
+PLAN_START = date(2026, 11, 1)     # the month after TODAY
+
+
+def seed_debts(db) -> str:
+    with db() as s:
+        item = add_user(s, "u-1", "a@example.com")
+        add_account(s, item, "Jane Doe's Visa ••4421", type_="credit", balance=320000,
+                    liability={"kind": "credit", "apr": 24.99, "min_payment_cents": 9500})
+        add_account(s, item, "Student Loan", type_="loan", balance=1840000,
+                    liability={"kind": "student", "apr": 5.5, "min_payment_cents": 21000})
+        add_account(s, item, "Store Card", type_="credit", balance=50000,
+                    liability={"kind": "credit", "apr": None, "min_payment_cents": 2500})
+        s.commit()
+    return "u-1"
+
+
+def plan_context(db, tmp_path, **kw):
+    with db() as s:
+        prompt = PrivacyGateway(s, "u-1", audit_path=tmp_path / "a.jsonl").build_context("debt_plan", **kw)
+        expected = compare(load_debts(s, "u-1"), kw.get("extra_monthly_cents", 0), start=PLAN_START)
+    return prompt, data(prompt), expected
+
+
+def test_debt_plan_matches_compare_and_scrubs(db, tmp_path):
+    seed_debts(db)
+    prompt, d, expected = plan_context(db, tmp_path, extra_monthly_cents=20000)
+    assert "Jane" not in prompt and "4421" not in prompt
+    assert (d["extra_monthly"], d["start"]) == (200.0, "2026-11")
+    by = {p["strategy"]: p for p in d["plans"]}
+    for strategy in ("avalanche", "snowball"):
+        want = expected[strategy]
+        assert (by[strategy]["months"], by[strategy]["total_interest"], by[strategy]["debt_free"]) == \
+            (want.months, want.total_interest_cents / 100, want.debt_free.strftime("%Y-%m"))
+        assert [(o["name"], o["paid_off"], o["interest"]) for o in by[strategy]["order"]] == \
+            [(scrub_account_name(p.name), p.date.strftime("%Y-%m"), p.interest_cents / 100) for p in want.order]
+    assert d["excluded"] == [{"name": "Store Card", "reason": "no APR on file"}]
+    assert all(p["never"] == [] for p in d["plans"])
+
+
+def test_debt_plan_one_strategy(db, tmp_path):
+    seed_debts(db)
+    _, d, _ = plan_context(db, tmp_path, extra_monthly_cents=20000, strategy="snowball")
+    assert [p["strategy"] for p in d["plans"]] == ["snowball"]
+
+
+def test_debt_plan_difference_and_assumptions(db, tmp_path):
+    seed_debts(db)
+    _, d, expected = plan_context(db, tmp_path, extra_monthly_cents=20000, strategy="avalanche")
+    [plan] = d["plans"]
+    base = expected["baseline_avalanche"]
+    assert plan["without_extra"] == {"months": base.months, "total_interest": base.total_interest_cents / 100}
+    assert plan["difference"] == {
+        "months_sooner": base.months - expected["avalanche"].months,
+        "interest_saved": (base.total_interest_cents - expected["avalanche"].total_interest_cents) / 100}
+    assert d["assumptions"] == ("Interest is charged monthly at APR/12; minimum payments are held at today's "
+                                "amounts; not financial advice.")
+
+
+# a plan that never ends has no "sooner" to report, and names the debt (scrubbed)
+def test_debt_plan_never(db, tmp_path):
+    with db() as s:
+        add_account(s, add_user(s, "u-1", "a@example.com"), "Jane Doe's Card", type_="credit", balance=1000000,
+                    liability={"kind": "credit", "apr": 30.0, "min_payment_cents": 10000})
+        s.commit()
+    _, d, _ = plan_context(db, tmp_path, extra_monthly_cents=0, strategy="avalanche")
+    [plan] = d["plans"]
+    assert (plan["months"], plan["debt_free"], plan["difference"]) == (None, None, None)
+    assert plan["never"] == [scrub_account_name("Jane Doe's Card")] and "Jane" not in json.dumps(d)
+
+
+def test_debt_plan_audited_with_params(db, tmp_path):
+    seed_debts(db)
+    plan_context(db, tmp_path, extra_monthly_cents=20000)
+    [line] = audit_lines(tmp_path / "a.jsonl")
+    assert (line["purpose"], line["params"]) == ("debt_plan", {"extra_monthly_cents": 20000})
+
+
+def test_debt_plan_unknown_strategy_raises(db, tmp_path):
+    seed_debts(db)
+    with pytest.raises(ValueError, match="strategy"):
+        plan_context(db, tmp_path, extra_monthly_cents=0, strategy="cheapest")
