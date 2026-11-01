@@ -31,7 +31,7 @@ TPC-23 builds on this next: its `debt_payoff` goals come from the planner, with 
 | Mortgages are left out unless `include_mortgage` | Section 6a.3. A 30-year mortgage dominates "debt-free" and is rarely what the user means |
 | Interest is monthly: balance × APR / 12, rounded to the cent each month | Section 6a.3. Close enough for planning; the output says so |
 | Minimums stay at today's figure | Section 6a.3. Real card minimums shrink with the balance; holding them is the conservative choice, and the output says so |
-| A paid-off debt's minimum rolls into the extra, and money left after clearing a debt spills to the next target in the same month | What makes both methods "snowball"; spill-over means no payment is lost in the month a debt clears |
+| Every month pays one fixed budget (extra + all original minimums); minimums first, the rest to the target, spilling to the next | What makes both methods "snowball": a paid-off debt's minimum rolls over, and no payment is lost in the month a debt clears |
 | Avalanche targets the highest APR (ties by `finance.avalanche_key`); snowball targets the smallest balance (ties: higher APR, then key) | The two methods' definitions, with deterministic ties |
 | `never` when a debt's minimum doesn't cover its interest and nothing else reaches it; the simulation stops at 600 months | Section 6a.3. The plan names the debt instead of looping forever |
 | The plan starts the month after today | The current month's payment may already be made; payoff dates read as whole months (`YYYY-MM`) |
@@ -56,7 +56,7 @@ TPC-23 builds on this next: its `debt_payoff` goals come from the planner, with 
 - `backend/app/main.py`: register the router.
 - `frontend/lib/api.ts` (+ test): `debtPlan()` and its types.
 - `frontend/app/dashboard/page.tsx`: render the card when there are debts.
-- Tests: `test_gateway.py`, `test_tools.py`, `test_chat_graph.py` (the live done-when).
+- Tests: `test_gateway.py`, `test_tools.py` (including the live done-when, next to the existing live tool-choice test).
 - Docs: `docs/architecture.md` (6a.3, API table, decision log), `README.md`.
 
 ## Budget engine (`budget_engine/payoff.py`)
@@ -107,7 +107,7 @@ def compare(debts, extra_monthly_cents, *, start, include_mortgage=False) -> dic
 **Each month:**
 1. **Interest:** every open debt's balance grows by `round_half_up(balance × apr / 100 / 12)`.
 2. **Minimums:** each open debt gets `min(minimum, balance)`.
-3. **Extra:** the pool is the extra plus the minimums of debts already paid off in earlier months. It goes to the target (by strategy, among open debts), capped at the target's balance. What's left spills to the next target, until the pool is empty or every debt is clear.
+3. **Extra:** every month pays the same budget, the extra plus every included debt's original minimum. The pool is that budget minus what step 2 paid, so a paid-off debt's minimum (and the unused part of a minimum larger than its balance) rolls in. It goes to the target (by strategy, among debts still open, judged on balances after step 2), capped at the target's balance. What's left spills to the next target, until the pool is empty or every debt is clear.
 4. A debt whose balance reaches 0 this month gets a `Payoff` with this month's number and date.
 
 **Never:** the simulation stops after 600 months. Any debt still open then is in `never` (typically one whose minimum doesn't cover its interest and that the extra never reaches), and `months`/`debt_free` are `None`.
@@ -197,7 +197,7 @@ def plan_debt_payoff(extra_monthly: float = 0, strategy: Optional[str] = None) -
 
 **`test_tools.py`:** the tool's output equals the gateway's for the same arguments; negative/too-large extra and unknown strategy are `ToolException`s; blank strategy means both.
 
-**Live done-when (`@pytest.mark.live`, `qwen2.5:14b`), in `test_chat_graph.py`:** seed the `debt-highest-apr` scenario's user, ask "How fast am I debt-free if I add $200 a month?", require a `plan_debt_payoff` call, and check the answer contains `payoff.compare`'s months and total interest (within $1) for the strategy it reports.
+**Live done-when (skipped without Ollama, `qwen2.5:14b`), in `test_tools.py`:** seed the `debt-highest-apr` scenario's user, ask "How fast am I debt-free if I add $200 a month?", require a `plan_debt_payoff` call, and check the answer contains `payoff.compare`'s months and total interest (within $1) for the strategy it reports.
 
 **Eval scenario `debt-plan-extra-200.json`:** the same user and question; `expect.facts` holds the months and interest computed by `payoff.compare` for the scenario's fixed date (filled in by running the planner when the scenario is written, never by hand); `expect.tools: ["plan_debt_payoff"]`.
 
