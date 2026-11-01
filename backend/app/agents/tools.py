@@ -1,8 +1,10 @@
 import json
 import logging
 from datetime import date
+from decimal import Decimal
 from typing import Optional
 from langchain_core.tools import BaseTool, StructuredTool, ToolException
+from ..budget_engine.txns import round_cents
 from ..privacy import gateway as gw
 from ..privacy.gateway import PrivacyGateway
 from ..rag.store import KnowledgeBase
@@ -24,6 +26,7 @@ VALID_CATEGORIES = PFC_CATEGORIES + ("UNCATEGORIZED",)
 
 SEARCH_K = 4
 MAX_QUERY_CHARS = 1000
+MAX_EXTRA_DOLLARS = 1_000_000
 
 
 # small models send "" for an optional argument they mean to leave out
@@ -75,6 +78,19 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
         return json.dumps({"purpose": "kb", "results": kb.search(query, k=SEARCH_K)},
                           separators=(",", ":"), ensure_ascii=False)
 
+    # the planner's numbers come from code (tpc-32); the model only picks the extra and the method
+    def plan_debt_payoff(extra_monthly: float = 0, strategy: Optional[str] = None) -> str:
+        if not 0 <= extra_monthly <= MAX_EXTRA_DOLLARS:
+            raise ToolException(f"extra_monthly must be between 0 and {MAX_EXTRA_DOLLARS:,} dollars, "
+                                f"got {extra_monthly}")
+        strategy = _blank(strategy)
+        if strategy is not None:
+            if strategy.lower() not in gw.STRATEGIES:
+                raise ToolException(f"unknown strategy '{strategy}'; use avalanche or snowball, or leave it out")
+            strategy = strategy.lower()
+        return gateway.build_context("debt_plan", extra_monthly_cents=round_cents(Decimal(str(extra_monthly)) * 100),
+                                     strategy=strategy)
+
     return [
         StructuredTool.from_function(
             get_accounts, name="get_accounts",
@@ -99,5 +115,13 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
                         "rules and strategies: retirement accounts, debt payoff methods, budgeting rules, savings "
                         "and deposit insurance. Returns titled passages; refer to a passage by its title, never by "
                         "a link. Not for the user's own balances or spending.",
+        ),
+        StructuredTool.from_function(
+            plan_debt_payoff, name="plan_debt_payoff",
+            description="Simulate paying off the user's debts month by month (avalanche: highest APR first; "
+                        "snowball: smallest balance first), optionally with an extra amount per month. Returns "
+                        "months to debt-free, total interest, payoff dates and what the extra saves. Use for how "
+                        "long until debt-free, what paying more changes, or avalanche vs snowball. Quote its "
+                        "numbers exactly.",
         ),
     ]

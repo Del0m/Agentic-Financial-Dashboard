@@ -1,5 +1,7 @@
 import json
+import re
 from datetime import date
+from pathlib import Path
 
 import pytest
 from langchain_core.messages import HumanMessage
@@ -57,8 +59,8 @@ def data(out: str):
     return json.loads(out)["data"]
 
 
-def test_four_tools_with_descriptions(tools):
-    assert set(tools) == {"get_accounts", "get_debts", "get_spending", "search_kb"}
+def test_five_tools_with_descriptions(tools):
+    assert list(tools) == ["get_accounts", "get_debts", "get_spending", "search_kb", "plan_debt_payoff"]
     assert all(t.description for t in tools.values())
 
 
@@ -69,6 +71,7 @@ def test_no_tool_accepts_a_user(tools):
     assert set(tools["get_spending"].args) == {"category", "start_date", "end_date"}
     assert tools["get_accounts"].args == {} and tools["get_debts"].args == {}
     assert set(tools["search_kb"].args) == {"query"}
+    assert set(tools["plan_debt_payoff"].args) == {"extra_monthly", "strategy"}
 
 
 def test_get_accounts(tools):
@@ -223,3 +226,84 @@ def test_live_model_picks_get_debts(seeded, tmp_path):
     purposes = [json.loads(l)["purpose"] for l in audit.read_text().splitlines()] if audit.exists() else []
     assert "debts" in purposes
     assert "credit card" in answer.content.lower()
+
+
+# --- the payoff planner (tpc-32) ---
+
+def test_plan_debt_payoff_matches_gateway(tools, seeded, tmp_path):
+    out = data(tools["plan_debt_payoff"].invoke({"extra_monthly": 200}))
+    with seeded() as s:
+        direct = PrivacyGateway(s, "u-1", audit_path=tmp_path / "b.jsonl").build_context(
+            "debt_plan", extra_monthly_cents=20000)
+    assert out == data(direct)
+    assert [p["strategy"] for p in out["plans"]] == ["avalanche", "snowball"]
+    # the loan has no minimum on file, so only the card is planned
+    assert out["excluded"] == [{"name": "Plaid Student Loan", "reason": "no minimum payment on file"}]
+
+
+def test_plan_debt_payoff_blank_strategy_means_both(tools):
+    assert len(data(tools["plan_debt_payoff"].invoke({"extra_monthly": 0, "strategy": " "}))["plans"]) == 2
+
+
+def test_plan_debt_payoff_strategy_case_insensitive(tools):
+    plans = data(tools["plan_debt_payoff"].invoke({"extra_monthly": 50, "strategy": "Avalanche"}))["plans"]
+    assert [p["strategy"] for p in plans] == ["avalanche"]
+
+
+# dollars to cents without float drift: $200.10 is 20010 cents
+def test_plan_debt_payoff_dollars_to_cents(tools):
+    assert data(tools["plan_debt_payoff"].invoke({"extra_monthly": 200.1}))["extra_monthly"] == 200.1
+
+
+@pytest.mark.parametrize("extra", [-5, 1_000_001])
+def test_plan_debt_payoff_bad_extra(tools, extra):
+    with pytest.raises(ToolException, match="extra_monthly"):
+        tools["plan_debt_payoff"].invoke({"extra_monthly": extra})
+
+
+def test_plan_debt_payoff_unknown_strategy(tools):
+    with pytest.raises(ToolException, match="'cheapest'"):
+        tools["plan_debt_payoff"].invoke({"extra_monthly": 0, "strategy": "cheapest"})
+
+
+
+def _amounts(text: str) -> list[float]:
+    return [float(n.replace(",", "")) for n in re.findall(r"\d[\d,]*(?:\.\d+)?", text)]
+
+
+# the ticket's done-when: chat's answer has the planner's months and interest (within $1) for the method it reports.
+# live, qwen2.5:14b gives the time as a month count or the debt-free month, and the interest as the total or what the
+# extra saves; every one of those is the planner's own figure
+@pytest.mark.skipif(not ollama_has(config.OLLAMA_MODEL), reason="needs ollama running with OLLAMA_MODEL pulled")
+def test_live_debt_free_with_extra(db, tmp_path):
+    from eval.fixtures import load_scenario, seed
+    from app.budget_engine.payoff import compare
+    from app.budget_engine.txns import add_months, month_start
+    from app.budget_service.debts import load_debts
+
+    scenario = load_scenario(Path(__file__).resolve().parents[2] / "eval" / "scenarios" / "debt-highest-apr.json")
+    audit = tmp_path / "audit.jsonl"
+    with db() as s:
+        uid = seed(s, scenario, TODAY)
+        s.commit()
+        expected = compare(load_debts(s, uid), 20000, start=add_months(month_start(TODAY), 1))
+        graph = build_chat_graph(make_tools(PrivacyGateway(s, uid, audit_path=audit), FakeKB()),
+                                 checkpointer=MemorySaver())
+        graph.invoke({"messages": [HumanMessage("How fast am I debt-free if I add $200 a month?")],
+                      "tool_rounds": 0}, {"configurable": {"thread_id": "t1"}})
+        answer = graph.get_state({"configurable": {"thread_id": "t1"}}).values["messages"][-1].content
+
+    purposes = [json.loads(l)["purpose"] for l in audit.read_text().splitlines()] if audit.exists() else []
+    assert "debt_plan" in purposes, answer
+    numbers = _amounts(answer)
+    def interest_quoted(s):
+        total = expected[s].total_interest_cents
+        saved = expected[f"baseline_{s}"].total_interest_cents - total
+        return any(abs(n - cents / 100) <= 1 for n in numbers for cents in (total, saved))
+
+    def time_quoted(s):
+        free = expected[s].debt_free
+        return expected[s].months in numbers or f"{free:%B %Y}" in answer or f"{free:%Y-%m}" in answer
+
+    matched = [s for s in ("avalanche", "snowball") if time_quoted(s) and interest_quoted(s)]
+    assert matched, answer

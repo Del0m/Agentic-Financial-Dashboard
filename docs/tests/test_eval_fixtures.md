@@ -91,9 +91,15 @@ Run them from `backend/`:
 
 ## `test_committed_scenarios_load`
 
-**What it does:** Loads every file in `eval/scenarios/` and expects 5.
+**What it does:** Loads every file in `eval/scenarios/` and expects 6.
 
 **Why it's there:** It catches a broken committed scenario in the normal test run, before anyone spends minutes of model time on an eval.
+
+## `test_debt_plan_scenario_matches_planner`
+
+**What it does:** Seeds the `debt-plan-extra-200` scenario's user, runs `payoff.compare` with $200 extra, and checks the scenario's two facts are the avalanche plan's months (exact) and total interest (within $1).
+
+**Why it's there:** The scenario's expected answer comes from the planner, never from hand arithmetic (TPC-32). If the planner changes, this fails and the scenario has to be regenerated, instead of the eval quietly scoring correct answers as wrong.
 
 ## Not covered
 
