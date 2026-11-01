@@ -98,3 +98,11 @@ def test_compare_baselines_and_extra_never_hurts():
         assert plans[s] == simulate(debts, 20000, s, start=START)
         assert plans[s].months <= plans[f"baseline_{s}"].months
         assert plans[s].total_interest_cents <= plans[f"baseline_{s}"].total_interest_cents
+
+
+# review: a debt with nothing owed is skipped before any reason is checked, so a paid-off card or mortgage with
+# missing details isn't "left out of the plan"
+def test_nothing_owed_never_excluded():
+    plan = simulate([D(1, None, 0, 25), D(2, None, -50, None), D(3, 4, 0, 1200, kind="mortgage"), D(4, 18, 800, 40)],
+                    0, "avalanche", start=START)
+    assert plan.excluded == () and [p.key for p in plan.order] == [4]

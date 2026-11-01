@@ -203,10 +203,10 @@ Run them from `backend/`:
 
 ## `test_live_debt_free_with_extra`
 
-**What it does:** Seeds the `debt-highest-apr` scenario's user (a $3,200 card at 24.99% and an $18,400 student loan at 5.5%) and asks the real chat graph "How fast am I debt-free if I add $200 a month?". It requires a `debt_plan` call in the audit log. The answer must state, for avalanche or for snowball, the planner's time (months, or the debt-free month by name) and its interest (total, or what the extra saves) within $1. It's skipped unless Ollama is running with `OLLAMA_MODEL` pulled.
+**What it does:** Seeds the `debt-highest-apr` scenario's user (a $3,200 card at 24.99% and an $18,400 student loan at 5.5%) and asks the real chat graph "How fast am I debt-free if I add $200 a month?". It requires a `debt_plan` call in the audit log. The answer must state, for avalanche or for snowball, the planner's months to debt-free and its total interest within $1. Those are the same two facts the `debt-plan-extra-200` eval scenario scores. It's skipped unless Ollama is running with `OLLAMA_MODEL` pulled.
 
 **Why it's there:** It's the TPC-32 done-when: chat gives the same months and interest as `payoff.py`. On 2026-11-01 with `qwen2.5:14b`:
-- The first run said 49 months, November 2030 and $4,168.74 saved, all the planner's figures. It failed only because the check accepted just the total interest.
-- The next runs said "by November 2030" and "$4,168.74", which led to accepting the debt-free month.
-- It then passed 3 out of 3 runs.
+- Before the tool description asked for them, the model often gave "by November 2030" and "$4,168.74 saved". Those are the planner's figures, but not the two the eval scores.
+- For a while the check accepted those forms. The final review found that left the live check and the eval disagreeing.
+- The description now says to give the months and the total interest. With the strict check back, it passed 3 out of 3 runs.
 

@@ -32,7 +32,7 @@ function Column({ plan, base, extraCents, cheapest }: {
       {plan.months === null ? (
         plan.never.map((d) => (
           <p key={d.account_id} className="text-sm text-red-600 dark:text-red-400">
-            {d.name}&apos;s minimum payment doesn&apos;t cover its interest.
+            {d.name} isn&apos;t paid off within 50 years at this pace.
           </p>
         ))
       ) : (
@@ -50,7 +50,7 @@ function Column({ plan, base, extraCents, cheapest }: {
           {extraCents > 0 && base.months !== null && (
             <p className="text-sm text-neutral-600 dark:text-neutral-300">
               +{formatCents(extraCents).replace(/\.00$/, "")}/mo: {base.months - plan.months} months sooner,{" "}
-              {formatCents(base.total_interest_cents - plan.total_interest_cents)} less interest
+              {formatCents((base.total_interest_cents ?? 0) - (plan.total_interest_cents ?? 0))} less interest
             </p>
           )}
         </>
@@ -59,7 +59,10 @@ function Column({ plan, base, extraCents, cheapest }: {
   );
 }
 
-export default function DebtPlanCompare({ fetchPlan = debtPlan }: { fetchPlan?: typeof debtPlan }) {
+// debtsKey changes when the dashboard's debts do (a new link, a sync), so the plan is asked for again
+export default function DebtPlanCompare({ debtsKey = "", fetchPlan = debtPlan }: {
+  debtsKey?: string; fetchPlan?: typeof debtPlan;
+}) {
   const [dollars, setDollars] = useState("0");
   const [result, setResult] = useState<{ extraCents: number; plan: DebtPlan } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,11 +78,13 @@ export default function DebtPlanCompare({ fetchPlan = debtPlan }: { fetchPlan?: 
       );
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [dollars, fetchPlan]);
+  }, [dollars, debtsKey, fetchPlan]);
 
   const plan = result?.plan;
   const planned = plan && !(plan.avalanche.months === 0 && plan.avalanche.order.length === 0);
-  const [a, s] = plan ? [plan.avalanche.total_interest_cents, plan.snowball.total_interest_cents] : [0, 0];
+  // a never plan has no total, so it's never the cheaper one
+  const a = plan?.avalanche.total_interest_cents ?? Infinity;
+  const s = plan?.snowball.total_interest_cents ?? Infinity;
 
   return (
     <div className="space-y-3">
@@ -98,9 +103,9 @@ export default function DebtPlanCompare({ fetchPlan = debtPlan }: { fetchPlan?: 
           {planned && (
             <div className="flex flex-col gap-3 sm:flex-row">
               <Column plan={plan.avalanche} base={plan.baseline.avalanche} extraCents={result.extraCents}
-                cheapest={plan.avalanche.months !== null && a < s} />
+                cheapest={a < s} />
               <Column plan={plan.snowball} base={plan.baseline.snowball} extraCents={result.extraCents}
-                cheapest={plan.snowball.months !== null && s < a} />
+                cheapest={s < a} />
             </div>
           )}
           {plan.excluded.length > 0 && (

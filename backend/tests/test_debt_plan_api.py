@@ -76,5 +76,5 @@ def test_excluded_named(client, db):
 def test_never_debt_named(client, db):
     seed_debts(db, ("Old Card", 1000000, {"kind": "credit", "apr": 30.0, "min_payment_cents": 10000}))
     body = client.post("/debt-plan", json={"extra_monthly_cents": 0}).json()
-    assert body["avalanche"]["months"] is None
+    assert (body["avalanche"]["months"], body["avalanche"]["total_interest_cents"]) == (None, None)
     assert [(n["name"], n["account_id"] > 0) for n in body["avalanche"]["never"]] == [("Old Card", True)]

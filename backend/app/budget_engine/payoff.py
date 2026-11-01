@@ -65,10 +65,12 @@ def simulate(debts: Iterable[Debt], extra_monthly_cents: int, strategy: Strategy
              include_mortgage: bool = False) -> Plan:
     included, excluded = [], []
     for d in debts:
+        if d.balance_cents <= 0:   # nothing owed (or a credit balance): nothing to plan, whatever's missing
+            continue
         reason = _excluded(d, include_mortgage)
         if reason:
             excluded.append((d.key, reason))
-        elif d.balance_cents > 0:  # nothing owed (or a credit balance): nothing to plan
+        else:
             included.append(d)
 
     balance = {d.key: d.balance_cents for d in included}

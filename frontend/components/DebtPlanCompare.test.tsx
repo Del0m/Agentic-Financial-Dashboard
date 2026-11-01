@@ -25,11 +25,11 @@ function response(extra: number, over: Partial<DebtPlan> = {}): DebtPlan {
 }
 
 // renders, then lets the first (mount) request resolve
-async function draw(fetchPlan = vi.fn(async (extra: number) => response(extra))) {
+async function draw(fetchPlan = vi.fn(async (extra: number) => response(extra)), debtsKey = "1:320000") {
   vi.useFakeTimers();
-  render(<DebtPlanCompare fetchPlan={fetchPlan} />);
+  const view = render(<DebtPlanCompare fetchPlan={fetchPlan} debtsKey={debtsKey} />);
   await act(async () => { await vi.advanceTimersByTimeAsync(300); });
-  return fetchPlan;
+  return Object.assign(fetchPlan, { view });
 }
 
 async function typeExtra(value: string) {
@@ -86,7 +86,9 @@ describe("DebtPlanCompare", () => {
       excluded: [{ account_id: 2, name: "Store Card", reason: "no_apr" }],
     })));
     expect(screen.getByText("Store Card: no APR on file")).toBeTruthy();
-    expect(screen.getAllByText("Platinum Card's minimum payment doesn't cover its interest.")).toHaveLength(2);
+    // review: a long loan can outlast 600 months with its minimum covering the interest, so the message says only
+    // what the plan knows
+    expect(screen.getAllByText("Platinum Card isn't paid off within 50 years at this pace.")).toHaveLength(2);
   });
 
   test("all debts excluded shows only the excluded list", async () => {
@@ -99,5 +101,15 @@ describe("DebtPlanCompare", () => {
     expect(screen.getByText("Store Card: no APR on file")).toBeTruthy();
     expect(screen.queryByText("Avalanche")).toBeNull();
     expect(screen.queryByText(/debt-free/i)).toBeNull();
+  });
+
+  // review: linking a bank or a sync changes the debts under a card that's already on screen
+  test("refetches when the dashboard's debts change, keeping the extra", async () => {
+    const fetchPlan = await draw();
+    await typeExtra("200");
+    fetchPlan.view.rerender(<DebtPlanCompare fetchPlan={fetchPlan} debtsKey="1:320000|2:1840000" />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+    expect(fetchPlan.mock.calls.map(([cents]) => cents)).toEqual([0, 20000, 20000]);
+    expect((screen.getByLabelText("Extra per month") as HTMLInputElement).value).toBe("200");
   });
 });

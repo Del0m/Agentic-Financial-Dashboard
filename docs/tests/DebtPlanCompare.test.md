@@ -46,12 +46,18 @@ npm test -- components/DebtPlanCompare.test.tsx
 
 ## `lists excluded debts and a never plan`
 
-**What it does:** A store card with no APR is listed as "Store Card: no APR on file". When the card is never paid off under either strategy, both columns say "Platinum Card's minimum payment doesn't cover its interest."
+**What it does:** A store card with no APR is listed as "Store Card: no APR on file". When the card is never paid off under either strategy, both columns say "Platinum Card isn't paid off within 50 years at this pace."
 
-**Why it's there:** A plan must say which debts it leaves out and which can't be paid off. Otherwise it reads as an exact answer when it isn't. The never message uses the name the API now returns with each never debt. Such a debt isn't in the payoff order, so it has no name there.
+**Why it's there:** A plan must say which debts it leaves out and which can't be paid off. Otherwise it reads as an exact answer when it isn't. The never message uses the name the API now returns with each never debt. Such a debt isn't in the payoff order, so it has no name there. The message says only what the plan knows. The first wording, "its minimum doesn't cover its interest", was false for a long loan whose minimum covers the interest but takes more than 600 months (final review).
 
 ## `all debts excluded shows only the excluded list`
 
 **What it does:** When every debt is excluded (0 months, empty order), neither column renders and no "debt-free" text appears. Only the excluded list shows.
 
 **Why it's there:** It's plan Review Focus 4: "0 months" would read as "debt-free now" to a user whose debts simply can't be planned.
+
+## `refetches when the dashboard's debts change, keeping the extra`
+
+**What it does:** After "200" is typed, the dashboard re-renders the card with a new `debtsKey` (a second debt appeared). The card asks for the plan again with 20,000 cents, and the input still reads 200.
+
+**Why it's there:** Found in the final review. Linking a bank, a retry or a sync reloads the dashboard's debts under a card that's already on screen. The plan stayed stale, showing one debt while the table showed two, until the user typed again.

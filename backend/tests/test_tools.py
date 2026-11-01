@@ -271,9 +271,8 @@ def _amounts(text: str) -> list[float]:
     return [float(n.replace(",", "")) for n in re.findall(r"\d[\d,]*(?:\.\d+)?", text)]
 
 
-# the ticket's done-when: chat's answer has the planner's months and interest (within $1) for the method it reports.
-# live, qwen2.5:14b gives the time as a month count or the debt-free month, and the interest as the total or what the
-# extra saves; every one of those is the planner's own figure
+# the ticket's done-when: chat's answer has the planner's months and total interest (within $1) for the method it
+# reports, the same two facts the debt-plan-extra-200 eval scenario scores
 @pytest.mark.skipif(not ollama_has(config.OLLAMA_MODEL), reason="needs ollama running with OLLAMA_MODEL pulled")
 def test_live_debt_free_with_extra(db, tmp_path):
     from eval.fixtures import load_scenario, seed
@@ -296,14 +295,6 @@ def test_live_debt_free_with_extra(db, tmp_path):
     purposes = [json.loads(l)["purpose"] for l in audit.read_text().splitlines()] if audit.exists() else []
     assert "debt_plan" in purposes, answer
     numbers = _amounts(answer)
-    def interest_quoted(s):
-        total = expected[s].total_interest_cents
-        saved = expected[f"baseline_{s}"].total_interest_cents - total
-        return any(abs(n - cents / 100) <= 1 for n in numbers for cents in (total, saved))
-
-    def time_quoted(s):
-        free = expected[s].debt_free
-        return expected[s].months in numbers or f"{free:%B %Y}" in answer or f"{free:%Y-%m}" in answer
-
-    matched = [s for s in ("avalanche", "snowball") if time_quoted(s) and interest_quoted(s)]
+    matched = [s for s in ("avalanche", "snowball") if expected[s].months in numbers
+               and any(abs(n - expected[s].total_interest_cents / 100) <= 1 for n in numbers)]
     assert matched, answer

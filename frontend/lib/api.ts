@@ -174,7 +174,7 @@ export type Plan = {
   extra_monthly_cents: number;
   months: number | null;            // null when a debt is never paid off
   debt_free: string | null;
-  total_interest_cents: number;
+  total_interest_cents: number | null;   // null when never: there's no total to show
   order: PlanPayoff[];
   never: { account_id: number; name: string }[];   // debts never paid off: not in order
 };

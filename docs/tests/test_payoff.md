@@ -100,3 +100,9 @@ Interest is $1.50 on A and $10.15 on B, $11.65 in all.
 **What it does:** `compare` returns each strategy with the extra, equal to `simulate`, and each baseline with $0 extra. With $200 extra, neither strategy takes longer or costs more interest than its baseline.
 
 **Why it's there:** The API, the gateway and the dashboard all report "what the extra changes" from these baselines.
+
+## `test_nothing_owed_never_excluded`
+
+**What it does:** A $0 card with no APR, an overpaid card with neither APR nor minimum, and a paid-off mortgage are skipped without an excluded entry. Only the $800 card is planned.
+
+**Why it's there:** Found in the final review. Exclusion used to be checked before the balance, so a paid-off debt with a missing detail showed as "left out of the plan" on the card and in chat.

@@ -45,7 +45,7 @@ class PlanOut(BaseModel):
     extra_monthly_cents: int
     months: Optional[int]
     debt_free: Optional[Date]
-    total_interest_cents: int
+    total_interest_cents: Optional[int]   # None when never: 600 months of unpaid interest isn't a total
     order: list[PayoffOut]
     never: list[DebtRef]          # a debt never paid off isn't in order, so it carries its name here
 
@@ -71,7 +71,8 @@ class DebtPlanResponse(BaseModel):
 
 def _plan(plan: Plan, names: dict[int, str]) -> PlanOut:
     return PlanOut(strategy=plan.strategy, extra_monthly_cents=plan.extra_monthly_cents, months=plan.months,
-                   debt_free=plan.debt_free, total_interest_cents=plan.total_interest_cents,
+                   debt_free=plan.debt_free,
+                   total_interest_cents=plan.total_interest_cents if plan.months is not None else None,
                    order=[PayoffOut(account_id=p.key, name=p.name, month=p.month, date=p.date,
                                     interest_cents=p.interest_cents) for p in plan.order],
                    never=[DebtRef(account_id=key, name=names[key]) for key in plan.never])

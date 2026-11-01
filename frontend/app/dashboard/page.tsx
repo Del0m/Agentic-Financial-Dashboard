@@ -265,7 +265,8 @@ export default function DashboardPage() {
           </Card>
           {data.debts.length > 0 && (
             <Card title="Paying off your debts">
-              <DebtPlanCompare />
+              <DebtPlanCompare debtsKey={data.debts
+                .map((d) => `${d.account_id}:${d.balance_cents}:${d.apr}:${d.min_payment_cents}`).join("|")} />
             </Card>
           )}
           <Card title="Accounts">

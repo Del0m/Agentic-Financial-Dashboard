@@ -235,9 +235,9 @@ The budget graph's `diagnose` step asks the LLM why one category is overspent. T
 
 ## `test_debt_plan_never`
 
-**What it does:** A $10,000 card at 30% with a $100 minimum and no extra never gets paid off. Its plan has no months, no debt-free month and no `difference`, and its `never` list names the card, scrubbed.
+**What it does:** A $10,000 card at 30% with a $100 minimum and no extra never gets paid off. Its plan has no months, no debt-free month, no total interest and no `difference` (its `without_extra` is all `None` too), and its `never` list names the card, scrubbed.
 
-**Why it's there:** A plan that never ends has no "sooner" to report. The model must be told which debt can't be paid off, without the name leaking. `never` is per plan because which debts outlast 600 months can depend on the strategy.
+**Why it's there:** A plan that never ends has no "sooner" to report, and no total either. Interest summed over 600 months of an unpaid debt came to $16.3 billion here, which the model was told to quote exactly (final review). The model must be told which debt can't be paid off, without the name leaking. `never` is per plan because which debts outlast 600 months can depend on the strategy.
 
 ## `test_debt_plan_audited_with_params`
 
@@ -250,3 +250,15 @@ The budget graph's `diagnose` step asks the LLM why one category is overspent. T
 **What it does:** `strategy="cheapest"` raises `ValueError`.
 
 **Why it's there:** The chat tool validates first, so this is the gateway's own guard against a caller passing a bad strategy.
+
+## `test_debt_plan_nothing_planned`
+
+**What it does:** A user's only debt has no APR. The payload has no plans, the excluded store card, and the note "None of the debts could be planned; see excluded."
+
+**Why it's there:** Found in the final review. A plan of "0 months" reads as "already debt-free" to a model, which is wrong for a user whose debts just lack an APR on file. Plaid often leaves one out for loans.
+
+## `test_debt_plan_no_debts`
+
+**What it does:** A user with no debts gets no plans, no excluded debts, and the note "No debts with a balance on file."
+
+**Why it's there:** The same rule when there's nothing to plan at all: the model is told so instead of getting empty plans.

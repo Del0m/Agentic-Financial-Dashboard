@@ -135,15 +135,17 @@ class PrivacyGateway:
         plans = compare(debts, extra_monthly_cents, start=start)
         names = {d.key: scrub_account_name(d.name) for d in debts}
         month = lambda d: d.strftime("%Y-%m") if d else None
+        # an unpaid debt's interest summed over 600 months runs to billions: there's no total to quote
+        interest = lambda p: _dollars(p.total_interest_cents) if p.months is not None else None
 
         def plan(p: Plan, base: Plan) -> dict:
             ends = p.months is not None and base.months is not None
             return {
                 "strategy": p.strategy, "months": p.months, "debt_free": month(p.debt_free),
-                "total_interest": _dollars(p.total_interest_cents),
+                "total_interest": interest(p),
                 "order": [{"name": names[o.key], "paid_off": month(o.date), "interest": _dollars(o.interest_cents)}
                           for o in p.order],
-                "without_extra": {"months": base.months, "total_interest": _dollars(base.total_interest_cents)},
+                "without_extra": {"months": base.months, "total_interest": interest(base)},
                 "difference": {"months_sooner": base.months - p.months,
                                "interest_saved": _dollars(base.total_interest_cents - p.total_interest_cents)}
                 if ends else None,
@@ -152,12 +154,18 @@ class PrivacyGateway:
             }
 
         first = plans["avalanche"]       # what's left out doesn't depend on the strategy
-        return {
+        out = {
             "extra_monthly": _dollars(extra_monthly_cents), "start": month(start),
             "plans": [plan(plans[s], plans[f"baseline_{s}"]) for s in STRATEGIES if strategy in (None, s)],
             "excluded": [{"name": names[k], "reason": EXCLUDED_REASONS[r]} for k, r in first.excluded],
             "assumptions": PLAN_ASSUMPTIONS,
         }
+        # nothing planned reads as "debt-free in 0 months" to a model, so it gets no plan and says why
+        if not first.order and not first.never:
+            out["plans"] = []
+            out["note"] = ("None of the debts could be planned; see excluded." if first.excluded
+                           else "No debts with a balance on file.")
+        return out
 
     # minimized per question: totals by category, plus one category's rows only when asked for
     def _spending(self, start: Optional[date], end: Optional[date], category: Optional[str]) -> dict:

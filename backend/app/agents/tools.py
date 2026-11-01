@@ -122,6 +122,7 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
                         "snowball: smallest balance first), optionally with an extra amount per month. Returns "
                         "months to debt-free, total interest, payoff dates and what the extra saves. Use for how "
                         "long until debt-free, what paying more changes, or avalanche vs snowball. Quote its "
-                        "numbers exactly.",
+                        "numbers exactly: give the months to debt-free and the total interest, then what the "
+                        "extra saves.",
         ),
     ]

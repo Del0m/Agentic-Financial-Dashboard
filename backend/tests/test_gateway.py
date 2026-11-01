@@ -475,6 +475,8 @@ def test_debt_plan_never(db, tmp_path):
     _, d, _ = plan_context(db, tmp_path, extra_monthly_cents=0, strategy="avalanche")
     [plan] = d["plans"]
     assert (plan["months"], plan["debt_free"], plan["difference"]) == (None, None, None)
+    # review: the interest summed over 600 months of an unpaid debt is billions, not an answer to quote
+    assert plan["total_interest"] is None and plan["without_extra"] == {"months": None, "total_interest": None}
     assert plan["never"] == [scrub_account_name("Jane Doe's Card")] and "Jane" not in json.dumps(d)
 
 
@@ -489,3 +491,23 @@ def test_debt_plan_unknown_strategy_raises(db, tmp_path):
     seed_debts(db)
     with pytest.raises(ValueError, match="strategy"):
         plan_context(db, tmp_path, extra_monthly_cents=0, strategy="cheapest")
+
+
+# review: when every debt is left out, the model gets no plan and a note, never "debt-free in 0 months"
+def test_debt_plan_nothing_planned(db, tmp_path):
+    with db() as s:
+        add_account(s, add_user(s, "u-1", "a@example.com"), "Store Card", type_="credit", balance=50000,
+                    liability={"kind": "credit", "apr": None, "min_payment_cents": 2500})
+        s.commit()
+    _, d, _ = plan_context(db, tmp_path, extra_monthly_cents=20000)
+    assert d["plans"] == [] and d["excluded"] == [{"name": "Store Card", "reason": "no APR on file"}]
+    assert d["note"] == "None of the debts could be planned; see excluded."
+
+
+def test_debt_plan_no_debts(db, tmp_path):
+    with db() as s:
+        add_user(s, "u-1", "a@example.com")
+        s.commit()
+    _, d, _ = plan_context(db, tmp_path, extra_monthly_cents=0)
+    assert (d["plans"], d["excluded"], d["note"]) == ([], [], "No debts with a balance on file.")
+
