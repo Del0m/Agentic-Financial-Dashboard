@@ -1,0 +1,15 @@
+# dev mode on a mac (docs/superpowers/specs/2026-11-01-docker-dev-design.md): the repo is mounted into both
+# containers for live reload, and ollama stays on the mac for its gpu
+services:
+  backend:
+    build: ./backend
+    working_dir: /app/backend
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+    env_file: .env
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+
