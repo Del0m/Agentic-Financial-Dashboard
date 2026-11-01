@@ -8,10 +8,11 @@ services:
     env_file: .env
     environment:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
+      TZ: America/New_York           # the app's "today" (date.today()) must be the mac's, not utc's
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"        # the same address the host uvicorn binds, so the two clash instead of sharing
 
   frontend:
     build: ./frontend

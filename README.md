@@ -34,7 +34,7 @@ Linking returns immediately after saving the bank connection; its first full syn
 The backend and the frontend can also run as two containers on one Docker network, in dev mode with live reload. Ollama stays on the Mac, because Docker can't use the Apple GPU and `qwen2.5:14b` would crawl on the CPU.
 
 1. Start Ollama on the Mac (`ollama serve`, with the models pulled) and Docker Desktop.
-2. Stop the API and web servers from "Run locally" if they're running. They hold ports 8000 and 3000, and `docker compose up` fails with "port is already allocated" otherwise. Don't run both at once: they share `backend/dev.db`, and SQLite locking across the Docker mount isn't reliable.
+2. Stop the API and web servers from "Run locally" if they're running. They hold ports 8000 and 3000, and `docker compose up` fails with "Ports are not available ... address already in use" otherwise. Don't run both at once: they share `backend/dev.db`, and SQLite locking across the Docker mount isn't reliable.
 3. From the repo root:
 
    ```bash
@@ -52,7 +52,7 @@ docker compose exec backend python scripts/seed_budget_user.py --profile overspe
 docker compose exec backend python -m pytest -q -k "not live and not sandbox"
 ```
 
-After changing `backend/requirements.txt`, run `docker compose build backend`. After changing `frontend/package-lock.json`, run `docker compose build frontend && docker compose down -v`. The container's `node_modules` lives in a volume (the Mac's native packages don't run in Linux), and `down -v` drops it so the new packages show up.
+After changing `backend/requirements.txt`, run `docker compose up -d --build backend` (a plain `build` leaves the old container running). After changing `frontend/package-lock.json`, run `docker compose build frontend && docker compose down -v`. The container's `node_modules` lives in a volume (the Mac's native packages don't run in Linux), and `down -v` drops it so the new packages show up.
 
 ## Knowledge base
 
