@@ -13,3 +13,22 @@ services:
     ports:
       - "8000:8000"
 
+  frontend:
+    build: ./frontend
+    working_dir: /app/frontend
+    command: npm run dev -- -H 0.0.0.0
+    environment:
+      BACKEND_URL: http://backend:8000
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - .:/app
+      - frontend_node_modules:/app/frontend/node_modules
+      - frontend_next:/app/frontend/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  frontend_node_modules:
+  frontend_next:
