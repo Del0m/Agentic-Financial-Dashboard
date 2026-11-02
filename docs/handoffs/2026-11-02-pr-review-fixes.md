@@ -1,6 +1,6 @@
 # PR review fixes
 
-Changes cover the review of PRs #18–22 across the branches listed below. No pushes or development database migrations were performed.
+Changes cover the review of PRs #18–22 across the branches listed below. No development database migrations were performed.
 
 ## Runtime changes
 
@@ -25,4 +25,8 @@ Changes cover the review of PRs #18–22 across the branches listed below. No pu
 
 Tests run in isolated temporary source copies with a clean environment, not against the development database. Regression coverage includes concurrent goal processes, expired ownership, API restart recovery, missing card obligations, privacy failures, payoff overflow, synthetic-user boundaries, dotenv key preservation, and quiet history months. Live-model and Plaid sandbox tests are excluded from these runs.
 
-Final results: main checkout 824 passed, Docker checkout 709 passed, history checkout 643 passed.
+Final per-branch results: #19 676 passed, #18 710 passed, #20 790 passed, #21 825 passed, #22 643 passed.
+
+## Integration rehearsal
+
+The fixed branches were combined in a disposable checkout: 863 tests passed, with 22 live/sandbox tests deselected. Two conflicts require retaining both fixes: use the goal branch's `delete_user` guard (bank-link plus active-run protection) when combining Docker and goals, and retain both sets of architecture decision rows when merging #22. No PR was merged into the real main branch during this rehearsal.
