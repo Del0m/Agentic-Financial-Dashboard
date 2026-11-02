@@ -102,7 +102,8 @@ def gather_month(session: Session, period_id: int) -> dict:
         accepted[alert.category] = alert.proposed_limit_cents       # the latest answer wins
 
     new_start = end + timedelta(days=1)
-    history = load_txns(session, period.user_id, add_months(new_start, -HISTORY_MONTHS), end)
+    # a month further back than it fits, so the window's edge doesn't look like the start of the history
+    history = load_txns(session, period.user_id, add_months(new_start, -HISTORY_MONTHS - 1), end)
     fit = fit_budget(history, new_start)
     style, targets = user_style(session, period.user_id)
     return {

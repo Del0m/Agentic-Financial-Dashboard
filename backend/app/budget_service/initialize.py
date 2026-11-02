@@ -69,7 +69,8 @@ def initialize_budget(session: Session, user_id: str, today: date,
     if existing is not None:
         return existing
     current = month_start(today)
-    txns = load_txns(session, user_id, add_months(current, -HISTORY_MONTHS), current - timedelta(days=1))
+    # a month further back than it fits, so the window's edge doesn't look like the start of the history
+    txns = load_txns(session, user_id, add_months(current, -HISTORY_MONTHS - 1), current - timedelta(days=1))
     fit = fit_budget(txns, today, fixed)
     if not fit.lines:
         return None

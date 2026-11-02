@@ -66,8 +66,8 @@ def run_profile(profile: Profile) -> dict:
                       for ln in sorted(period.lines, key=lambda ln: ln.category) if ln.group in SCORED],
             "skipped": period.fit_json["skipped"],
         }
-        # the same window initialize_budget fits (read at call time, so it follows HISTORY_MONTHS)
-        history = load_txns(s, uid, add_months(current, -fit.HISTORY_MONTHS), current - timedelta(days=1))
+        # the same history initialize_budget loads (read at call time, so it follows HISTORY_MONTHS)
+        history = load_txns(s, uid, add_months(current, -fit.HISTORY_MONTHS - 1), current - timedelta(days=1))
         actuals = category_totals(spending(load_txns(s, uid, current, month_end(current))),
                                   current, month_end(current))
     result = {"id": profile.id, "description": profile.description, "budget": budget}
