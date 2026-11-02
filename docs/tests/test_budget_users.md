@@ -161,3 +161,21 @@ Run them from `backend/`:
 **What it does:** A seeded planted user's transfers out all carry Plaid's detailed category `TRANSFER_OUT_SAVINGS`.
 
 **Why it's there:** The saving line (TPC-22) tracks that category, so the seeded and simulated users get a saving line like a real bank's data would give them.
+
+## `test_goal_user_seeds_debts_and_savings`
+
+**What it does:** Seeding `goals-card-24` gives the user a $3,200 card at 24.99% ($95 minimum), an $18,400 student loan at 5.5% ($210 minimum) and a $1,000 savings account.
+
+**Why it's there:** This user is TPC-23's done-when, and the seeder couldn't create liabilities or extra accounts before. The debts match the `debt-highest-apr` chat scenario.
+
+## `test_goal_user_has_a_surplus`
+
+**What it does:** The user's measured monthly surplus is between $300 and $1,500.
+
+**Why it's there:** A user with nothing left would stop the graph before it ever asks the model, so the done-when couldn't test anything.
+
+## `test_goal_user_not_in_the_accuracy_eval`
+
+**What it does:** `goals-card-24` isn't in `PROFILES` or `PLANTED`.
+
+**Why it's there:** Those lists drive the budget accuracy eval and the planted-overspend runs, whose results shouldn't change because of a goal user.

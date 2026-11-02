@@ -1,10 +1,13 @@
 from datetime import date
 
 from app.budget_engine.fit import fit_budget
+from app.budget_engine.goals import monthly_surplus
 from app.budget_engine.pace import BudgetLine, evaluate
 from app.budget_engine.txns import Txn, month_start
-from app.db.models import Transaction, User
-from eval.budget_users import PLANTED, PROFILES, default_start, seed_profile, transactions
+from app.budget_service.debts import load_debts
+from app.budget_service.initialize import load_txns
+from app.db.models import Account, Transaction, User
+from eval.budget_users import GOAL_USERS, PLANTED, PROFILES, default_start, seed_profile, transactions
 
 
 def profile(pid):
@@ -167,3 +170,33 @@ def test_planted_savings_detailed(db):
     _, rows, _ = seeded_rows(db, "overspend-one-time")
     transfers = {r.pf_category_detailed for r in rows if r.pf_category_primary == "TRANSFER_OUT"}
     assert transfers == {"TRANSFER_OUT_SAVINGS"}
+
+
+# --- the goal graph's synthetic user (tpc-23) ---
+
+def goal_user():
+    return next(p for p in GOAL_USERS if p.id == "goals-card-24")
+
+
+def test_goal_user_seeds_debts_and_savings(db):
+    with db() as s:
+        uid = seed_profile(s, goal_user())
+        s.commit()
+        debts = load_debts(s, uid)
+        savings_account = s.query(Account).filter_by(user_id=uid, subtype="savings").one()
+    assert [(d.name, d.apr, d.balance_cents, d.min_payment_cents) for d in debts] == [
+        ("Platinum Card", 24.99, 320000, 9500), ("Student Loan", 5.5, 1840000, 21000)]
+    assert savings_account.current_balance_cents == 100000
+
+
+def test_goal_user_has_a_surplus(db):
+    p = goal_user()
+    with db() as s:
+        uid = seed_profile(s, p)
+        s.commit()
+        surplus = monthly_surplus(load_txns(s, uid, p.start, p.today), p.today)
+    assert 30000 < surplus < 150000, surplus
+
+
+def test_goal_user_not_in_the_accuracy_eval():
+    assert "goals-card-24" not in {p.id for p in PROFILES + PLANTED}
