@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Optional
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -24,6 +25,19 @@ def stale_proposals(session: Session, user_id: str, month: date) -> list[int]:
         .order_by(Goal.id)))
 
 
+# the goal runs paused on these goals are over: they become expired, except the run named by keep. the caller commits.
+# returns the runs' ids, for a caller that can reach their checkpoints
+def expire_paused_runs(session: Session, goals: list[Goal], *, keep: Optional[int] = None) -> list[int]:
+    runs = session.scalars(select(AgentRun).where(
+        AgentRun.id.in_({g.run_id for g in goals if g.run_id not in (None, keep)}),
+        AgentRun.graph == "goals", AgentRun.status == "awaiting_user")).all()
+    for run in runs:
+        waited = sorted(g.id for g in goals if g.run_id == run.id)
+        run.status, run.finished_at = "expired", utcnow()
+        run.summary_json = {**(run.summary_json or {}), "expired_goal_ids": waited}
+    return sorted(run.id for run in runs)
+
+
 # marks the goals superseded and the goal runs paused on them expired; the caller commits. the status is checked
 # again here, in the caller's own transaction: a user who answered in the meantime keeps their answer. returns the
 # ids actually expired
@@ -33,11 +47,5 @@ def expire_goal_proposals(session: Session, goal_ids: list[int]) -> list[int]:
     goals = session.scalars(select(Goal).where(Goal.id.in_(goal_ids), Goal.status == "proposed")).all()
     for goal in goals:
         goal.status = "superseded"
-    runs = session.scalars(select(AgentRun).where(
-        AgentRun.id.in_({g.run_id for g in goals if g.run_id is not None}),
-        AgentRun.graph == "goals", AgentRun.status == "awaiting_user")).all()
-    for run in runs:
-        waited = sorted(g.id for g in goals if g.run_id == run.id)
-        run.status, run.finished_at = "expired", utcnow()
-        run.summary_json = {**(run.summary_json or {}), "expired_goal_ids": waited}
+    expire_paused_runs(session, goals)
     return sorted(g.id for g in goals)
