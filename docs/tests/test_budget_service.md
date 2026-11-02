@@ -197,13 +197,31 @@ Uses the `db` fixture from `conftest.py` (see [test_plaid.md](test_plaid.md#shar
 
 ## Goals in the first budget (TPC-25)
 
-`paid_user(s)` adds a user with `history` and a $4,200 paycheck in July, August and September, so the fitted lines are rent $1,500, food $472.50 and travel $262.50, and free is $1,965 before any goal. `add_goal(s, status, start, run_status)` adds a $583 debt payoff through Jun 1 2027, by default accepted and starting Oct 1 2026, optionally with a `goals` run in the given status.
+`paid_user(s, income)` adds a user with `history` and a paycheck ($4,200 by default) in July, August and September, so the fitted lines are rent $1,500, food $472.50 and travel $262.50, and free is $1,965 before any goal. `add_goal(s, status, start, run_status, cents)` adds a debt payoff ($583 by default) through Jun 1 2027, by default accepted and starting Oct 1 2026, optionally with a `goals` run in the given status.
 
 ## `test_first_budget_includes_goal_already_started`
 
-**What it does:** An accepted goal starting in the first budget's month. Read back in a fresh session, the budget has a "Debt payoff" line in group `goal`, kind `fixed`, $583, `source="user"`, `fit_json` `{rule: "goal"}`. Free is $1,382 ($1,965 − $583), rent is unchanged, and the total is income.
+**What it does:** An accepted goal starting in the first budget's month. Read back in a fresh session, the budget has a "Debt payoff" line in group `goal`, kind `fixed`, $583, `source="user"`, `fit_json` `{rule: "goal"}`. Free is $1,382 ($1,965 − $583), rent is unchanged, the total is income, and no alert is written.
 
 **Why it's there:** With no period to close, the first budget is the only way this goal joins a budget in its start month.
+
+## `test_first_budget_goal_over_income_raises_alert`
+
+**What it does:** A $2,500 goal on top of $2,235 of lines, with $4,200 of income. Free is $0, rent is unchanged, and the total rises to $4,735. One alert on the new period has kind `over_income`, action `alert`, severity `medium`, status `pending_user`, no category or cause, and says the lines are $535 over income.
+
+**Why it's there:** The spec rejects the total rising silently. Close already raises this alert, and a goal in the first budget has to do the same.
+
+## `test_first_budget_without_goals_writes_no_alert`
+
+**What it does:** No goals, with $1,000 of income against $2,235 of lines. The total rises to $2,235, so `apply_style` does report the lines as over income, and no alert is written.
+
+**Why it's there:** Only a first budget with goal lines writes these alerts. A first budget without goals stays exactly as it was.
+
+## `test_first_budget_lost_race_writes_no_alert`
+
+**What it does:** Another run opened the month first, and this run's budget had an over-income goal. No alert is written, and one period remains with no new lines.
+
+**Why it's there:** The alert needs the period's id, so it comes after a flush inside the `try`. The flush is where a lost race now surfaces, and it must not leave an alert behind.
 
 ## `test_first_budget_leaves_out_goal_starting_later`
 

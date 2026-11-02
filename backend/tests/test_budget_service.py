@@ -414,25 +414,26 @@ LINES_CENTS = 150000 + 47250 + 26250        # history()'s rent, food and travel 
 INCOME = 420000
 
 
-def add_goal(s, status="accepted", start=OCT1, run_status=None):
+def add_goal(s, status="accepted", start=OCT1, run_status=None, cents=58300):
     run_id = None
     if run_status:
         run = AgentRun(user_id="u1", graph="goals", status=run_status)
         s.add(run)
         s.flush()
         run_id = run.id
-    goal = Goal(user_id="u1", run_id=run_id, kind="debt_payoff", priority=1, monthly_cents=58300, target_cents=349800,
-                target_date=date(2027, 6, 1), start_date=start, rationale="Because.", status=status)
+    goal = Goal(user_id="u1", run_id=run_id, kind="debt_payoff", priority=1, monthly_cents=cents,
+                target_cents=cents * 6, target_date=date(2027, 6, 1), start_date=start, rationale="Because.",
+                status=status)
     s.add(goal)
     s.flush()
     return goal
 
 
-def paid_user(s):
+def paid_user(s, income=INCOME):
     acct = user(s)
     history(s, acct)
     for m in (7, 8, 9):
-        add_txn(s, acct, -INCOME, "INCOME", merchant="Employer", day=date(2026, m, 15))
+        add_txn(s, acct, -income, "INCOME", merchant="Employer", day=date(2026, m, 15))
     return acct
 
 
@@ -452,6 +453,58 @@ def test_first_budget_includes_goal_already_started(db):
         assert lines["FREE"].limit_cents == 138200
         assert lines["RENT_AND_UTILITIES"].limit_cents == 150000
         assert p.total_cents == INCOME
+        assert s.query(Alert).count() == 0       # it fits, so there's nothing to tell the user
+
+
+# the total rises rather than cutting a line, and the user is told, as at close
+def test_first_budget_goal_over_income_raises_alert(db):
+    with db() as s:
+        paid_user(s)
+        add_goal(s, cents=250000)
+        s.commit()
+        pid = initialize_budget(s, "u1", TODAY).id
+    with db() as s:
+        p = s.get(BudgetPeriod, pid)
+        lines = {ln.category: ln for ln in p.lines}
+        assert (lines["GOAL_DEBT_PAYOFF"].limit_cents, lines["FREE"].limit_cents) == (250000, 0)
+        assert lines["RENT_AND_UTILITIES"].limit_cents == 150000
+        assert p.total_cents == LINES_CENTS + 250000 == 473500
+        [alert] = s.query(Alert).all()
+        assert (alert.user_id, alert.period_id, alert.kind, alert.category, alert.severity, alert.cause, alert.action,
+                alert.status) == ("u1", pid, "over_income", None, "medium", None, "alert", "pending_user")
+        assert alert.message == ("Your budget lines add up to $4,735.00, $535.00 more than your typical income of "
+                                 "$4,200.00.")
+
+
+# the style reports lines over income here too, but a first budget with no goals has never written that as an alert
+def test_first_budget_without_goals_writes_no_alert(db):
+    with db() as s:
+        paid_user(s, income=100000)
+        s.commit()
+        p = initialize_budget(s, "u1", TODAY)
+        assert p.total_cents == LINES_CENTS and p.income_cents == 100000
+    with db() as s:
+        assert s.query(Alert).count() == 0
+
+
+# another run opened the month first: the alert goes with the budget that lost
+def test_first_budget_lost_race_writes_no_alert(db, monkeypatch):
+    with db() as s:
+        paid_user(s)
+        add_goal(s, cents=250000)
+        s.add(period())
+        s.commit()
+        real, calls = initialize._latest_period, []
+
+        def racy(session, user_id):
+            calls.append(user_id)
+            return None if len(calls) == 1 else real(session, user_id)
+
+        monkeypatch.setattr(initialize, "_latest_period", racy)
+        initialize_budget(s, "u1", TODAY)
+    with db() as s:
+        assert s.query(Alert).count() == 0
+    assert counts(db) == (1, 0)
 
 
 def test_first_budget_leaves_out_goal_starting_later(db):

@@ -10,7 +10,7 @@ from app.budget_engine.fit import HISTORY_MONTHS, fit_budget
 from app.budget_engine.goals import budgeted_in, finished_before
 from app.budget_engine.groups import default_group, default_name
 from app.budget_engine.pace import BudgetLine as EngineLine
-from app.budget_engine.styles import StyleFact, apply_style
+from app.budget_engine.styles import apply_style, fact_message
 from app.budget_engine.txns import (EARLY_DAYS, FREE, GOAL_CATEGORIES, GOAL_DEBT_PAYOFF, GOAL_EMERGENCY_FUND,
                                     GOAL_SAVINGS, LOAN_PAYMENTS, SAVINGS, add_months, category_totals, month_end,
                                     net_of_goal, savings)
@@ -26,19 +26,6 @@ from app.db.models import AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, 
 # month twice
 
 SUMMARY_LINE_KEYS = ("category", "name", "group", "old_cents", "actual_cents", "new_cents", "rule")
-
-
-def _money(cents: int) -> str:
-    return f"${cents / 100:,.2f}"
-
-
-def fact_message(fact: StyleFact) -> str:
-    if fact.kind == "over_income":
-        gap = fact.lines_cents - fact.income_cents
-        return (f"Your budget lines add up to {_money(fact.lines_cents)}, {_money(gap)} more than your typical "
-                f"income of {_money(fact.income_cents)}.")
-    return (f"{fact.group.capitalize()} are {fact.lines_cents / fact.income_cents:.0%} of income, above the "
-            f"{fact.target_pct}% target.")
 
 
 # the oldest open period that ended before today; a month with no budget, or one already closed, has none

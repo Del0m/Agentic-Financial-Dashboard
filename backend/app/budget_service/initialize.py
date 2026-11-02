@@ -8,13 +8,13 @@ from sqlalchemy.orm import Session
 from app.budget_engine.goals import budgeted_in
 from app.budget_engine.groups import default_group, default_name
 from app.budget_engine.pace import BudgetLine as EngineLine
-from app.budget_engine.styles import apply_style
+from app.budget_engine.styles import apply_style, fact_message
 from app.budget_engine.fit import FIXED_DEFAULT, HISTORY_MONTHS, FitResult, FittedLine, fit_budget
 from app.budget_engine.txns import (FREE, GOAL_CATEGORIES, SAVINGS, SAVINGS_DETAILED, Txn, add_months, month_end,
                                     month_start, normalize_merchant, spending)
 from app.budget_service.goal_lines import committed_goals, expire_goal_proposals, stale_proposals
 from app.budget_service.settings import user_style
-from app.db.models import BudgetLine, BudgetPeriod, CategoryRule, Transaction
+from app.db.models import Alert, BudgetLine, BudgetPeriod, CategoryRule, Transaction
 
 # the db side of the initial budget (architecture 6.3): load history, fit it with budget_engine (which
 # stays pure), and store the result with the evidence the agent needs to explain it
@@ -114,6 +114,13 @@ def initialize_budget(session: Session, user_id: str, today: date,
     expire_goal_proposals(session, stale_proposals(session, user_id, current))
     session.add(period)
     try:
+        session.flush()
+        # a goal can push the lines past income, and the user is told, as at close. without goals a first budget
+        # has never raised these
+        if goals:
+            session.add_all([Alert(user_id=user_id, period_id=period.id, kind=f.kind, category=None, severity="medium",
+                                   cause=None, action="alert", message=fact_message(f), status="pending_user")
+                             for f in result.facts])
         session.commit()
     except IntegrityError:
         # another run opened this month's period between our check and our commit. with no period to

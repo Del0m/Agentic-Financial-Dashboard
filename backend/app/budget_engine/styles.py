@@ -30,6 +30,20 @@ class StyleResult:
     fallback: Optional[str]       # "no_income" when 50_30_20 had to run as caps
 
 
+def _money(cents: int) -> str:
+    return f"${cents / 100:,.2f}"
+
+
+# what an alert tells the user about a fact; close and the first budget both write these
+def fact_message(fact: StyleFact) -> str:
+    if fact.kind == "over_income":
+        gap = fact.lines_cents - fact.income_cents
+        return (f"Your budget lines add up to {_money(fact.lines_cents)}, {_money(gap)} more than your typical "
+                f"income of {_money(fact.income_cents)}.")
+    return (f"{fact.group.capitalize()} are {fact.lines_cents / fact.income_cents:.0%} of income, above the "
+            f"{fact.target_pct}% target.")
+
+
 # lines excludes the free line; its limit is always computed here
 def apply_style(style: str, lines: Sequence[BudgetLine], income_cents: Optional[int], fallback_total_cents: int,
                 targets: Mapping[str, int]) -> StyleResult:
