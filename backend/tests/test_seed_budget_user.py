@@ -5,7 +5,7 @@ from langchain_core.messages import AIMessage
 
 from app.agents.budget_graph import run_budget
 from app.budget_service.initialize import initialize_budget
-from app.db.models import AdviceLog, AgentRun, Alert, BudgetPeriod, CategoryRule, Transaction, User
+from app.db.models import AdviceLog, AgentRun, Alert, BudgetPeriod, CategoryRule, Goal, Liability, Transaction, User
 from eval.budget_users import PLANTED, transactions
 from scripts.seed_budget_user import main
 from tests.fakes import ScriptedChatModel
@@ -76,3 +76,21 @@ def test_replace_deletes_category_rules(db):
         s.commit()
     assert main(["--profile", PID, "--replace"], session_factory=db) == 0
     assert count(db, CategoryRule, user_id=UID) == 0
+
+
+# tpc-23: the goal graph's user can be seeded by name, and the hint points at the goal graph
+def test_seed_goal_user(db, capsys):
+    assert main(["--profile", "goals-card-24"], session_factory=db) == 0
+    out = capsys.readouterr().out
+    assert "goal_graph --user budget-goals-card-24 --date 2026-11-02" in out
+    assert count(db, Liability, user_id="budget-goals-card-24") == 2
+
+
+def test_replace_deletes_goals(db):
+    main(["--profile", PID], session_factory=db)
+    uid = f"budget-{PID}"
+    with db() as s:
+        s.add(Goal(user_id=uid, kind="savings", priority=1, monthly_cents=100, target_cents=1200, rationale="x"))
+        s.commit()
+    assert main(["--profile", PID, "--replace"], session_factory=db) == 0
+    assert count(db, Goal, user_id=uid) == 0

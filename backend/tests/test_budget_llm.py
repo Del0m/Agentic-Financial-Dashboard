@@ -105,3 +105,9 @@ def test_decide_messages_flag_escalation():
     assert "this flag is more severe: the user hasn't been told it is over the limit, so don't choose no_op" in text
     same = decide_messages("{}", None, 1, 1, "medium", earlier)[-1].content
     assert "more severe" not in same
+
+
+# the goal graph has no fallback to write, so it wants to know the model is down rather than get None
+def test_raise_unreachable():
+    with pytest.raises(ConnectionError):
+        invoke_structured(model(ConnectionError("down")), Diagnosis, diagnose_messages("{}"), raise_unreachable=True)

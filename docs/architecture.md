@@ -119,7 +119,7 @@ Four graphs, sharing one tool set:
 | **Chat Agent** | User message | Retrieve guidance for the question, then a ReAct loop: LLM ↔ tools until it answers (at most 6 tool rounds, then one last call without tools) |
 | **Budget Agent** | Daily schedule | Fixed pipeline with one LLM branch (diagnose + decide). Also detects recurring charges and forecasts cash flow (section 6a). See `budget-agent-loop.png` |
 | **Period-Close Agent** | Period end (and the first daily run after it) | No LLM: `load_period → expire_proposals → gather → adapt → persist`, looping while another month is due. Compares budget vs actual, applies accepted proposals, smooths the rest, applies the budget style and opens the next period (section 6.5, TPC-22) |
-| **Goal Agent** | User request or after period close | Gather debts, income and the forecast's surplus → run the debt-payoff planner → propose goals → user approves via `interrupt()` |
+| **Goal Agent** | User request (a CLI today, TPC-23; from the app and after period close later) | `load_facts → propose → build → persist`: code measures the surplus, the LLM picks goals within it, code computes targets and dates with the debt-payoff planner. The user approves via `interrupt()` (TPC-25). Section 6a.5 |
 
 **Deterministic Budget Engine:** plain Python functions for totals, pace, thresholds and budget fitting, plus recurring-stream detection, the cash-flow forecast and the debt-payoff simulation (section 6a). The LLM never does arithmetic that matters. This is a core design rule: it makes the system testable and keeps the benchmarks meaningful.
 
@@ -159,9 +159,10 @@ alerts           id, user_id, period_id, kind (overspend|new_subscription|price_
                  adjust_next_budget|suggest_cancel|move_from_savings|delay_spend|extra_payment),
                  stream_id, message, status (pending_user|accepted|dismissed), created_at
 advice_log       id, user_id, run_id, category, advice_text, created_at, outcome
-goals            id, user_id, kind (debt_payoff|savings|emergency_fund), target_cents,
-                 target_date, monthly_cents, strategy (avalanche|snowball, debt_payoff only),
-                 rationale, status
+goals            id, user_id, run_id, kind (debt_payoff|savings|emergency_fund), priority, monthly_cents,
+                 target_cents, target_date (none when the goal outlasts the planner's 600 months),
+                 strategy (avalanche|snowball, debt_payoff only), rationale,
+                 status (proposed|superseded|accepted|dismissed), created_at
 recurring_streams id, user_id, direction (in|out), merchant_key, merchant_name, category,
                  frequency (weekly|biweekly|semi_monthly|monthly|annual), typical_cents,
                  last_cents, amount_varies, first_date, last_date, next_date,
@@ -411,7 +412,7 @@ The output gives each strategy's months to debt-free, total interest, and payoff
 
 **Where it's used:**
 - **Chat:** a `plan_debt_payoff(extra_monthly, strategy)` tool, going through the gateway with a new `debt_plan` purpose. It returns computed results only, with names scrubbed, so the model never does the amortization itself.
-- **Goal Agent (M4):** proposes a `debt_payoff` goal whose monthly amount fits within part of `monthly_surplus_cents`, with the strategy chosen and explained. The `cfpb-reduce-debt` KB page covers both methods.
+- **Goal Agent (M4):** proposes a `debt_payoff` goal whose monthly amount is an extra on top of the minimums, with the strategy chosen and explained; `payoff.simulate` gives its date (section 6a.5). The `cfpb-reduce-debt` KB page covers both methods.
 - **Daily run:** if a debt-payoff goal is accepted and the forecast shows more surplus than the goal assumed, propose an `extra_payment` alert. It is a proposal only.
 
 **Benchmark value:** every question has an exact answer, so the eval can check the agent's numbers by rule (months match, interest within $1) instead of with a judge. The `debt-plan-extra-200` scenario does that, with its facts generated from the planner (and a test that fails if they drift).
@@ -432,6 +433,29 @@ The budget graph (section 6.2) gets two deterministic nodes after `update_totals
 The chat agent gets three tools: `get_recurring`, `get_cash_forecast` and `plan_debt_payoff`, for 7 in total. That's still small enough for `qwen2.5:14b`; the eval checks tool choice for each.
 
 ---
+
+### 6a.5 Goal graph (Milestone 4, TPC-23)
+
+`agents/goal_graph.py`, a LangGraph graph with no checkpointer until approval arrives (TPC-25): `load_facts → propose → build → persist`. Run it with `python -m app.agents.goal_graph --user <id>`.
+
+**The surplus** (`budget_engine/goals.py`) is measured, not planned: the median over the last 3 complete months of income − spending − transfers to savings, with the same month window as `fit`, minus the minimums on cards with a balance. A card payment isn't spending, because it pays for purchases already counted, so nothing else takes a card's minimum out; a loan's payment is spending, so it's already out. The budget's Free line also has to cover spending with no line, so using it would double-count that money. TPC-31's `monthly_surplus_cents` replaces this figure when it lands. With no surplus, the run stops before calling the model.
+
+**Preferences** are in `prefs_json["goals"]`, set with `--prefs` until there's a UI: `skip_kinds`, `max_share` (default 0.8, which sets the cap), `protected_categories` and a free-text `note`. Code enforces the first two. Goals are only funded from the surplus and never cut a line, so "don't touch my gym budget" holds by construction.
+
+**Who decides what:**
+- The LLM picks the kinds, their order and their monthly amounts, in dollars, from facts sent through the gateway's `goals` purpose: the surplus, the cap, the debts, the emergency-fund gap, what some extras would do, and the scrubbed note.
+- Code computes each goal's target and date:
+  - `debt_payoff`: the debts the planner can plan, and the planner's date. The monthly amount is an extra on top of the minimums. A missing strategy means avalanche.
+  - `emergency_fund`: 3 × the median month's `needs` spending, minus savings accounts; not offered when that's $0. Past the planner's 600 months it has no date.
+  - `savings`: 12 × the monthly amount, 12 months out.
+- An amount outside $1 to $1,000,000 a month gets the one retry. A kind that wasn't offered, or a repeat, is dropped and listed in the run. Checking affordability and retrying with a reason is TPC-24's job, between `propose` and `build`. Until then the CLI marks a goal `(over cap)`.
+
+A run marks the user's earlier `proposed` goals `superseded` in one commit with the new ones, so a failed run leaves the last proposal standing. A finished run with nothing to propose (no surplus, or every kind skipped) withdraws it instead, since it no longer fits. A run takes the same per-user lock as a budget run and also checks for a recent `running` row, because the lock only covers one process and the CLI is a separate one. An unreachable model is reported as such (`invoke_structured(raise_unreachable=True)`): the budget graph has a fallback alert to write, and the goal graph has nothing.
+
+**Live (TPC-23, `qwen2.5:14b`, 2026-11-02):** `goals-card-24` has a $3,200 card at 24.99%, an $18,400 loan at 5.5%, payments on both in its history, and $1,000 saved. Its surplus is $971.75 after the card's $95 minimum, so the cap at 80% is $777.40. `debt_payoff` came first with avalanche in 5 of 5 runs: $583 a month on top of the minimums, debt-free in February 2029, then usually `emergency_fund` at $194.40, reaching its $6,851.78 target in November 2029. Before the minimums came out, with no payments in the user's history, it was first in 30 of 30. These findings shaped this:
+- Asked for cents with facts in dollars, the model copied the prompt's example ($200) and added $22.14 for the emergency fund, finishing in 2050. Asking for dollars, and saying that money left over does nothing, fixed it.
+- In 1 run of 25 it left out the strategy. Dropping the goal put the emergency fund first; the prompt's default applies now.
+- The note first went through the account-name scrub, whose possessive rule also matches contractions. "it's the emergency fund that matters most" reached the model as "[person]'s the emergency fund..." and `debt_payoff` came first. `scrub_note` only takes capitalised names before a possessive, and the same note now puts the emergency fund first. A lowercase "jane doe's" gets through, the same limit as any bare name in free text.
 
 ## 6b. Temporal knowledge graph (Milestone 6, TPC-34)
 
@@ -656,7 +680,8 @@ GET  /budget/runs/{id}          -> { status, alert_ids, waiting_for, error }
 PATCH /budget/lines/{id}        { name?, group? } open period only; group only needs <-> wants (TPC-22)
 PUT  /budget/style              { style, targets? } -> { style, targets, effective_from } (next close)
 GET  /alerts?status=pending_user|all ; POST /alerts/{id}/accept | /dismiss   (404 other user's, 409 decided)
-GET  /goals ; POST /goals/generate ; POST /goals/{id}/accept
+GET  /goals                     -> the user's proposed goals by priority (TPC-23)
+POST /goals/generate ; POST /goals/{id}/accept   (TPC-25)
 GET  /recurring                 -> active and stale streams, newest changes first
 GET  /forecast?days=            -> daily expected/low/high balance, scheduled events, buffer, monthly surplus
 POST /debt-plan                 { extra_monthly_cents: 0..100_000_000, include_mortgage? } -> { avalanche, snowball,
@@ -877,7 +902,7 @@ Assignment due **November 9, 2026**; everything is scheduled to finish by **Nove
 - **Learn:** stateful graphs, checkpointing, scheduling, human-in-the-loop, separating deterministic logic from LLM judgment.
 
 ### M4. Goal generation
-1. Goal graph: take `monthly_surplus_cents` from the cash-flow forecast (section 6a.2), then LLM proposes 1-3 goals within the surplus and the user's stated preferences (`users.prefs_json`, e.g. "don't touch my gym budget").
+1. Goal graph (section 6a.5, TPC-23): measure the monthly surplus from history (the forecast's `monthly_surplus_cents`, section 6a.2, replaces it later), then LLM proposes 1-3 goals within the surplus and the user's stated preferences (`users.prefs_json`, e.g. "don't touch my gym budget").
 2. Debt-payoff planner: `payoff.py`, `POST /debt-plan`, the `plan_debt_payoff` chat tool; `debt_payoff` goals come from it with a chosen strategy (section 6a.3, TPC-32).
 3. Validate: goals must be affordable from surplus and dated; reject and retry otherwise.
 4. `interrupt()` for acceptance; accepted goals become budget lines (e.g. "Debt payoff: $300/mo").
@@ -1004,6 +1029,11 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 | 2026-11-01 | A debt with no APR or no minimum is left out and listed, never estimated; the balance is the account's current one, from one loader for the API and the gateway | A guessed rate or minimum makes the plan look exact when it isn't. One loader means the card and chat can't disagree |
 | 2026-11-01 | `plan_debt_payoff` runs the planner inside the gateway (`debt_plan` purpose); the model gets only computed results, scrubbed names and the stated assumptions. Its description asks for the months and the total interest; the chat system prompt is unchanged | The model never does the amortization. Live, `qwen2.5:14b` quoted the planner's numbers exactly. Asking for the two scored facts makes the live check and the eval agree (final review) |
 | 2026-11-01 | The graph's value is shown by ablation (graph off vs on for budget decisions; vector vs graph vs hybrid for chat), not by a UI | The user's choice: numbers for the report |
+| 2026-11-02 | The goal surplus is measured from history: the median of the last 3 complete months of income − spending − transfers to savings | The user's choice. It's what's actually left. The Free line also covers spending with no line, so using it would double-count; income minus the budget total is only the plan. The forecast replaces it (TPC-31) |
+| 2026-11-02 | The LLM picks goal kinds, order and monthly amounts; code computes every target and date | The user's choice. It gives TPC-24's affordability check something real to catch, and keeps the rule that the LLM never does arithmetic that matters |
+| 2026-11-02 | The minimums on cards with a balance come out of the goal surplus | The user's choice, from the final review. Goals are on top of the minimums, and card payments aren't spending, so a $300 surplus could leave $205 in hand and TPC-24 would check the same wrong figure. A card paid in full each month loses its minimum too, which errs on the safe side |
+| 2026-11-02 | Goal preferences are structured fields plus a free-text note; goals are only funded from the surplus and never cut a line | The user's choice. Code can enforce `skip_kinds` and `max_share`, and "don't touch my gym budget" holds by construction |
+| 2026-11-02 | The model states monthly amounts in dollars, not cents; a `debt_payoff` with no strategy means avalanche | Live: asked for cents with facts in dollars, `qwen2.5:14b` copied the prompt's example and left most of the cap unused. It also left the strategy out of 1 run in 25, and dropping that goal put the emergency fund first |
 | | | |
 
 ---

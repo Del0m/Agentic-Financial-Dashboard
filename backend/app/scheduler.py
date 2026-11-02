@@ -82,7 +82,7 @@ def month_end_job(session_factory, *, today: Optional[date] = None) -> dict:
     result = {"closed": [], "skipped": [], "failed": []}
     for user_id in user_ids:
         lock = user_lock(user_id)
-        if not lock.acquire(blocking=False):
+        if not lock.acquire(blocking=False, session_factory=session_factory):
             result["skipped"].append(user_id)
             continue
         try:

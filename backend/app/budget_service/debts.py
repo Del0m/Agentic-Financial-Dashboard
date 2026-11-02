@@ -17,3 +17,13 @@ def load_debts(session: Session, user_id: str) -> list[Debt]:
     ).all()
     return [Debt(key=a.id, name=a.name, kind=l.kind, apr=l.apr, balance_cents=a.current_balance_cents or 0,
                  min_payment_cents=l.min_payment_cents) for l, a in rows]
+
+
+def incomplete_card_obligations(session: Session, user_id: str) -> bool:
+    """Unknown balance/minimum or missing liabilities means affordability is unknown."""
+    rows = session.execute(select(Account, Liability).outerjoin(
+        Liability, (Liability.account_id == Account.id) & (Liability.user_id == user_id)
+    ).where(Account.user_id == user_id, Account.type == "credit"))
+    return any(a.current_balance_cents is None or (
+        a.current_balance_cents > 0 and (l is None or l.min_payment_cents is None)
+    ) for a, l in rows)

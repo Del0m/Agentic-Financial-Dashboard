@@ -22,29 +22,12 @@ from cryptography.fernet import Fernet
 # app.security fails at import without a key; simulating never decrypts anything
 os.environ.setdefault("FERNET_KEY", Fernet.generate_key().decode())
 
-from datetime import datetime, timedelta, timezone
-
-from sqlalchemy import select
-
 from app.agents.llm import get_chat_model
 from app.api import budget_hooks
 from app.budget_engine.styles import STYLES
-from app.budget_service.daily import user_lock
+from app.budget_service.daily import running_elsewhere, user_lock
 from app.budget_service.settings import set_user_style
 from app.budget_service.simulate import NotSimulated, advance_days
-from app.db.models import AgentRun
-
-
-# a run row older than this is left over from a process that died, not one still going
-STALE = timedelta(hours=2)
-
-
-# user_lock only covers this process; a run or simulation going in the api server shows as a "running" row
-def _running_elsewhere(session_factory, user_id: str) -> bool:
-    with session_factory() as s:
-        return s.scalar(select(AgentRun.id).where(
-            AgentRun.user_id == user_id, AgentRun.graph.in_(("budget", "simulate")), AgentRun.status == "running",
-            AgentRun.started_at >= datetime.now(timezone.utc) - STALE).limit(1)) is not None
 
 
 def _print_day(day: dict) -> None:
@@ -67,7 +50,7 @@ def main(argv=None, session_factory=None, model=None) -> int:
             set_user_style(s, args.user, args.style)
             s.commit()
     lock = user_lock(args.user)          # in-process only, so the run rows are checked too
-    if _running_elsewhere(session_factory, args.user) or not lock.acquire(blocking=False):
+    if running_elsewhere(session_factory, args.user) or not lock.acquire(blocking=False, session_factory=session_factory):
         print("A budget run is already in progress.")
         return 1
     saver = budget_hooks.get_checkpointer()
