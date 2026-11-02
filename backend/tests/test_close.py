@@ -6,8 +6,9 @@ from app.budget_engine.groups import default_group, default_name
 from app.budget_service import close as close_mod
 from app.budget_service.alerts import AlertAlreadyDecided, decide_alert
 from app.budget_service.close import close_due
+from app.budget_service.goal_lines import committed_goals, expire_goal_proposals, stale_proposals
 from app.budget_service.settings import set_user_style
-from app.db.models import Account, AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod
+from app.db.models import Account, AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, Goal
 from tests.factories import add_account, add_txn, add_user
 
 OCT, NOV1 = date(2026, 10, 1), date(2026, 11, 1)
@@ -312,3 +313,375 @@ def test_close_fits_income_on_all_three_months(db):
         s.commit()
     close_due(db, "u1", NOV1)
     assert period_at(db, NOV1).income_cents == 420000
+
+
+# --- goals (tpc-25) ---
+
+DEC1, JAN1 = date(2026, 12, 1), date(2027, 1, 1)
+INCOME, RENT, LOAN, SAVED = 420000, 150000, 21000, 50000
+FREE_NO_GOAL = INCOME - RENT - LOAN - SAVED     # $1,990.00
+NOV_LINES = (("RENT_AND_UTILITIES", "fixed", RENT), ("LOAN_PAYMENTS", "fixed", LOAN),
+             ("SAVINGS_TRANSFER", "fixed", SAVED), ("FREE", "flexible", FREE_NO_GOAL))
+NO_LOAN = tuple(ln for ln in NOV_LINES if ln[0] != "LOAN_PAYMENTS")
+NO_SAVING = tuple(ln for ln in NOV_LINES if ln[0] != "SAVINGS_TRANSFER")
+
+
+# u1's open november, with $4,200 of income and only these three things spent
+def november(db, lines=NOV_LINES, loan=LOAN, saved=SAVED, style=None):
+    pid, acct_id = setup(db, lines=lines, start=NOV1, style=style, rent=RENT, food=0, fun=0, travel=0, saved=saved)
+    with db() as s:
+        if loan:
+            add_txn(s, s.get(Account, acct_id), loan, "LOAN_PAYMENTS", merchant="Lender", day=date(2026, 11, 5),
+                    detailed="LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT")
+        s.commit()
+    return pid, acct_id
+
+
+def add_goal(db, kind="debt_payoff", cents=58300, status="accepted", start=DEC1, target=date(2027, 6, 1),
+             run_status=None, priority=1):
+    with db() as s:
+        run_id = None
+        if run_status:
+            run = AgentRun(user_id="u1", graph="goals", status=run_status, summary_json={"outcome": "proposed"})
+            s.add(run)
+            s.flush()
+            run_id = run.id
+        goal = Goal(user_id="u1", run_id=run_id, kind=kind, priority=priority, monthly_cents=cents,
+                    target_cents=cents * 6, target_date=target, start_date=start, rationale="Because.", status=status)
+        s.add(goal)
+        s.commit()
+        return goal.id, run_id
+
+
+def goal_status(db, goal_id):
+    with db() as s:
+        return s.get(Goal, goal_id).status
+
+
+def set_goal_status(db, goal_id, status):
+    with db() as s:
+        s.get(Goal, goal_id).status = status
+        s.commit()
+
+
+def test_accepted_goal_becomes_a_line_in_the_next_period(db):
+    november(db)
+    add_goal(db)
+    [summary] = close_due(db, "u1", DEC1)
+    line = lines_of(period_at(db, DEC1))["GOAL_DEBT_PAYOFF"]
+    assert (line.name, line.group, line.kind, line.limit_cents, line.source) == ("Debt payoff", "goal", "fixed", 58300,
+                                                                                 "user")
+    assert line.fit_json == {"old_cents": 0, "actual_cents": 0, "rule": "goal"}
+    assert {"category": "GOAL_DEBT_PAYOFF", "name": "Debt payoff", "group": "goal", "old_cents": 0, "actual_cents": 0,
+            "new_cents": 58300, "rule": "goal"} in summary["lines"]
+    assert "GOAL_DEBT_PAYOFF" not in lines_of(period_at(db, NOV1))      # the month under way never changes
+
+
+def test_goal_line_takes_its_amount_from_free_only(db):
+    november(db)
+    add_goal(db)
+    [summary] = close_due(db, "u1", DEC1)
+    dec = period_at(db, DEC1)
+    assert {c: ln.limit_cents for c, ln in lines_of(dec).items()} == {
+        "RENT_AND_UTILITIES": RENT, "LOAN_PAYMENTS": LOAN, "SAVINGS_TRANSFER": SAVED, "GOAL_DEBT_PAYOFF": 58300,
+        "FREE": INCOME - RENT - LOAN - SAVED - 58300}
+    assert lines_of(dec)["FREE"].limit_cents == 140700
+    assert (dec.income_cents, dec.total_cents, summary["free_cents"], summary["alert_ids"]) == (INCOME, INCOME, 140700,
+                                                                                                [])
+
+
+def test_goal_over_free_keeps_other_lines_and_raises_over_income_alert(db):
+    november(db)
+    add_goal(db, cents=250000)         # free is only $1,990
+    [summary] = close_due(db, "u1", DEC1)
+    dec = period_at(db, DEC1)
+    lines = lines_of(dec)
+    assert {c: ln.limit_cents for c, ln in lines.items()} == {
+        "RENT_AND_UTILITIES": RENT, "LOAN_PAYMENTS": LOAN, "SAVINGS_TRANSFER": SAVED, "GOAL_DEBT_PAYOFF": 250000,
+        "FREE": 0}
+    assert dec.total_cents == 471000
+    with db() as s:
+        [alert] = s.query(Alert).all()
+    assert (alert.kind, alert.period_id, summary["alert_ids"]) == ("over_income", dec.id, [alert.id])
+    assert alert.message == ("Your budget lines add up to $4,710.00, $510.00 more than your typical income of "
+                             "$4,200.00.")
+
+
+# in 50/30/20 the goal comes out of the 20%, and free and needs don't move
+def test_503020_goal_line_comes_out_of_saving_target(db):
+    november(db, style="50_30_20")
+    add_goal(db)
+    close_due(db, "u1", DEC1)
+    lines = lines_of(period_at(db, DEC1))
+    assert (lines["GOAL_DEBT_PAYOFF"].limit_cents, lines["SAVINGS_TRANSFER"].limit_cents) == (58300, 84000 - 58300)
+    assert lines["FREE"].limit_cents == 126000          # the wants target, with no wants lines
+
+
+def test_goal_starting_later_gets_no_line_yet(db):
+    november(db)
+    add_goal(db, start=JAN1)
+    close_due(db, "u1", DEC1)
+    dec = lines_of(period_at(db, DEC1))
+    assert "GOAL_DEBT_PAYOFF" not in dec and dec["FREE"].limit_cents == FREE_NO_GOAL
+    close_due(db, "u1", JAN1)
+    jan = lines_of(period_at(db, JAN1))
+    assert jan["GOAL_DEBT_PAYOFF"].limit_cents == 58300 and jan["FREE"].limit_cents == 140700
+
+
+def test_goal_line_carries_user_rename(db):
+    november(db)
+    add_goal(db)
+    close_due(db, "u1", DEC1)
+    with db() as s:
+        p = s.query(BudgetPeriod).filter_by(start_date=DEC1).one()
+        s.query(BudgetLine).filter_by(period_id=p.id, category="GOAL_DEBT_PAYOFF").one().name = "Card payoff"
+        s.commit()
+    close_due(db, "u1", JAN1)
+    line = lines_of(period_at(db, JAN1))["GOAL_DEBT_PAYOFF"]
+    assert (line.name, line.limit_cents) == ("Card payoff", 58300)
+
+
+def test_goal_line_never_smoothed_or_adopted(db):
+    november(db)
+    add_goal(db)
+    assert len(close_due(db, "u1", JAN1)) == 2    # december's actual on the goal line is $0
+    jan = lines_of(period_at(db, JAN1))
+    assert jan["GOAL_DEBT_PAYOFF"].limit_cents == 58300
+    assert jan["GOAL_DEBT_PAYOFF"].fit_json == {"old_cents": 58300, "actual_cents": 0, "rule": "goal"}
+    assert jan["GOAL_DEBT_PAYOFF"].source == "user"
+    assert jan["FREE"].limit_cents == 140700
+
+
+def test_finished_goal_completes_and_frees_its_line(db):
+    november(db)
+    goal_id, _ = add_goal(db, target=DEC1)
+    first, second = close_due(db, "u1", JAN1)
+    assert lines_of(period_at(db, DEC1))["GOAL_DEBT_PAYOFF"].limit_cents == 58300      # its target month still has it
+    assert first["finished_goal_ids"] == []
+    jan = lines_of(period_at(db, JAN1))
+    assert "GOAL_DEBT_PAYOFF" not in jan and jan["FREE"].limit_cents == FREE_NO_GOAL
+    assert goal_status(db, goal_id) == "completed" and second["finished_goal_ids"] == [goal_id]
+    with db() as s:
+        assert committed_goals(s, "u1") == []    # the kind can be offered again
+
+
+def test_stopped_goal_line_ends_at_close(db):
+    november(db)
+    goal_id, _ = add_goal(db)
+    close_due(db, "u1", DEC1)
+    set_goal_status(db, goal_id, "dismissed")
+    [summary] = close_due(db, "u1", JAN1)
+    assert lines_of(period_at(db, DEC1))["GOAL_DEBT_PAYOFF"].limit_cents == 58300
+    jan = lines_of(period_at(db, JAN1))
+    assert "GOAL_DEBT_PAYOFF" not in jan and jan["FREE"].limit_cents == FREE_NO_GOAL
+    assert goal_status(db, goal_id) == "dismissed" and summary["finished_goal_ids"] == []
+
+
+# the user stops a finished goal while close is running: their answer stands, and it isn't reported as completed
+def test_stop_during_close_stands(db, monkeypatch):
+    november(db)
+    goal_id, _ = add_goal(db, target=DEC1)
+    close_due(db, "u1", DEC1)
+    gather = close_mod.gather_month
+
+    def user_clicks(session, period_id):
+        gathered = gather(session, period_id)
+        set_goal_status(db, goal_id, "dismissed")
+        return gathered
+
+    monkeypatch.setattr(close_mod, "gather_month", user_clicks)
+    [summary] = close_due(db, "u1", JAN1)
+    assert goal_status(db, goal_id) == "dismissed" and summary["finished_goal_ids"] == []
+
+
+def test_saving_line_ignores_goal_transfers(db):
+    november(db, lines=(*NOV_LINES, ("GOAL_SAVINGS", "fixed", 19440)), saved=69440)
+    add_goal(db, kind="savings", cents=19440, start=NOV1)
+    close_due(db, "u1", DEC1)
+    lines = lines_of(period_at(db, DEC1))
+    assert lines["SAVINGS_TRANSFER"].limit_cents == 50000
+    assert lines["SAVINGS_TRANSFER"].fit_json == {"old_cents": 50000, "actual_cents": 50000, "rule": "fixed"}
+    assert lines["GOAL_SAVINGS"].limit_cents == 19440
+    assert lines["FREE"].limit_cents == INCOME - RENT - LOAN - SAVED - 19440
+
+
+# both saving goals are transfers to savings, so they're netted against the one saving line together
+def test_saving_line_ignores_both_saving_goals(db):
+    november(db, lines=(*NOV_LINES, ("GOAL_SAVINGS", "fixed", 19440), ("GOAL_EMERGENCY_FUND", "fixed", 10000)),
+              saved=79440)
+    close_due(db, "u1", DEC1)
+    assert lines_of(period_at(db, DEC1))["SAVINGS_TRANSFER"].limit_cents == 50000
+
+
+def test_goal_transfer_alone_adds_no_saving_line(db):
+    november(db, lines=(*NO_SAVING, ("GOAL_SAVINGS", "fixed", 19440)), saved=19440)
+    add_goal(db, kind="savings", cents=19440, start=NOV1)
+    close_due(db, "u1", DEC1)
+    assert "SAVINGS_TRANSFER" not in lines_of(period_at(db, DEC1))
+
+
+# saving more than the goal, with no saving line: the rest is the user's own saving, and it gets a line
+def test_saving_above_goal_adds_a_saving_line_for_the_rest(db):
+    november(db, lines=(*NO_SAVING, ("GOAL_SAVINGS", "fixed", 19440)), saved=30000)
+    close_due(db, "u1", DEC1)
+    assert lines_of(period_at(db, DEC1))["SAVINGS_TRANSFER"].limit_cents == 10560
+
+
+def test_loan_line_ignores_debt_goal(db):
+    november(db, lines=(*NOV_LINES, ("GOAL_DEBT_PAYOFF", "fixed", 58300)), loan=79300)
+    add_goal(db, start=NOV1)
+    [summary] = close_due(db, "u1", DEC1)
+    lines = lines_of(period_at(db, DEC1))
+    assert lines["LOAN_PAYMENTS"].limit_cents == 21000
+    assert lines["LOAN_PAYMENTS"].fit_json == {"old_cents": 21000, "actual_cents": 21000, "rule": "fixed"}
+    assert lines["FREE"].limit_cents == 140700
+    assert lines["FREE"].fit_json["actual_cents"] == 0 and summary["unbudgeted"] == []
+
+
+def test_debt_goal_paid_to_a_card_leaves_the_loan_line(db):
+    _, acct_id = november(db, lines=(*NOV_LINES, ("GOAL_DEBT_PAYOFF", "fixed", 20000)))
+    with db() as s:
+        add_txn(s, s.get(Account, acct_id), 20000, "LOAN_PAYMENTS", merchant="Card", day=date(2026, 11, 6),
+                detailed="LOAN_PAYMENTS_CREDIT_CARD_PAYMENT")
+        s.commit()
+    close_due(db, "u1", DEC1)
+    loan = lines_of(period_at(db, DEC1))["LOAN_PAYMENTS"]
+    assert (loan.limit_cents, loan.fit_json["actual_cents"]) == (21000, 21000)
+
+
+def test_goal_paid_to_an_unlined_loan_is_not_free_spending(db):
+    november(db, lines=(*NO_LOAN, ("GOAL_DEBT_PAYOFF", "fixed", 58300)), loan=58300)
+    [summary] = close_due(db, "u1", DEC1)
+    lines = lines_of(period_at(db, DEC1))
+    assert "LOAN_PAYMENTS" not in lines
+    assert lines["FREE"].fit_json["actual_cents"] == 0 and summary["unbudgeted"] == []
+
+
+# only the goal's share comes off: the rest of an unlined loan payment is still free spending
+def test_unlined_loan_above_goal_stays_free_spending(db):
+    november(db, lines=(*NO_LOAN, ("GOAL_DEBT_PAYOFF", "fixed", 58300)), loan=70000)
+    [summary] = close_due(db, "u1", DEC1)
+    assert lines_of(period_at(db, DEC1))["FREE"].fit_json["actual_cents"] == 11700
+    assert summary["unbudgeted"] == ["LOAN_PAYMENTS"]
+
+
+# what the closed month budgeted is what nets it: stopping the goal doesn't make its payment look like overspending
+def test_stopped_goal_still_nets_its_closing_month(db):
+    november(db, lines=(*NOV_LINES, ("GOAL_DEBT_PAYOFF", "fixed", 58300)), loan=79300)
+    add_goal(db, status="dismissed", start=NOV1)
+    close_due(db, "u1", DEC1)
+    lines = lines_of(period_at(db, DEC1))
+    assert lines["LOAN_PAYMENTS"].limit_cents == 21000 and "GOAL_DEBT_PAYOFF" not in lines
+
+
+def test_undecided_proposal_expires_with_its_start_month(db):
+    november(db)
+    goal_id, run_id = add_goal(db, status="proposed", run_status="awaiting_user")
+    [summary] = close_due(db, "u1", DEC1)
+    assert goal_status(db, goal_id) == "superseded" and summary["expired_goal_ids"] == [goal_id]
+    with db() as s:
+        run = s.get(AgentRun, run_id)
+        assert (run.status, run.summary_json) == ("expired", {"outcome": "proposed", "expired_goal_ids": [goal_id]})
+        assert run.finished_at is not None
+    assert "GOAL_DEBT_PAYOFF" not in lines_of(period_at(db, DEC1))
+
+
+def test_later_proposal_survives_close(db):
+    november(db)
+    goal_id, run_id = add_goal(db, status="proposed", start=JAN1, run_status="awaiting_user")
+    [summary] = close_due(db, "u1", DEC1)
+    assert goal_status(db, goal_id) == "proposed" and summary["expired_goal_ids"] == []
+    with db() as s:
+        assert s.get(AgentRun, run_id).status == "awaiting_user"
+
+
+def test_null_start_proposal_expires(db):
+    november(db)
+    goal_id, _ = add_goal(db, status="proposed", start=None)
+    [summary] = close_due(db, "u1", DEC1)
+    assert goal_status(db, goal_id) == "superseded" and summary["expired_goal_ids"] == [goal_id]
+
+
+# the user accepts after close read the rows: the answer stands, and the line arrives a month later
+def test_answer_during_close_stands(db, monkeypatch):
+    november(db)
+    goal_id, run_id = add_goal(db, status="proposed", run_status="awaiting_user")
+    gather = close_mod.gather_month
+
+    def user_clicks(session, period_id):
+        gathered = gather(session, period_id)
+        set_goal_status(db, goal_id, "accepted")
+        return gathered
+
+    monkeypatch.setattr(close_mod, "gather_month", user_clicks)
+    [summary] = close_due(db, "u1", DEC1)
+    assert goal_status(db, goal_id) == "accepted" and summary["expired_goal_ids"] == []
+    with db() as s:
+        assert s.get(AgentRun, run_id).status == "awaiting_user"
+    assert "GOAL_DEBT_PAYOFF" not in lines_of(period_at(db, DEC1))
+    monkeypatch.setattr(close_mod, "gather_month", gather)
+    close_due(db, "u1", JAN1)
+    assert lines_of(period_at(db, JAN1))["GOAL_DEBT_PAYOFF"].limit_cents == 58300
+
+
+# one commit: another close winning the race leaves every goal and its run as they were
+def test_lost_race_leaves_goals_alone(db, monkeypatch):
+    november(db)
+    finished_id, _ = add_goal(db, target=NOV1, start=NOV1)
+    proposed_id, run_id = add_goal(db, kind="savings", status="proposed", run_status="awaiting_user")
+    adapt = close_mod.adapt_month
+
+    def racing(gathered):
+        with db() as s:
+            s.add(BudgetPeriod(user_id="u1", start_date=DEC1, end_date=date(2026, 12, 31)))
+            s.commit()
+        return adapt(gathered)
+
+    monkeypatch.setattr(close_mod, "adapt_month", racing)
+    assert close_due(db, "u1", DEC1) == []
+    assert (goal_status(db, finished_id), goal_status(db, proposed_id)) == ("accepted", "proposed")
+    with db() as s:
+        assert s.get(AgentRun, run_id).status == "awaiting_user"
+
+
+def test_committed_goals_are_accepted_by_priority_then_id(db):
+    november(db)
+    second, _ = add_goal(db, kind="savings", priority=2)
+    third, _ = add_goal(db, kind="emergency_fund", priority=2)
+    first, _ = add_goal(db, priority=1)
+    add_goal(db, status="proposed")
+    add_goal(db, status="dismissed")
+    with db() as s:
+        goals = committed_goals(s, "u1")
+    assert [g.id for g in goals] == [first, second, third]
+    assert (goals[0].kind, goals[0].monthly_cents, goals[0].start_date, goals[0].target_date) == (
+        "debt_payoff", 58300, DEC1, date(2027, 6, 1))
+
+
+def test_stale_proposals_are_due_or_undated_and_proposed(db):
+    november(db)
+    due, _ = add_goal(db, status="proposed")
+    undated, _ = add_goal(db, status="proposed", start=None)
+    add_goal(db, status="proposed", start=JAN1)
+    add_goal(db)
+    with db() as s:
+        assert stale_proposals(s, "u1", DEC1) == [due, undated]
+        assert stale_proposals(s, "nobody", DEC1) == []
+
+
+# a row answered since the caller listed it keeps its answer, and only a paused goal run is touched
+def test_expire_goal_proposals_rechecks_and_leaves_the_commit_to_the_caller(db):
+    november(db)
+    proposed, run_id = add_goal(db, status="proposed", run_status="awaiting_user")
+    accepted, ok_run = add_goal(db, run_status="ok")
+    with db() as s:
+        assert expire_goal_proposals(s, []) == []
+        assert expire_goal_proposals(s, [accepted, proposed]) == [proposed]
+        s.rollback()
+    assert (goal_status(db, proposed), goal_status(db, accepted)) == ("proposed", "accepted")
+    with db() as s:
+        expire_goal_proposals(s, [accepted, proposed])
+        s.commit()
+    assert (goal_status(db, proposed), goal_status(db, accepted)) == ("superseded", "accepted")
+    with db() as s:
+        assert (s.get(AgentRun, run_id).status, s.get(AgentRun, ok_run).status) == ("expired", "ok")

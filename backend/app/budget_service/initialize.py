@@ -5,12 +5,14 @@ from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.budget_engine.goals import budgeted_in
 from app.budget_engine.groups import default_group, default_name
 from app.budget_engine.pace import BudgetLine as EngineLine
 from app.budget_engine.styles import apply_style
 from app.budget_engine.fit import FIXED_DEFAULT, HISTORY_MONTHS, FitResult, FittedLine, fit_budget
-from app.budget_engine.txns import (FREE, SAVINGS, SAVINGS_DETAILED, Txn, add_months, month_end, month_start,
-                                    normalize_merchant, spending)
+from app.budget_engine.txns import (FREE, GOAL_CATEGORIES, SAVINGS, SAVINGS_DETAILED, Txn, add_months, month_end,
+                                    month_start, normalize_merchant, spending)
+from app.budget_service.goal_lines import committed_goals, expire_goal_proposals, stale_proposals
 from app.budget_service.settings import user_style
 from app.db.models import BudgetLine, BudgetPeriod, CategoryRule, Transaction
 
@@ -83,8 +85,12 @@ def initialize_budget(session: Session, user_id: str, today: date,
 
     style, targets = user_style(session, user_id)
     groups = {ln.category: default_group(ln.category) for ln in fit.lines}
-    result = apply_style(style, [EngineLine(ln.category, ln.kind, ln.limit_cents, groups[ln.category])
-                                 for ln in fit.lines], fit.income_cents, fit.spending_total_cents, targets)
+    goals = [g for g in committed_goals(session, user_id) if budgeted_in(g, current)]
+    result = apply_style(style, [*(EngineLine(ln.category, ln.kind, ln.limit_cents, groups[ln.category])
+                                   for ln in fit.lines),
+                                 *(EngineLine(GOAL_CATEGORIES[g.kind], "fixed", g.monthly_cents, "goal")
+                                   for g in goals)],
+                         fit.income_cents, fit.spending_total_cents, targets)
 
     period = BudgetPeriod(user_id=user_id, start_date=current, end_date=month_end(today), status="open",
                           fit_json=_period_json(fit), income_cents=fit.income_cents, total_cents=result.total_cents)
@@ -99,6 +105,13 @@ def initialize_budget(session: Session, user_id: str, today: date,
                                            kind="fixed" if category == SAVINGS else "flexible",
                                            limit_cents=result.limits[category], source="init",
                                            fit_json={"rule": rule}))
+    for goal in goals:
+        category = GOAL_CATEGORIES[goal.kind]
+        period.lines.append(BudgetLine(category=category, name=default_name(category), group="goal", kind="fixed",
+                                       limit_cents=goal.monthly_cents, source="user", fit_json={"rule": "goal"}))
+    # with no period to close, nothing else would retire a proposal made before the first budget. before the add:
+    # these queries autoflush, and a lost race has to surface at the commit below
+    expire_goal_proposals(session, stale_proposals(session, user_id, current))
     session.add(period)
     try:
         session.commit()

@@ -7,18 +7,23 @@ from sqlalchemy.orm import Session
 
 from app.budget_engine.close import close_period, period_actuals
 from app.budget_engine.fit import HISTORY_MONTHS, fit_budget
+from app.budget_engine.goals import budgeted_in, finished_before
 from app.budget_engine.groups import default_group, default_name
 from app.budget_engine.pace import BudgetLine as EngineLine
 from app.budget_engine.styles import StyleFact, apply_style
-from app.budget_engine.txns import EARLY_DAYS, FREE, SAVINGS, add_months, category_totals, month_end, savings
+from app.budget_engine.txns import (EARLY_DAYS, FREE, GOAL_CATEGORIES, GOAL_DEBT_PAYOFF, GOAL_EMERGENCY_FUND,
+                                    GOAL_SAVINGS, LOAN_PAYMENTS, SAVINGS, add_months, category_totals, month_end,
+                                    net_of_goal, savings)
+from app.budget_service.goal_lines import committed_goals, expire_goal_proposals, stale_proposals
 from app.budget_service.initialize import history_start, load_txns
 from app.budget_service.settings import user_style
-from app.db.models import AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, utcnow
+from app.db.models import AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, Goal, utcnow
 
 # period close (tpc-22, architecture 6.5): the db side of the close graph. gather reads the closed month,
 # adapt is pure (close_period for each line, then the user's style), and persist writes the whole month in
-# one commit: the old period closed, undecided proposals expired, the next period and its lines, any alerts,
-# and the run row. the (user_id, start_date) constraint means a rerun or a race can never open a month twice
+# one commit: the old period closed, undecided proposals expired, finished goals completed, the next period and its
+# lines, any alerts, and the run row. the (user_id, start_date) constraint means a rerun or a race can never open a
+# month twice
 
 SUMMARY_LINE_KEYS = ("category", "name", "group", "old_cents", "actual_cents", "new_cents", "rule")
 
@@ -83,6 +88,14 @@ def gather_month(session: Session, period_id: int) -> dict:
     spent = period_actuals([EngineLine(ln.category, ln.kind, ln.limit_cents, ln.group) for ln in period.lines],
                            txns, start)
     saved = sum(category_totals(savings(txns), start, end).values())
+    # a goal's payment shows up as loan spending or saving. the closed month's goal lines say how much is the goal's,
+    # so the fixed lines don't adopt it (the goal line already budgets it) and it doesn't land on free (spec, double
+    # counting). these two are net from here on
+    limits = {ln.category: ln.limit_cents for ln in period.lines}
+    spent[LOAN_PAYMENTS] = net_of_goal(spent.get(LOAN_PAYMENTS, 0), limits.get(LOAN_PAYMENTS, 0),
+                                       limits.get(GOAL_DEBT_PAYOFF, 0))
+    saved = net_of_goal(saved, limits.get(SAVINGS, 0),
+                        limits.get(GOAL_EMERGENCY_FUND, 0) + limits.get(GOAL_SAVINGS, 0))
     lined = {ln.category for ln in period.lines}
     unlined = {c: amount for c, amount in spent.items() if c not in lined and amount > 0}
     # what the free line covered, whether or not the period had one (a budget from before tpc-22 didn't)
@@ -106,12 +119,22 @@ def gather_month(session: Session, period_id: int) -> dict:
     history = load_txns(session, period.user_id, add_months(new_start, -HISTORY_MONTHS - 1), end)
     fit = fit_budget(history, new_start, history_start=history_start(session, period.user_id, end))
     style, targets = user_style(session, period.user_id)
+    names = {ln.category: ln.name for ln in period.lines}
+    goals = []
+    committed = committed_goals(session, period.user_id)
+    for goal in committed:
+        if budgeted_in(goal, new_start):
+            category = GOAL_CATEGORIES[goal.kind]
+            goals.append({"category": category, "name": names.get(category, default_name(category)),
+                          "monthly_cents": goal.monthly_cents, "goal_id": goal.id})
     return {
         "month": start, "new_start": new_start, "user_id": period.user_id,
         "lines": [{"category": ln.category, "name": ln.name, "group": ln.group, "kind": ln.kind,
                    "limit_cents": ln.limit_cents, "actual_cents": actual(ln)} for ln in period.lines],
         "saved_cents": saved, "free_actual_cents": free_actual, "unbudgeted": sorted(c for c in unlined if c != FREE),
-        "accepted": accepted,
+        "accepted": accepted, "goals": goals,
+        "finished_goal_ids": [g.id for g in committed if finished_before(g, new_start)],
+        "expired_goal_ids": stale_proposals(session, period.user_id, new_start),
         "income_cents": fit.income_cents, "fallback_total_cents": fit.spending_total_cents,
         "style": style, "targets": targets,
     }
@@ -122,9 +145,10 @@ def _saving_line(actual_cents: int, new_cents: int, rule: str) -> dict:
             "actual_cents": actual_cents, "old_cents": 0, "new_cents": new_cents, "rule": rule}
 
 
-# pure: next month's lines from the closed one. free is never adjusted here; the style sets it
+# pure: next month's lines from the closed one. free is never adjusted here; the style sets it. a goal's line is
+# never adjusted either: it's the amount the user accepted, for as long as the goal runs
 def adapt_month(gathered: dict) -> dict:
-    lines = [ln for ln in gathered["lines"] if ln["group"] != "free"]
+    lines = [ln for ln in gathered["lines"] if ln["group"] not in ("free", "goal")]
     actuals = {ln["category"]: ln["actual_cents"] for ln in lines}
     adjustments = close_period([EngineLine(ln["category"], ln["kind"], ln["limit_cents"], ln["group"])
                                 for ln in lines], actuals, gathered["accepted"])
@@ -133,6 +157,12 @@ def adapt_month(gathered: dict) -> dict:
     # a budget from before tpc-22 gains a saving line once the user is seen saving
     if gathered["saved_cents"] and all(ln["category"] != SAVINGS for ln in new):
         new.append(_saving_line(gathered["saved_cents"], gathered["saved_cents"], "fixed"))
+    old_limits = {ln["category"]: ln["limit_cents"] for ln in gathered["lines"]}
+    for goal in gathered["goals"]:
+        old_cents = old_limits.get(goal["category"], 0)
+        new.append({"category": goal["category"], "name": goal["name"], "group": "goal", "kind": "fixed",
+                    "limit_cents": old_cents, "actual_cents": 0, "old_cents": old_cents,
+                    "new_cents": goal["monthly_cents"], "rule": "goal"})
 
     result = apply_style(gathered["style"], [EngineLine(ln["category"], ln["kind"], ln["new_cents"], ln["group"])
                                              for ln in new], gathered["income_cents"],
@@ -163,6 +193,12 @@ def persist_month(session_factory, period_id: int, gathered: dict, adapted: dict
         if old.status != "open":
             return None
         expired = expire_proposals(s, expired)
+        expired_goals = expire_goal_proposals(s, gathered["expired_goal_ids"])
+        # rechecked like the proposals: a goal the user stopped while close was running stays stopped
+        finished = s.scalars(select(Goal).where(Goal.id.in_(gathered["finished_goal_ids"]),
+                                                Goal.status == "accepted")).all()
+        for goal in finished:
+            goal.status = "completed"
         old.status = "closed"
         new_start = gathered["new_start"]
         period = BudgetPeriod(user_id=old.user_id, start_date=new_start, end_date=month_end(new_start),
@@ -170,7 +206,7 @@ def persist_month(session_factory, period_id: int, gathered: dict, adapted: dict
                               total_cents=adapted["total_cents"])
         period.lines = [BudgetLine(category=ln["category"], name=ln["name"], group=ln["group"], kind=ln["kind"],
                                    limit_cents=ln["new_cents"],
-                                   source="user" if ln["rule"] == "accepted" else "adapted",
+                                   source="user" if ln["rule"] in ("accepted", "goal") else "adapted",
                                    fit_json={"old_cents": ln["old_cents"], "actual_cents": ln["actual_cents"],
                                              "rule": ln["rule"]})
                         for ln in adapted["lines"]]
@@ -188,7 +224,8 @@ def persist_month(session_factory, period_id: int, gathered: dict, adapted: dict
         summary = {
             "month": gathered["month"].isoformat(), "new_period_id": period.id,
             "lines": [{k: ln[k] for k in SUMMARY_LINE_KEYS} for ln in adapted["lines"]],
-            "expired_alert_ids": expired, "income_cents": gathered["income_cents"],
+            "expired_alert_ids": expired, "expired_goal_ids": expired_goals,
+            "finished_goal_ids": sorted(g.id for g in finished), "income_cents": gathered["income_cents"],
             "total_cents": adapted["total_cents"], "free_cents": adapted["free_cents"], "style": gathered["style"],
             "alert_ids": [a.id for a in alerts], "unbudgeted": gathered["unbudgeted"],
         }
