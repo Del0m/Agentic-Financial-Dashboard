@@ -124,3 +124,9 @@ Run them from `backend/`:
 **What it does:** October's rent is paid on Sep 30 and nothing on Oct 1. October's rent actual is $1,500.
 
 **Why it's there:** The other half of the rule: close loads the month's transactions from 3 days before it starts, so a bill paid early for this month is counted here instead of disappearing.
+
+## `test_close_fits_income_on_all_three_months`
+
+**What it does:** Uses `setup`'s October with an extra $2,000 of income on Oct 20, so income is $4,200 in August and September and $6,200 in October. After the close, November's `income_cents` is $4,200, the median of all three months.
+
+**Why it's there:** August's first transaction is the paycheck on the 15th. Close used to load only the three-month window, so August looked like a partial first month and was dropped, giving $5,200 (halfway between September and October). Close now loads July too, which shows August is complete. Income and the fallback total are the only things close takes from the fit, so that's what this bug moved.
