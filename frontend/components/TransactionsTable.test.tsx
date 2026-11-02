@@ -66,4 +66,11 @@ describe("TransactionsTable", () => {
     draw([txn({ category: "TRAVEL", line_name: "Free" })]);
     expect((screen.getByRole("combobox", { name: "Line for Costco" }) as HTMLSelectElement).value).toBe("FREE");
   });
+
+  test("goal lines aren't offered as a category", () => {
+    const lines = [...LINES, { category: "GOAL_DEBT_PAYOFF", name: "Debt payoff", group: "goal" }];
+    render(<TransactionsTable transactions={[txn()]} lines={lines} onCorrect={vi.fn()} onRemembered={vi.fn()} />);
+    const options = screen.getAllByRole("option").map((o) => o.textContent);
+    expect(options).toEqual(["Groceries", "Shopping", "Free"]);
+  });
 });

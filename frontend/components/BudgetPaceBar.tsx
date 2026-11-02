@@ -8,6 +8,15 @@ export default function BudgetPaceBar({ line, daysElapsed, daysInPeriod }: {
   daysElapsed: number;
   daysInPeriod: number;
 }) {
+  // an accepted goal is a planned amount, not spending: nothing reliably measures what was paid toward it
+  if (line.group === "goal") {
+    return (
+      <div className="flex justify-between gap-2 text-sm">
+        <span>{line.name}</span>
+        <span className="tabular-nums">{formatCents(line.limit_cents)}/mo</span>
+      </div>
+    );
+  }
   const share = line.limit_cents > 0 ? Math.min(line.spent_cents / line.limit_cents, 1) : 0;
   const percent = Math.round(share * 100);
   const today = (daysElapsed / daysInPeriod) * 100;

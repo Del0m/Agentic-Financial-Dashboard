@@ -17,6 +17,13 @@ export function formatDate(iso: string | null): string {
   return iso === null ? "—" : day.format(new Date(iso));
 }
 
+// "2026-12-01" -> "December 2026". UTC for the same reason: a plain new Date("2026-12-01") is still November in the US
+const month = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+
+export function formatMonth(iso: string): string {
+  return month.format(new Date(iso));
+}
+
 // "Plaid Checking ••0000"
 export function accountLabel(name: string, mask: string | null): string {
   return mask ? `${name} ••${mask}` : name;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { errorMessage, type Txn } from "@/lib/api";
 import { formatCents, formatDate } from "@/lib/format";
 
-type Line = { category: string; name: string };
+type Line = { category: string; name: string; group?: string };
 
 // a month's transactions with the budget line each counts against (tpc-22). plaid's category applies on its
 // own; the line picker corrects one transaction, then offers to remember it for that merchant
@@ -22,7 +22,9 @@ export default function TransactionsTable({ transactions, lines, onCorrect, onRe
     setPrev(transactions);
     setRows(transactions);
   }
-  const choices = lines.some((l) => l.category === "FREE") ? lines : [...lines, { category: "FREE", name: "Free" }];
+  // a goal line has no spending to hold, and the server refuses a transaction moved onto one
+  const spendable = lines.filter((l) => l.group !== "goal");
+  const choices = spendable.some((l) => l.category === "FREE") ? spendable : [...spendable, { category: "FREE", name: "Free" }];
   const lined = new Set(choices.map((l) => l.category));
 
   async function pick(t: Txn, category: string, remember: boolean) {

@@ -109,7 +109,7 @@ export type BudgetLine = {
   id: number;
   category: string;
   name: string; // the user's label; the budget rules read the group (tpc-22)
-  group: "needs" | "wants" | "saving" | "free";
+  group: "needs" | "wants" | "saving" | "free" | "goal"; // goal: an accepted goal (tpc-25); no spending to measure
   kind: "fixed" | "flexible";
   limit_cents: number;
   spent_cents: number;
@@ -206,6 +206,55 @@ export function acceptAlert(id: number): Promise<Alert> {
 
 export function dismissAlert(id: number): Promise<Alert> {
   return request<Alert>(`/alerts/${id}/dismiss`, { method: "POST" });
+}
+
+// the goals the agent proposed (tpc-23) and the user decides on (tpc-25)
+export type Goal = {
+  id: number;
+  kind: "debt_payoff" | "emergency_fund" | "savings";
+  priority: number;
+  monthly_cents: number;
+  target_cents: number;
+  target_date: string | null;
+  start_date: string | null; // null: from before tpc-25, so it can be dismissed but not accepted
+  strategy: string | null;
+  rationale: string;
+  status: string;
+};
+
+export type GoalRun = {
+  run_id: number;
+  status: "running" | "awaiting_user" | "ok" | "error" | "expired";
+  outcome: string | null;  // no_surplus | nothing_offered | no_affordable_goals when a run ends without goals
+  reason: string | null;   // why an error run failed: a code, or an exception name
+  goal_ids: number[];
+  waiting_for: number[];
+  attempts: number | null;
+  issues: { message: string; index: number | null; kind: string | null }[];
+  error: string | null;
+};
+
+// current is the proposal plus the accepted goals; the server's default is the proposal alone
+export function getGoals(status?: "proposed" | "accepted" | "current"): Promise<Goal[]> {
+  return request<Goal[]>(status ? `/goals?status=${status}` : "/goals");
+}
+
+// starts a run in the background (it can outlast the proxy's 30 s); poll getGoalRun with the id
+export function generateGoals(date?: string): Promise<{ run_id: number | null }> {
+  return request("/goals/generate", { method: "POST", body: JSON.stringify(date ? { date } : {}) });
+}
+
+export function getGoalRun(id: number): Promise<GoalRun> {
+  return request<GoalRun>(`/goals/runs/${id}`);
+}
+
+export function acceptGoal(id: number): Promise<Goal> {
+  return request<Goal>(`/goals/${id}/accept`, { method: "POST" });
+}
+
+// stops an accepted goal too
+export function dismissGoal(id: number): Promise<Goal> {
+  return request<Goal>(`/goals/${id}/dismiss`, { method: "POST" });
 }
 
 // the transactions table (tpc-22): each row with the budget line it counts against, and corrections
