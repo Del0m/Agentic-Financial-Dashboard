@@ -1,6 +1,6 @@
 # TPC-25: Goal approval in the UI, accepted goals become budget lines
 
-Date: 2026-11-02. Status: draft, reviewed against the code by a subagent and corrected, awaiting the user's review of the decisions below. Nothing is implemented.
+Date: 2026-11-02. Status: implemented. Verification is in the [manual verification handoff](../../handoffs/2026-11-02-tpc-25-manual-verification.md).
 
 Ticket: [TPC-25](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-25), epic TPC-5 (M4). Branch: `TPC-25`, cut from `origin/main`, which has TPC-23, TPC-24 and TPC-32 merged.
 
@@ -27,7 +27,7 @@ Rows marked **confirm** are the design's own defaults, not something the user ha
 | **Confirm:** a goal joins the budget at the next close, or in the first budget if none exists yet. The month under way never changes | The ticket says "next month's budget", and budget styles already apply this way. A goal's plan starts on the 1st of next month | Adding a line to the open month, which cuts Free mid-month |
 | **Confirm:** a goal line shows the planned amount with no spent figure, pace or flag | Nothing reliably measures contributions: card payments aren't spending and a transfer can't be tied to a goal. "$0 of $583" would be wrong | A pace bar on a number that's always $0 |
 | **Confirm:** an accepted goal can be stopped with `POST /goals/{id}/dismiss`; its line ends at the next close | Otherwise one wrong click commits money for years, with no way back | No undo |
-| **Confirm:** goal proposals expire when their start month is closed or a first budget opens on it, like `adjust_next_budget` proposals | The surplus behind a proposal goes stale. Accept never has to recheck affordability | Revalidating at accept time, which needs a second path through the validation code |
+| **Confirm:** a goal proposal expires at the close that opens its start month (a December proposal expires when November closes), or when a first budget opens on that month, like `adjust_next_budget` proposals | The surplus behind a proposal goes stale. Accept never has to recheck affordability | Revalidating at accept time, which needs a second path through the validation code |
 | **Confirm:** new proposals are capped by `max(round(surplus × max_share) − accepted goals' monthly amounts, 0)`, and a kind with an accepted goal isn't offered | Two runs can't commit the same money twice. One line per kind keeps `(period, category)` unique | Superseding accepted goals on regeneration |
 | A run writes nothing if the accepted goals changed while it ran (`error`, reason `goals_changed`), and accepting is refused while a goal of that kind is accepted | A decision takes no lock, so a user can accept during a model call. Without this the cap is committed twice, and two lines of one kind make every later close fail with an `IntegrityError` that close reads as "another close got there first" | Holding the user's lock for decisions, which blocks a click for a whole run |
 | **Confirm:** in 50/30/20, goal lines come out of the saving target: `saving = max(target − goal lines, 0)`. If goals pass the target and the lines pass income, `_split` raises `over_income` | Paying down debt and building savings are what the 20% is for. Free and needs are left alone, and the user is told when it doesn't fit | Goals on top of the 20%, with the total rising silently |
@@ -59,15 +59,17 @@ proposed --accept--> accepted --target month passed, at close--> completed
     |                    |
     |                    +--dismiss ("stop")--> dismissed
     +--dismiss--> dismissed
-    +--new proposal, withdrawal, or close of its start month--> superseded
+    +--new proposal, withdrawal, or the close that opens its start month--> superseded
 ```
 
 ```text
 load_facts -> propose -> validate_candidate -> persist -> forget_facts -> await_approval -> END
-                 ^               |                 |
-                 +-- correction -+                 +-- no checkpointer, no goals, or goals_changed: END
-                                 (await_approval loops on interrupt() until no row is proposed)
+                 ^               |                                |
+                 +-- correction -+                                +-- nothing stored (goals_changed, a failed run): END
+                                  (await_approval loops on interrupt() until no row is proposed)
 ```
+
+With a checkpointer, every end that doesn't raise passes through `forget_facts`, including a withdrawal and a stop before `persist`. Only a run that stored goals goes on to `await_approval`. Without one (the CLI), every end goes straight to `END`: there is no `forget_facts` or `await_approval`, nothing reaches disk, and the run doesn't pause.
 
 An `AgentRun` is `running`, then `awaiting_user` while paused (no lock held, and `running_elsewhere` ignores it), then `ok`. The code that resumes the graph writes the final row, as `run_goals` does today. If the checkpoint is lost, the run is finished from the rows once none is `proposed`. A paused run whose proposals were superseded or expired becomes `expired`. `close_interrupted_runs` only touches `running`, so a paused run survives a restart. Close can't reach the checkpointer, so an expired run's checkpoint stays behind; it holds no debt names, balances or model text, only the aggregate figures the run summary already stores, so this is harmless.
 
@@ -77,7 +79,7 @@ An `AgentRun` is `running`, then `awaiting_user` while paused (no lock held, and
 GET  /goals?status=proposed|accepted|current  default proposed, so TPC-23's contract holds. current = proposed + accepted
 POST /goals/generate { date? }  -> 202 { run_id }; 409 if a run is going for this user
 GET  /goals/runs/{id}           -> { run_id, status, outcome, reason, goal_ids, waiting_for, attempts, issues, error }
-POST /goals/{id}/accept         -> GoalOut; 404 other user's; 409 already decided, superseded, no start_date, or a goal of that kind is accepted
+POST /goals/{id}/accept         -> GoalOut; 404 other user's; 409 already decided, superseded, no start_date or target_date, or a goal of that kind is accepted
 POST /goals/{id}/dismiss        -> GoalOut; 404, 409. Works on proposed and accepted
 ```
 

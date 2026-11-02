@@ -209,8 +209,8 @@ class Goal(Base):
     priority: Mapped[int]
     monthly_cents: Mapped[int]
     target_cents: Mapped[int]
-    target_date: Mapped[Optional[Date]]      # none only for a debt plan that never ends
-    start_date: Mapped[Optional[Date]]       # the plan's first month; null on rows from before tpc-25, which can't be accepted
+    target_date: Mapped[Optional[Date]]      # new rows always have one (tpc-24 validates it); accept refuses a null
+    start_date: Mapped[Optional[Date]]       # the plan's first month; new rows always have one, so a null (before tpc-25) is refused by accept
     strategy: Mapped[Optional[str]]          # debt_payoff only
     rationale: Mapped[str]
     status: Mapped[str] = mapped_column(default="proposed")

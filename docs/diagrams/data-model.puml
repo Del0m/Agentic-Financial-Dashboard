@@ -46,6 +46,13 @@ entity budget_lines {
   fit_json
   [unique period + category]
 }
+entity goals {
+  * id
+  user_id / run_id / kind
+  monthly / target / start_date / target_date
+  status
+  [accepted, one per kind]
+}
 entity alerts {
   * id
   user_id / period_id
@@ -72,13 +79,16 @@ users ||--o{ budget_periods
 budget_periods ||--o{ budget_lines
 budget_periods |o--o{ alerts : optional period
 users ||--o{ agent_runs
+users ||--o{ goals
+agent_runs |o--o{ goals : optional run
 agent_runs |o--o{ advice_log : optional run
 alerts |o--o{ advice_log : optional alert
 note bottom of budget_lines
 Money = integer cents; Plaid sign retained.
 Transactions: positive out, negative in / refund.
 User FKs on other tables omitted for readability.
-Goals and recurring_streams are planned tables.
+Accepted goals become budget_lines (group goal) at the next close.
+recurring_streams is a planned table.
 Checkpoints are not application-table FKs.
 end note
 @enduml
