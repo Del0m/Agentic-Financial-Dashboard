@@ -166,9 +166,10 @@ def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyG
             if claim is not None:
                 claim.assert_owned(s)
             _supersede(s, state["user_id"])
+            start = date.fromisoformat(state["start"])
             rows = [Goal(user_id=state["user_id"], run_id=state["run_id"], kind=p.kind, priority=p.priority,
                          monthly_cents=p.monthly_cents, target_cents=p.target_cents, target_date=p.target_date,
-                         strategy=p.strategy, rationale=p.rationale) for p in state["plans"]]
+                         start_date=start, strategy=p.strategy, rationale=p.rationale) for p in state["plans"]]
             s.add_all(rows)
             s.commit()
             return {"status": "ok", "goal_ids": [r.id for r in rows]}

@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Iterable, Literal, Optional, Sequence
 
-from app.budget_engine.txns import Txn, category_totals, month_end, month_start, savings, shift_early_bills, spending
+from app.budget_engine.txns import (GOAL_DEBT_PAYOFF, LOAN_PAYMENTS, Txn, category_totals, month_end, month_start,
+                                    net_of_goal, savings, shift_early_bills, spending)
 
 # today's overspend flags (architecture 6.4). budget periods are calendar months.
 
@@ -15,7 +16,7 @@ class BudgetLine:
     category: str
     kind: Literal["fixed", "flexible"]
     limit_cents: int
-    group: str = "wants"          # needs | wants | saving | free (tpc-22)
+    group: str = "wants"          # needs | wants | saving | free (tpc-22) | goal (tpc-25)
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,11 @@ def evaluate(lines: Sequence[BudgetLine], txns: Iterable[Txn], today: date) -> l
     # a fixed bill paid early for next month is next month's (judged against the line's limit as the usual bill)
     bills = {line.category: line.limit_cents for line in lines if line.kind == "fixed"}
     spent = category_totals(shift_early_bills(spending(txns), bills), month_start(today), today)
+    # a debt goal paid to a loan is the goal's, not loan spending: it would flag the loan line or land on free
+    goal = next((line for line in lines if line.category == GOAL_DEBT_PAYOFF), None)
+    if goal and spent.get(LOAN_PAYMENTS):
+        loan = next((line.limit_cents for line in lines if line.category == LOAN_PAYMENTS), 0)
+        spent[LOAN_PAYMENTS] = net_of_goal(spent[LOAN_PAYMENTS], loan, goal.limit_cents)
     saved = sum(category_totals(savings(txns), month_start(today), today).values())
     days_elapsed, days_in_period = today.day, month_end(today).day
     budgeted = {line.category for line in lines}

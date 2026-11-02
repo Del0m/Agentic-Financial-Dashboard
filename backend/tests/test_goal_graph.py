@@ -496,3 +496,8 @@ def test_card_minimums_can_leave_no_surplus(db):
     fake = ScriptedChatModel(replies=[])
     state = run_goals(db, UID, TODAY, model=fake)
     assert (state["status"], state["surplus_cents"], fake.seen) == ("no_surplus", -4500, [])
+
+
+def test_persist_stores_the_plan_start(user):
+    run_goals(user, UID, TODAY, model=model(g("savings", 10000)))
+    assert stored(user)[0].start_date == START

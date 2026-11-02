@@ -85,6 +85,28 @@ class GoalFacts:
     note: Optional[str] = None
 
 
+# an accepted goal as the budget sees it (tpc-25): a line from its start month through the month of its target date
+@dataclass(frozen=True)
+class CommittedGoal:
+    id: int
+    kind: GoalKind
+    monthly_cents: int
+    start_date: date
+    target_date: date
+
+
+def budgeted_in(goal: CommittedGoal, month: date) -> bool:
+    return goal.start_date <= month <= month_start(goal.target_date)
+
+
+def finished_before(goal: CommittedGoal, month: date) -> bool:
+    return month_start(goal.target_date) < month
+
+
+def committed_cents(goals: Sequence[CommittedGoal]) -> int:
+    return sum(g.monthly_cents for g in goals)
+
+
 def validate_plans(plans: Sequence[GoalPlan], *, start: date) -> list[GoalIssue]:
     issues = []
     last = add_months(start, MAX_MONTHS - 1)

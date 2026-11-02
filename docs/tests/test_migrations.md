@@ -19,7 +19,7 @@ Run them from `backend/`:
 
 ## `test_upgrade_backfills_and_downgrades`
 
-**What it does:** Upgrades to the revision before TPC-22, inserts a user, a period and two lines (`FOOD_AND_DRINK`, `ENTERTAINMENT`), then upgrades to `head`. The lines get the names "Food and drink" and "Entertainment" and the groups `needs` and `wants`. `category_rules` and `goals` (TPC-23) exist, periods have `income_cents` and `total_cents`, and transactions have `user_category`. Downgrading removes them all again.
+**What it does:** Upgrades to the revision before TPC-22, inserts a user, a period and two lines (`FOOD_AND_DRINK`, `ENTERTAINMENT`), then upgrades to `head`. The lines get the names "Food and drink" and "Entertainment" and the groups `needs` and `wants`. `category_rules` and `goals` (TPC-23) exist, periods have `income_cents` and `total_cents`, and transactions have `user_category`. Goals (from TPC-25) also have a `start_date` column. Downgrading one step to the user-run-claims revision removes `start_date`, and downgrading to the start removes the rest.
 
 **Why it's there:** TPC-22 makes `budget_lines.name` and `.group` required. Existing budgets (the demo and seeded users) must be backfilled from the category, using the migration's own copy of the default mapping, or the upgrade fails on their rows.
 

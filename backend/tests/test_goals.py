@@ -1,6 +1,7 @@
 from datetime import date
 
-from app.budget_engine.goals import build_goal, card_minimums, emergency_gap, monthly_surplus, offered_kinds
+from app.budget_engine.goals import (CommittedGoal, budgeted_in, build_goal, card_minimums, committed_cents, emergency_gap,
+                                     finished_before, monthly_surplus, offered_kinds)
 from app.budget_engine.payoff import Debt, simulate
 from app.budget_engine.txns import SAVINGS, Txn
 
@@ -127,3 +128,23 @@ def test_card_minimums_are_cards_with_a_balance():
              Debt(3, "Paid off", "credit", 18.0, 0, 2500), Debt(4, "No minimum", "credit", 18.0, 90000, None),
              Debt(5, "Loan", "student", 5.5, 1840000, 21000), Debt(6, "Home", "mortgage", 4.0, 20000000, 120000)]
     assert card_minimums(debts) == 12000
+
+
+def test_budgeted_from_start_through_target_month():
+    g = CommittedGoal(1, "savings", 10000, date(2026, 12, 1), date(2027, 11, 1))
+    assert not budgeted_in(g, date(2026, 11, 1))
+    assert budgeted_in(g, date(2026, 12, 1)) and budgeted_in(g, date(2027, 11, 1))
+    assert not budgeted_in(g, date(2027, 12, 1))
+    assert finished_before(g, date(2027, 12, 1)) and not finished_before(g, date(2027, 11, 1))
+
+
+# a target date mid-month still budgets that whole month
+def test_target_month_counts_whatever_the_day():
+    g = CommittedGoal(1, "emergency_fund", 10000, date(2026, 12, 1), date(2027, 3, 17))
+    assert budgeted_in(g, date(2027, 3, 1)) and not budgeted_in(g, date(2027, 4, 1))
+
+
+def test_committed_cents_sums_monthly_amounts():
+    goals = [CommittedGoal(1, "savings", 10000, START, date(2027, 11, 1)),
+             CommittedGoal(2, "debt_payoff", 58300, START, date(2028, 5, 1))]
+    assert committed_cents(goals) == 68300 and committed_cents([]) == 0

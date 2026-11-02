@@ -98,3 +98,15 @@ Run them from `backend/`:
 **What it does:** `"  COSTCO "` and `"Costco"` both become `"costco"`.
 
 **Why it's there:** A remembered merchant should match however Plaid spells it that day.
+
+## `test_net_of_goal_only_attributes_what_is_above_the_limit`
+
+**What it does:** Five cases of `net_of_goal(actual, limit, goal)`: a $200 goal paid to a card leaves a $210 loan payment at $210; a $793 payment against a $210 line and a $583 goal nets to $210; a $300 payment nets to $210; a $100 payment, below the line, stays $100; with no line (limit 0) a $583 payment nets to $0.
+
+**Why it's there:** Only the amount above the line's old limit is the goal's. Subtracting the whole goal would turn an unchanged loan payment into a smaller line, cancel the goal's effect on Free, and raise `over_limit` every month after (spec, "Double counting").
+
+## `test_goal_categories_map_each_kind`
+
+**What it does:** `GOAL_CATEGORIES` maps `debt_payoff`, `emergency_fund` and `savings` to `GOAL_DEBT_PAYOFF`, `GOAL_EMERGENCY_FUND` and `GOAL_SAVINGS`, and the constants and `LOAN_PAYMENTS` have the keys stored in budget lines.
+
+**Why it's there:** These strings are saved in `budget_lines.category`, so changing one would orphan every goal line.

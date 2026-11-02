@@ -263,3 +263,9 @@ These came from the final review. `red_user(db)` seeds a user spending $2,000 a 
 **What it does:** $50 measured less a $95 minimum is `no_surplus` at −$45, with no model call.
 
 **Why it's there:** A user whose minimums take everything has nothing to allocate.
+
+## `test_persist_stores_the_plan_start`
+
+**What it does:** After a run proposing a savings goal, the stored row's `start_date` is 2026-12-01, the first of next month.
+
+**Why it's there:** `created_at` is the wall clock, which is wrong for a simulated user. Close needs the plan's real first month to know when the goal's line begins (TPC-25).

@@ -68,3 +68,34 @@ def test_503020_without_income_falls_back():
     plain = caps([RENT, FOOD, FUN, SAVING], None, fallback=300000)
     assert (r.limits, r.total_cents, r.facts) == (plain.limits, plain.total_cents, plain.facts)
     assert r.fallback == "no_income" and r.limits["SAVINGS_TRANSFER"] == 50000
+
+
+def test_caps_goal_line_shrinks_free_by_exactly_its_amount():
+    lines = [BudgetLine("RENT_AND_UTILITIES", "fixed", 200000, "needs")]
+    goal = BudgetLine("GOAL_SAVINGS", "fixed", 30000, "goal")
+    without, with_goal = (apply_style("caps", ls, 420000, 0, DEFAULT_TARGETS) for ls in (lines, [*lines, goal]))
+    assert with_goal.limits["FREE"] == without.limits["FREE"] - 30000
+    assert with_goal.limits["RENT_AND_UTILITIES"] == 200000 and with_goal.total_cents == 420000
+
+
+def test_split_goal_lines_come_out_of_saving_target():
+    goal = BudgetLine("GOAL_DEBT_PAYOFF", "fixed", 30000, "goal")
+    assert apply_style("50_30_20", [goal], 400000, 0, DEFAULT_TARGETS).limits["SAVINGS_TRANSFER"] == 50000
+
+
+def test_split_saving_target_never_negative():
+    goal = BudgetLine("GOAL_DEBT_PAYOFF", "fixed", 90000, "goal")
+    assert apply_style("50_30_20", [goal], 400000, 0, DEFAULT_TARGETS).limits["SAVINGS_TRANSFER"] == 0
+
+
+def test_split_goal_past_income_is_reported():
+    lines = [BudgetLine("RENT_AND_UTILITIES", "fixed", 200000, "needs"), BudgetLine("TRAVEL", "flexible", 120000, "wants"),
+             BudgetLine("GOAL_DEBT_PAYOFF", "fixed", 90000, "goal")]
+    r = apply_style("50_30_20", lines, 400000, 0, DEFAULT_TARGETS)
+    assert r.total_cents == 410000 and [(f.kind, f.lines_cents) for f in r.facts] == [("over_income", 410000)]
+
+
+# without goals the split is what it was: saving is its target and nothing is reported against income
+def test_split_without_goals_is_unchanged():
+    r = split([RENT, FUN], 400000)
+    assert r.limits["SAVINGS_TRANSFER"] == 80000 and r.facts == ()

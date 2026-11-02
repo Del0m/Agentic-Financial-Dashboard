@@ -117,7 +117,7 @@ class BudgetPeriod(Base):
 
 # budget lines belong to a group, which is what the budget rules read (tpc-22); the name is the user's label.
 # plain strings, like the alert columns, so a new group or style never needs a migration
-LineGroup = Literal["needs", "wants", "saving", "free"]
+LineGroup = Literal["needs", "wants", "saving", "free", "goal"]
 BudgetStyle = Literal["caps", "50_30_20"]
 
 # one limit per category per period; fit_json holds the monthly totals and outlier months behind the limit.
@@ -197,7 +197,8 @@ class AdviceLog(Base):
     outcome: Mapped[Optional[str]]
 
 # one goal the agent proposed (tpc-23). code computes the target and the date; the llm chose the kind, order and amount.
-# proposed -> superseded by the next run, or accepted | dismissed once the user can decide (tpc-25)
+# proposed -> superseded by the next run, or accepted | dismissed once the user can decide (tpc-25);
+# accepted -> completed once its target month has passed
 class Goal(Base):
     __tablename__ = "goals"
 
@@ -209,6 +210,7 @@ class Goal(Base):
     monthly_cents: Mapped[int]
     target_cents: Mapped[int]
     target_date: Mapped[Optional[Date]]      # none only for a debt plan that never ends
+    start_date: Mapped[Optional[Date]]       # the plan's first month; null on rows from before tpc-25, which can't be accepted
     strategy: Mapped[Optional[str]]          # debt_payoff only
     rationale: Mapped[str]
     status: Mapped[str] = mapped_column(default="proposed")

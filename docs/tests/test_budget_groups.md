@@ -21,3 +21,9 @@ Run them from `backend/`:
 **What it does:** Categories become sentence-case names ("Food and drink", "Rent and utilities", "Entertainment"); the reserved keys become "Savings" and "Free".
 
 **Why it's there:** The dashboard shows the name, not Plaid's raw key.
+
+## `test_goal_categories_have_group_and_name`
+
+**What it does:** `GOAL_DEBT_PAYOFF`, `GOAL_EMERGENCY_FUND` and `GOAL_SAVINGS` are in group `goal` and named "Debt payoff", "Emergency fund" and "Savings goal".
+
+**Why it's there:** Goal lines (TPC-25) are their own group, so pace, close and the transaction picker can tell them apart from the saving line.

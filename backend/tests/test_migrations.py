@@ -43,9 +43,15 @@ def test_upgrade_backfills_and_downgrades(tmp_path, monkeypatch):
         tables = sa.inspect(c).get_table_names()
         period_cols = {col["name"] for col in sa.inspect(c).get_columns("budget_periods")}
         txn_cols = {col["name"] for col in sa.inspect(c).get_columns("transactions")}
+        goal_cols = {col["name"] for col in sa.inspect(c).get_columns("goals")}
     assert rows == [("FOOD_AND_DRINK", "Food and drink", "needs"), ("ENTERTAINMENT", "Entertainment", "wants")]
     assert "category_rules" in tables and "goals" in tables and "user_run_claims" in tables
     assert {"income_cents", "total_cents"} <= period_cols and "user_category" in txn_cols
+    assert "start_date" in goal_cols
+
+    command.downgrade(cfg, "8f4b2a7c901e")
+    with engine.connect() as c:
+        assert "start_date" not in {col["name"] for col in sa.inspect(c).get_columns("goals")}
 
     command.downgrade(cfg, BEFORE)
     with engine.connect() as c:

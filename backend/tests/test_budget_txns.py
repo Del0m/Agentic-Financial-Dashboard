@@ -3,8 +3,9 @@ from decimal import Decimal
 
 import pytest
 
-from app.budget_engine.txns import (SAVINGS, Txn, add_months, category_totals, income_by_month, month_end,
-                                    month_start, normalize_merchant, round_cents, savings, spending)
+from app.budget_engine.txns import (GOAL_CATEGORIES, GOAL_DEBT_PAYOFF, GOAL_EMERGENCY_FUND, GOAL_SAVINGS, LOAN_PAYMENTS,
+                                    SAVINGS, Txn, add_months, category_totals, income_by_month, month_end,
+                                    month_start, net_of_goal, normalize_merchant, round_cents, savings, spending)
 
 
 def t(day, cents, cat="FOOD_AND_DRINK", detailed=None, month=10, year=2026):
@@ -91,3 +92,18 @@ def test_income_by_month():
 
 def test_normalize_merchant():
     assert normalize_merchant("  COSTCO ") == normalize_merchant("Costco") == "costco"
+
+
+def test_net_of_goal_only_attributes_what_is_above_the_limit():
+    assert net_of_goal(21000, 21000, 20000) == 21000    # the goal went to a card; the loan payment is unchanged
+    assert net_of_goal(79300, 21000, 58300) == 21000    # the whole goal went to the loan
+    assert net_of_goal(30000, 21000, 58300) == 21000    # part of it did
+    assert net_of_goal(10000, 21000, 58300) == 10000    # a smaller payment is still adopted
+    assert net_of_goal(58300, 0, 58300) == 0            # no line: all of it is the goal
+
+
+def test_goal_categories_map_each_kind():
+    assert GOAL_CATEGORIES == {"debt_payoff": GOAL_DEBT_PAYOFF, "emergency_fund": GOAL_EMERGENCY_FUND,
+                               "savings": GOAL_SAVINGS}
+    assert (GOAL_DEBT_PAYOFF, GOAL_EMERGENCY_FUND, GOAL_SAVINGS, LOAN_PAYMENTS) == (
+        "GOAL_DEBT_PAYOFF", "GOAL_EMERGENCY_FUND", "GOAL_SAVINGS", "LOAN_PAYMENTS")
