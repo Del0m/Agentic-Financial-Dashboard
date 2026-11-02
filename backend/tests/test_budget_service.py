@@ -390,3 +390,17 @@ def test_last_pace_is_double():
 
     from app.db.models import BudgetLine
     assert type(BudgetLine.__table__.c.last_pace.type) is Double
+
+
+
+def test_quiet_month_before_window_does_not_erase_older_history(db):
+    with db() as s:
+        acct = user(s)
+        for m, cents in ((5, 40000), (7, 30000), (8, 45000), (9, 50000)):
+            add_txn(s, acct, cents, "FOOD_AND_DRINK", day=date(2026, m, 5))
+        s.commit()
+        period = initialize_budget(s, "u1", date(2026, 10, 15))
+        food = next(ln for ln in period.lines if ln.category == "FOOD_AND_DRINK")
+        assert period.fit_json["window"] == ["2026-07-01", "2026-08-01", "2026-09-01"]
+        assert food.fit_json["monthly_totals"] == [30000, 45000, 50000]
+        assert food.limit_cents == 47250

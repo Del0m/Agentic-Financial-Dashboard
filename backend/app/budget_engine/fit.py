@@ -45,7 +45,7 @@ class FitResult:
 
 
 def fit_budget(txns: Iterable[Txn], today: date, fixed: frozenset[str] = FIXED_DEFAULT,
-               center: Literal["median", "mean"] = "median") -> FitResult:
+               center: Literal["median", "mean"] = "median", *, history_start: Optional[date] = None) -> FitResult:
     txns = list(txns)    # read more than once below; a generator would come back empty
     if not txns:
         return FitResult((), ())
@@ -53,7 +53,7 @@ def fit_budget(txns: Iterable[Txn], today: date, fixed: frozenset[str] = FIXED_D
     # callers load a month further back than the window, so the window's edge doesn't look like the history's start
     current = month_start(today)
     window_start = add_months(current, -HISTORY_MONTHS)
-    earliest = min(t.date for t in txns)
+    earliest = history_start or min(t.date for t in txns)
     start = month_start(earliest) if earliest.day <= FIRST_MONTH_DAY else add_months(month_start(earliest), 1)
     first = max(window_start, start)
     months = []

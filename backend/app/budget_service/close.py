@@ -11,7 +11,7 @@ from app.budget_engine.groups import default_group, default_name
 from app.budget_engine.pace import BudgetLine as EngineLine
 from app.budget_engine.styles import StyleFact, apply_style
 from app.budget_engine.txns import EARLY_DAYS, FREE, SAVINGS, add_months, category_totals, month_end, savings
-from app.budget_service.initialize import load_txns
+from app.budget_service.initialize import history_start, load_txns
 from app.budget_service.settings import user_style
 from app.db.models import AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, utcnow
 
@@ -104,7 +104,7 @@ def gather_month(session: Session, period_id: int) -> dict:
     new_start = end + timedelta(days=1)
     # a month further back than it fits, so the window's edge doesn't look like the start of the history
     history = load_txns(session, period.user_id, add_months(new_start, -HISTORY_MONTHS - 1), end)
-    fit = fit_budget(history, new_start)
+    fit = fit_budget(history, new_start, history_start=history_start(session, period.user_id, end))
     style, targets = user_style(session, period.user_id)
     return {
         "month": start, "new_start": new_start, "user_id": period.user_id,

@@ -27,7 +27,7 @@ from app.budget_engine import fit
 from app.budget_engine.fit import fit_budget
 from app.budget_engine.groups import default_group
 from app.budget_engine.txns import add_months, category_totals, month_end, month_start, spending
-from app.budget_service.initialize import initialize_budget, load_txns
+from app.budget_service.initialize import initialize_budget, load_txns, history_start
 from eval.budget_users import PROFILES, Profile, seed_profile
 from eval.fixtures import temp_db
 from eval.metrics import mape
@@ -68,11 +68,12 @@ def run_profile(profile: Profile) -> dict:
         }
         # the same history initialize_budget loads (read at call time, so it follows HISTORY_MONTHS)
         history = load_txns(s, uid, add_months(current, -fit.HISTORY_MONTHS - 1), current - timedelta(days=1))
+        boundary = history_start(s, uid, current - timedelta(days=1))
         actuals = category_totals(spending(load_txns(s, uid, current, month_end(current))),
                                   current, month_end(current))
     result = {"id": profile.id, "description": profile.description, "budget": budget}
     for center in CENTERS:
-        lines = [ln for ln in fit_budget(history, profile.today, center=center).lines
+        lines = [ln for ln in fit_budget(history, profile.today, center=center, history_start=boundary).lines
                  if default_group(ln.category) in SCORED]
         result[center] = score(lines, actuals)
     return result
