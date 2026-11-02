@@ -5,6 +5,7 @@ from langchain_core.messages import AIMessage
 
 from app import config
 from app.agents.goal_graph import run_goals
+from app.api import budget_hooks
 from app.db.models import Account
 from tests.fakes import ScriptedChatModel, ollama_has
 from tests.test_goal_graph import (TODAY, UID, accept, audit_in_tmp, cli, g, model, run_row, set_prefs, stored, user)
@@ -171,6 +172,7 @@ def test_cli_failure_explains_exhaustion_and_preservation(user, capsys):
 
 def test_api_reflects_correction_preservation_and_withdrawal(user, client, monkeypatch):
     monkeypatch.setattr(config, 'DEV_USER_EMAIL', 'goals-card-24@eval.local')
+    monkeypatch.setattr(budget_hooks, 'session_factory', user)      # GET /goals reads the hooks now
     old = run_goals(user, UID, TODAY, model=model(g('savings', 5000)))['goal_ids']
     set_prefs(user, {'max_share': 0.05})
     run_goals(user, UID, TODAY, model=replies([g('savings', 5000)], [g('savings', 6000)]))

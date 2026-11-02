@@ -73,3 +73,9 @@ Run them from `backend/`:
 **What it does:** Correcting another user's transaction is a 404 "Not found.".
 
 **Why it's there:** Every row is scoped to its user.
+
+## `test_a_goal_line_is_not_a_correction_target`
+
+**What it does:** With a goal line ("Debt payoff", group `goal`) on the open budget, correcting a purchase to it is a 422 "Pick one of your budget lines." and the transaction keeps no correction.
+
+**Why it's there:** A goal line is money set aside, not spending, so it has no spending to hold. The table doesn't offer it and the route refuses it.
