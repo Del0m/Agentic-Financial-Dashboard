@@ -1,6 +1,6 @@
 # Tests: `backend/tests/test_goal_approval_graph.py`
 
-These tests cover the approval pause in `app/agents/goal_graph.py` (TPC-25): `persist → forget_facts → await_approval`, `run_goals_locked`, `resume_goal_run`, `goal_waiting_for`, `finish_paused_run`, and `_supersede` expiring paused runs. The goal rows are the source of truth; `interrupt()` only tracks the run.
+These tests cover the approval pause in `app/agents/goal_graph.py` (TPC-25): every ending going through `forget_facts`, `persist → forget_facts → await_approval`, `run_goals_locked`, `resume_goal_run`, `goal_waiting_for`, `finish_paused_run`, and `_supersede` expiring paused runs. The goal rows are the source of truth; `interrupt()` only tracks the run.
 
 Run them from `backend/`:
 
@@ -16,6 +16,8 @@ Run them from `backend/`:
 - `g` and `model` script the model's answer, as in `test_goal_graph.py`. `stored` reads goals by status, `run_row` reads a run, `set_status` stands in for the user's decision committing, and `thread_of` is a run's checkpoint thread.
 - `go_red` adds spending that leaves no surplus, so the next run withdraws.
 - `click_before_the_mark` decides the first goal just before the run writes `awaiting_user`.
+- `on_disk` reads the raw bytes of a checkpoint `.db` file and its `-wal`. `plain_saver` is a `SqliteSaver` with `secure_delete` left off, so a clean file means the bytes were never written, not that they were scrubbed.
+- `_rejected_twice`, `_skips_every_kind`, `_cap_below_the_minimum`, `_unreachable_after_a_rejection` and `_goal_accepted_mid_run` each arrange one way for a run to end without pausing, and return its model.
 
 ---
 
@@ -51,9 +53,21 @@ Run them from `backend/`:
 
 ## `test_paused_checkpoint_holds_no_debts_or_facts`
 
-**What it does:** Runs with a real `SqliteSaver`, through one correction round, and reads every row of the `checkpoints` and `writes` tables as bytes. Neither debt name nor the rationale is there, and `get_state` shows empty debts, plans, allocations, proposal and context. It then resumes on that saver and finds both tables empty.
+**What it does:** Runs with a real `SqliteSaver`, through one correction round, and reads every row of the `checkpoints` and `writes` tables as bytes. Neither debt name nor the rationale is there, and `get_state` shows empty debts, plans, allocations, proposal and context. It then resumes on that saver, finds both tables empty, and reads the raw file and its `-wal`: still no names or rationale, while `validation_issues` shows the state did reach that file.
 
-**Why it's there:** The privacy rule for checkpoints. It checks the bytes because a saver's own read-back wouldn't show what earlier steps left on disk.
+**Why it's there:** The privacy rule for checkpoints. It checks the bytes because a saver's own read-back wouldn't show what earlier steps left on disk, and the raw file because SQLite keeps deleted rows' bytes in freed pages.
+
+## `test_a_run_that_does_not_pause_leaves_nothing_on_disk`
+
+**What it does:** Runs with a real `SqliteSaver` and ends each of five ways: `validation_failed`, `nothing_offered`, `no_affordable_goals`, an unreachable model after a rejection, and `goals_changed`. Each time, the raw `.db` and `-wal` bytes hold neither debt name nor the rationale, while `validation_issues` shows the state did reach that file.
+
+**Why it's there:** `durability="exit"` writes the final state on any ending, and the later delete only frees the rows. A review probe found the names in the file after these runs, so each ending now goes through `forget_facts`. A run that raises isn't asserted here: the WAL can hold its bytes until it checkpoints, and `secure_delete` handles the file (`test_budget_api.py`).
+
+## `test_no_checkpointer_keeps_the_facts_on_a_failed_run`
+
+**What it does:** Without a checkpointer, a `nothing_offered` run still has its debts in the result.
+
+**Why it's there:** Nothing reaches disk without a checkpointer, so the graph stays as it was and the CLI's report keeps its data.
 
 ## `test_failed_run_leaves_no_checkpoint`
 
@@ -125,7 +139,7 @@ Run them from `backend/`:
 
 **What it does:** Deleting the expired run's thread raises. The new run still pauses, the old one is `expired`, and a warning names the thread.
 
-**Why it's there:** Those rows are already committed, and that checkpoint holds no facts.
+**Why it's there:** Those rows are already committed, and that checkpoint holds no debt names, balances or model text.
 
 ## `test_failed_regeneration_keeps_the_paused_run`
 

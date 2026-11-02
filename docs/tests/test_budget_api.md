@@ -269,3 +269,9 @@ Run them from `backend/`:
 **What it does:** Makes `budget_hooks.make_model` raise, then accepts a paused run's proposal. The accept returns 200.
 
 **Why it's there:** Every accept or dismiss built a chat model that was never used, because no LLM step runs after the pause. A model configuration error then blocked the decision. `resume_budget_run` no longer takes a model. The review on #13 found it.
+
+## `test_checkpoint_connection_overwrites_deleted_rows`
+
+**What it does:** Asks the connection behind `budget_hooks._sqlite_saver` for `PRAGMA secure_delete` and expects it on.
+
+**Why it's there:** A goal run that raises writes a checkpoint with debt names still in it. Deleting that only frees the rows, and SQLite otherwise leaves their bytes in the file. A TPC-25 review probe found them there.

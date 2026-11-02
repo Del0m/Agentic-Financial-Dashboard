@@ -224,8 +224,9 @@ def build_goal_graph(session_factory, *, model: Optional[BaseChatModel], gateway
         _delete_threads(checkpointer, expired)
         return {"withdrawn": withdrawn}
 
-    # the pause writes this state to disk, and the rows already hold what the user needs: debt names and balances, the
-    # model's words and the prompt stop here
+    # exit writes the final state to disk however the run ends, and deleting that checkpoint later only frees its rows.
+    # the goal rows and the run summary hold what's needed: debt names and balances, the model's words and the prompt
+    # stop here
     def forget_facts(state: GoalState) -> dict:
         return {"debts": [], "plans": [], "allocations": [], "proposal": [], "context": ""}
 
@@ -248,21 +249,25 @@ def build_goal_graph(session_factory, *, model: Optional[BaseChatModel], gateway
     graph.add_node("correction", correction)
     graph.add_node("persist", persist)
     graph.add_node("withdraw", withdraw)
-    graph.add_node("forget_facts", forget_facts)
-    graph.add_node("await_approval", await_approval)
     graph.add_edge(START, "load_facts")
-    stopped = lambda state: END if state.get("status") else None
-    graph.add_conditional_edges("load_facts", lambda st: END if st.get("status") == "error" else ("withdraw" if st.get("status") else "propose"))
+    # with a checkpointer every ending goes through forget_facts. without one nothing reaches disk, and the cli prints
+    # the plans from the result
+    ending = END if checkpointer is None else "forget_facts"
+    stopped = lambda state: ending if state.get("status") else None
+    graph.add_conditional_edges("load_facts", lambda st: ending if st.get("status") == "error" else ("withdraw" if st.get("status") else "propose"))
     graph.add_conditional_edges("propose", lambda st: stopped(st) or "validate_candidate")
     graph.add_conditional_edges('validate_candidate', lambda st: stopped(st) or (
         'correction' if st['validation_issues'] else 'persist'))
     graph.add_edge('correction', 'propose')
-    # without a checkpointer there is nowhere to pause. goals_changed wrote nothing, so there's nothing to wait for
-    graph.add_conditional_edges("persist", lambda st: (
-        "forget_facts" if checkpointer is not None and st.get("goal_ids") else END))
-    graph.add_edge("forget_facts", "await_approval")
-    graph.add_edge("await_approval", END)
-    graph.add_edge("withdraw", END)
+    graph.add_edge("persist", ending)
+    graph.add_edge("withdraw", ending)
+    if checkpointer is not None:
+        graph.add_node("forget_facts", forget_facts)
+        graph.add_node("await_approval", await_approval)
+        # only stored goals have anything to wait for. goals_changed wrote none, and a withdrawal isn't a proposal
+        graph.add_conditional_edges("forget_facts", lambda st: (
+            "await_approval" if st.get("status") == "ok" and st.get("goal_ids") else END))
+        graph.add_edge("await_approval", END)
     return graph.compile(checkpointer=checkpointer)
 
 
@@ -317,7 +322,9 @@ def run_goals_locked(session_factory, user_id: str, today: date, *, model: BaseC
         s.commit()
         run_id = run.id
     progress, waiting = {}, None
-    # exit writes one checkpoint, at the pause and after forget_facts; every step would put the debts on disk
+    # exit writes one checkpoint, when the graph stops; every step would put the debts on disk. an ending that doesn't
+    # raise has been through forget_facts by then. one that raises hasn't, so its checkpoint holds the facts until the
+    # finally below deletes it
     saving = {"config": _thread(run_id), "durability": "exit"} if checkpointer is not None else {}
     try:
         if checkpointer is not None:
@@ -340,7 +347,7 @@ def run_goals_locked(session_factory, user_id: str, today: date, *, model: BaseC
         logger.warning("goal run failed: %s", type(exc).__name__)
         result = {**progress, "status": "error", "reason": type(exc).__name__, "plans": []}
     finally:
-        # only a paused run needs its checkpoint, and exit writes one when a run raises too, with the facts still in it
+        # only a paused run needs its checkpoint
         if waiting is None:
             _delete_threads(checkpointer, [run_id])
     result = {"goal_ids": [], "dropped": [], **result, "run_id": run_id}

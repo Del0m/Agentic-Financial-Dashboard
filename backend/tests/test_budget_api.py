@@ -522,3 +522,8 @@ def test_decide_needs_no_model(api):
 
     api.mp.setattr(budget_hooks, "make_model", no_model)
     assert api.client.post(f"/alerts/{aid}/accept").status_code == 200
+
+
+# a goal run that raises leaves its facts in a checkpoint, and deleting that only frees the rows
+def test_checkpoint_connection_overwrites_deleted_rows():
+    assert budget_hooks._sqlite_saver().conn.execute("PRAGMA secure_delete").fetchone()[0] == 1

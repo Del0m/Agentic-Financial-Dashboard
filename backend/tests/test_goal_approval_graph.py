@@ -14,6 +14,7 @@ from app.agents.goal_graph import (build_goal_graph, finish_paused_run, goal_wai
                                    run_goals_locked)
 from app.budget_service.daily import running_elsewhere, user_lock
 from app.budget_service.goal_lines import expire_goal_proposals
+from app.budget_service.goal_prefs import set_goal_prefs
 from app.db.models import Account, AgentRun, Goal
 from eval.budget_users import GOAL_USERS, seed_profile
 from scripts.seed_budget_user import delete_user
@@ -89,6 +90,16 @@ def click_before_the_mark(db, monkeypatch):
         real(session_factory, run_id, result)
 
     monkeypatch.setattr(goal_graph, "_mark_paused", clicked_first)
+
+
+# what a checkpoint file really holds: sqlite keeps deleted rows' bytes in freed pages and in the wal, so its tables
+# can't say. a plain connection on purpose, so this proves the bytes were never written, not that they were scrubbed
+def on_disk(path):
+    return b"".join(f.read_bytes() for f in (path, path.with_name(path.name + "-wal")) if f.exists())
+
+
+def plain_saver(path):
+    return SqliteSaver(sqlite3.connect(str(path), check_same_thread=False))
 
 
 def test_run_pauses_after_persisting(user, ck):
@@ -167,6 +178,75 @@ def test_paused_checkpoint_holds_no_debts_or_facts(user, tmp_path):
     assert resume_goal_run(user, r["run_id"], r["goal_ids"][0], "accepted", checkpointer=saver)["status"] == "ok"
     assert conn.execute("select count(*) from checkpoints").fetchone()[0] == 0
     assert conn.execute("select count(*) from writes").fetchone()[0] == 0
+
+    raw = on_disk(tmp_path / "ck.db")
+    assert b"validation_issues" in raw      # the state did reach this file, and its deleted bytes are still readable
+    for secret in (b"Platinum Card", b"Student Loan", b"Secret rationale text"):
+        assert secret not in raw
+
+
+def _rejected_twice(db, monkeypatch):
+    bad = model(g("savings", 99999900, why="Secret rationale text"))
+    bad.replies *= 2
+    return bad
+
+
+def _skips_every_kind(db, monkeypatch):
+    with db() as s:
+        set_goal_prefs(s, UID, {"skip_kinds": ["debt_payoff", "emergency_fund", "savings"]})
+        s.commit()
+    return ScriptedChatModel(replies=[])
+
+
+def _cap_below_the_minimum(db, monkeypatch):
+    with db() as s:
+        set_goal_prefs(s, UID, {"max_share": 99 / 97175})
+        s.commit()
+    return ScriptedChatModel(replies=[])
+
+
+def _unreachable_after_a_rejection(db, monkeypatch):
+    bad = model(g("savings", 99999900, why="Secret rationale text"))
+    bad.replies.append(ConnectionError("down"))
+    return bad
+
+
+def _goal_accepted_mid_run(db, monkeypatch):
+    real = goal_graph.invoke_structured
+
+    def accepting(*args, **kwargs):
+        with db() as s:
+            s.add(Goal(user_id=UID, kind="debt_payoff", priority=1, monthly_cents=1000, target_cents=12000,
+                       start_date=date(2026, 12, 1), target_date=date(2027, 11, 1), rationale="x", status="accepted"))
+            s.commit()
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(goal_graph, "invoke_structured", accepting)
+    return model(g("savings", 1000, why="Secret rationale text"))
+
+
+# exit writes the final state on any ending, and the finally's delete only frees the rows
+@pytest.mark.parametrize("arrange, status, reason", [
+    (_rejected_twice, "error", "validation_failed"),
+    (_skips_every_kind, "nothing_offered", "nothing_offered"),
+    (_cap_below_the_minimum, "no_affordable_goals", "cap_below_minimum"),
+    (_unreachable_after_a_rejection, "error", "ConnectionError"),
+    (_goal_accepted_mid_run, "error", "goals_changed"),
+], ids=["validation_failed", "nothing_offered", "no_affordable_goals", "unreachable", "goals_changed"])
+def test_a_run_that_does_not_pause_leaves_nothing_on_disk(user, tmp_path, monkeypatch, arrange, status, reason):
+    path = tmp_path / "ck.db"
+    r = run_goals(user, UID, TODAY, model=arrange(user, monkeypatch), checkpointer=plain_saver(path))
+    assert (r["status"], r["reason"], r["waiting_for"]) == (status, reason, [])
+    raw = on_disk(path)
+    assert b"validation_issues" in raw      # the state did reach this file, and its deleted bytes are still readable
+    for secret in (b"Platinum Card", b"Student Loan", b"Secret rationale text"):
+        assert secret not in raw
+
+
+# the cli has no checkpointer: nothing is forgotten, because its report prints from the result
+def test_no_checkpointer_keeps_the_facts_on_a_failed_run(user):
+    r = run_goals(user, UID, TODAY, model=_skips_every_kind(user, None))
+    assert r["status"] == "nothing_offered" and r["debts"]
 
 
 @pytest.mark.parametrize("raised", [RuntimeError("boom"), KeyboardInterrupt()], ids=["error", "keyboard_interrupt"])
