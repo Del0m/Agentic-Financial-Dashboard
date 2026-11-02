@@ -35,6 +35,9 @@ from eval.budget_users import PLANTED, PROFILES, default_start, seed_profile
 
 # everything the user owns, children before parents so foreign keys hold
 def delete_user(session: Session, user_id: str) -> None:
+    from app.budget_service.alerts import has_real_plaid_item
+    if has_real_plaid_item(session, user_id):
+        raise ValueError("Cannot replace a user with bank links.")
     periods = select(BudgetPeriod.id).where(BudgetPeriod.user_id == user_id)
     session.execute(delete(AdviceLog).where(AdviceLog.user_id == user_id))
     session.execute(delete(Alert).where(Alert.user_id == user_id))
@@ -67,7 +70,11 @@ def main(argv=None, session_factory=None) -> int:
             if not args.replace:
                 print(f"{user_id} already exists; pass --replace to delete it and seed it again")
                 return 1
-            delete_user(s, user_id)
+            try:
+                delete_user(s, user_id)
+            except ValueError as exc:
+                print(str(exc))
+                return 1
         start = None
         if args.start:
             start = default_start(profile) if args.start == "default" else date.fromisoformat(args.start)

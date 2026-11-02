@@ -7,15 +7,14 @@ account and are optional for the demo.
 `docker compose up` runs this for you. To run it by hand, from any directory:
     python backend/scripts/setup_env.py
 """
-import re
 import shutil
 import sys
 from pathlib import Path
 
 from cryptography.fernet import Fernet
+from dotenv import dotenv_values, set_key
 
 REPO = Path(__file__).resolve().parent.parent.parent
-KEY_LINE = re.compile(r"^FERNET_KEY[ \t]*=[ \t]*(.*?)[ \t]*\r?$", re.MULTILINE)
 
 
 def ensure_env(repo: Path = REPO) -> None:
@@ -23,18 +22,12 @@ def ensure_env(repo: Path = REPO) -> None:
     if not env.exists():
         shutil.copy(repo / ".env.example", env)
         print("created .env from .env.example")
-    text = env.read_text(encoding="utf-8")
-    found = KEY_LINE.search(text)
-    if found and found.group(1).strip("\"'"):
+    if dotenv_values(env).get("FERNET_KEY"):
         print("FERNET_KEY already set; left as it is")
         return
-    line = f"FERNET_KEY={Fernet.generate_key().decode()}"
-    if found:
-        text = text[:found.start()] + line + text[found.end():]
-    else:
-        text = (text if not text or text.endswith("\n") else text + "\n") + line + "\n"
-    env.write_text(text, encoding="utf-8")
+    set_key(env, "FERNET_KEY", Fernet.generate_key().decode(), quote_mode="never")
     print("generated a FERNET_KEY in .env")
+
 
 
 if __name__ == "__main__":

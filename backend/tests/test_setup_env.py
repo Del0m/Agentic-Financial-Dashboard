@@ -55,3 +55,27 @@ def test_the_key_is_never_printed(repo, capsys):
     ensure_env(repo)
     out = capsys.readouterr().out
     assert key_in(repo / ".env") not in out
+
+
+@pytest.mark.parametrize("prefix", ["export ", "  ", "\t"])
+def test_valid_dotenv_key_formats_keep_existing_ciphertext_readable(repo, prefix):
+    from dotenv import dotenv_values
+    key = Fernet.generate_key()
+    token = Fernet(key).encrypt(b"dummy-token")
+    original = prefix + "FERNET_KEY=" + key.decode() + "\n"
+    (repo / ".env").write_text(original)
+    ensure_env(repo)
+    assert (repo / ".env").read_text() == original
+    effective = dotenv_values(repo / ".env")["FERNET_KEY"]
+    assert Fernet(effective.encode()).decrypt(token) == b"dummy-token"
+
+
+@pytest.mark.parametrize("assignment", ["export FERNET_KEY=", "  FERNET_KEY=", "FERNET_KEY='' # blank"])
+def test_blank_dotenv_formats_get_one_effective_working_key(repo, assignment):
+    from dotenv import dotenv_values
+    (repo / ".env").write_text(assignment + "\n")
+    ensure_env(repo)
+    key = dotenv_values(repo / ".env")["FERNET_KEY"]
+    Fernet(key.encode())
+    ensure_env(repo)
+    assert dotenv_values(repo / ".env")["FERNET_KEY"] == key

@@ -81,6 +81,8 @@ def _queue_sync(session: Session, item: PlaidItem, background: BackgroundTasks) 
 
 @router.post("/link-token", response_model=LinkTokenResponse)
 def create_link_token(user: User = Depends(get_current_user)):
+    if (user.prefs_json or {}).get("sim"):
+        raise HTTPException(409, "Bank linking is disabled for simulated users. Select a non-simulated user first.")
     try:
         token = plaid.create_link_token(client_user_id=user.id)
     except plaid.PlaidNotConfigured:
@@ -100,6 +102,8 @@ def exchange_public_token(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
+    if (user.prefs_json or {}).get("sim"):
+        raise HTTPException(409, "Bank linking is disabled for simulated users. Select a non-simulated user first.")
     try:
         access_token, plaid_item_id = plaid.exchange_public_token(body.public_token)
     except (PlaidError, httpx.HTTPError) as err:
