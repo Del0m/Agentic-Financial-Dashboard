@@ -269,3 +269,49 @@ These came from the final review. `red_user(db)` seeds a user spending $2,000 a 
 **What it does:** After a run proposing a savings goal, the stored row's `start_date` is 2026-12-01, the first of next month.
 
 **Why it's there:** `created_at` is the wall clock, which is wrong for a simulated user. Close needs the plan's real first month to know when the goal's line begins (TPC-25).
+
+## Accepted goals (TPC-25)
+
+`accept(db, kind, monthly_cents)` writes an `accepted` goal row directly, with `start_date` 2026-12-01 and `target_date` 2027-11-01, since `committed_goals` needs both. Deciding on goals through a service comes later.
+
+## `test_cap_excludes_accepted_goals`
+
+**What it does:** With a $583 accepted debt goal, the run's cap is $194.40 (the $777.40 default less $583), `committed_cents` is 58300, and a $194.40 emergency fund goal is stored.
+
+**Why it's there:** Accepted goals already take their share of the surplus. A new proposal has to fit in what's left.
+
+## `test_accepted_kind_is_not_offered`
+
+**What it does:** With an accepted debt goal, `debt_payoff` isn't among the offered kinds.
+
+**Why it's there:** A second goal of a kind the user already accepted would compete with it.
+
+## `test_accepted_goals_fill_the_cap_stops_without_a_model_call`
+
+**What it does:** Accepted goals take $777.00 of the $777.40 cap. The run ends `no_affordable_goals` with reason `cap_below_minimum`, no model call, and the accepted goal is still accepted.
+
+**Why it's there:** 40 cents is below the $1 minimum, so the model isn't asked. A run with nothing to propose never withdraws an accepted goal.
+
+## `test_accepted_goals_past_the_cap_clamp_to_zero`
+
+**What it does:** Accepted goals of $800 against a $777.40 cap give a cap of 0.
+
+**Why it's there:** The surplus can fall below what was accepted. A negative cap would reach the prompt and the report.
+
+## `test_goal_accepted_during_the_run_stops_it_writing`
+
+**What it does:** An earlier proposal is standing. The patched model call accepts a debt goal and then answers with a valid emergency fund goal at the full cap. The run ends `error` with reason `goals_changed` and no goal ids. The accepted goal is untouched, no emergency fund row exists, the earlier proposal is still `proposed`, and the run row is `error`.
+
+**Why it's there:** The cap was worked out before the acceptance. Persisting would hand out money the accepted goal now holds.
+
+## `test_every_kind_accepted_says_so`
+
+**What it does:** Debt, emergency fund and savings are all accepted. The CLI exits 0 without calling the model and its line says the goals you've accepted cover every kind.
+
+**Why it's there:** `nothing_offered` used to blame the preferences alone.
+
+## `test_withdraw_leaves_accepted_goals`
+
+**What it does:** A user with no surplus, a standing proposal and an accepted goal. The run withdraws the proposal and the accepted goal stays accepted.
+
+**Why it's there:** Withdrawing supersedes `proposed` rows only.

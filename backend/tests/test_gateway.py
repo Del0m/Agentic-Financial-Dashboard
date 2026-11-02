@@ -602,3 +602,11 @@ def test_goals_note_extracts_priority_without_forwarding_text(db, tmp_path):
     seed_debts(db)
     _, d, _ = goals_context(db, tmp_path, goal_facts(note="emergency fund first, it's my priority"))
     assert d["note"] == "Prioritize the emergency fund."
+
+
+def test_goals_context_reports_committed_money_only_when_some(db, tmp_path):
+    seed_debts(db)
+    _, d, _ = goals_context(db, tmp_path, goal_facts(committed_cents=58300))
+    assert d["already_committed"] == 583.0
+    _, d, _ = goals_context(db, tmp_path, goal_facts())
+    assert "already_committed" not in d

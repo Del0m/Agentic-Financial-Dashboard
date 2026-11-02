@@ -16,13 +16,14 @@ from app.agents.goal_llm import GoalProposal, goal_messages
 from app.agents.llm import get_chat_model
 from app.budget_engine.fit import HISTORY_MONTHS
 from app.budget_engine.goals import (MIN_MONTHLY_CENTS, GoalAllocation, GoalFacts, GoalIssue, GoalPlan, build_goal,
-                                     card_minimums, emergency_gap, monthly_surplus, normalize_goal, offered_kinds,
-                                     validate_allocations, validate_plans)
+                                     card_minimums, committed_cents, emergency_gap, monthly_surplus, normalize_goal,
+                                     offered_kinds, validate_allocations, validate_plans)
 from app.budget_engine.payoff import Debt
 from app.budget_engine.groups import NEEDS_DEFAULT
 from app.budget_engine.txns import add_months, month_start, round_cents
 from app.budget_service.daily import running_elsewhere, sim_today, user_lock
 from app.budget_service.debts import load_debts, incomplete_card_obligations
+from app.budget_service.goal_lines import committed_goals
 from app.budget_service.goal_prefs import set_goal_prefs, user_goal_prefs
 from app.budget_service.initialize import load_txns, history_start
 from app.db.models import Account, AgentRun, BudgetLine, BudgetPeriod, Goal, User, utcnow
@@ -45,6 +46,8 @@ class GoalState(TypedDict, total=False):
     surplus_cents: Optional[int]
     card_minimums_cents: int
     cap_cents: Optional[int]
+    committed_cents: int        # what accepted goals already take each month
+    committed_ids: list[int]    # the accepted goals this run planned around; persist checks they're unchanged
     gap_cents: int
     offered: list[str]
     start: str
@@ -104,18 +107,23 @@ def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyG
                 return {"status": "no_surplus", "reason": "no_surplus", "surplus_cents": surplus,
                         "card_minimums_cents": minimums}
             prefs = user_goal_prefs(s, user_id)
+            committed = committed_goals(s, user_id)
             gap = emergency_gap(txns, today, _needs(s, user_id), _savings_balance(s, user_id), history_start=boundary)
-        offered = offered_kinds(debts, gap, prefs.skip_kinds, start=start)
-        cap = round_cents(Decimal(surplus) * Decimal(str(prefs.max_share)))
+        # a kind with an accepted goal isn't offered again, and what accepted goals take comes off the cap. they can
+        # outgrow it (the surplus fell), and then there's nothing left to offer
+        offered = offered_kinds(debts, gap, (*prefs.skip_kinds, *(c.kind for c in committed)), start=start)
+        taken = committed_cents(committed)
+        cap = max(round_cents(Decimal(surplus) * Decimal(str(prefs.max_share))) - taken, 0)
         facts = {"surplus_cents": surplus, "card_minimums_cents": minimums, "cap_cents": cap, "gap_cents": gap,
-                 "offered": offered,
+                 "offered": offered, "committed_cents": taken, "committed_ids": [c.id for c in committed],
                  "start": start.isoformat(), "debts": debts}
         if not offered:
             return {**facts, "status": "nothing_offered", "reason": "nothing_offered"}
         if cap < MIN_MONTHLY_CENTS:
             return {**facts, "status": "no_affordable_goals", "reason": "cap_below_minimum"}
         context = gateway.build_context("goals", goal_facts=GoalFacts(
-            surplus, cap, tuple(offered), gap, start, prefs.protected_categories, prefs.note), goal_debts=debts)
+            surplus, cap, tuple(offered), gap, start, prefs.protected_categories, prefs.note, taken),
+            goal_debts=debts)
         return {**facts, "context": context}
 
     def propose(state: GoalState) -> dict:
@@ -165,6 +173,9 @@ def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyG
         with session_factory() as s:
             if claim is not None:
                 claim.assert_owned(s)
+            # the user accepted or changed a goal while this ran: the cap it planned within is stale, so write nothing
+            if [c.id for c in committed_goals(s, state["user_id"])] != state["committed_ids"]:
+                return {"status": "error", "reason": "goals_changed", "plans": []}
             _supersede(s, state["user_id"])
             start = date.fromisoformat(state["start"])
             rows = [Goal(user_id=state["user_id"], run_id=state["run_id"], kind=p.kind, priority=p.priority,
@@ -290,7 +301,7 @@ def _print_report(state: dict) -> None:
             print(withdrawn)
         return
     if status == "nothing_offered":
-        print("No goals: the preferences skip every kind that's available.")
+        print("No goals: the preferences or goals you've accepted cover every kind that's available.")
         if withdrawn:
             print(withdrawn)
         return

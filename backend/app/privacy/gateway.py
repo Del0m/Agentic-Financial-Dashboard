@@ -211,6 +211,8 @@ class PrivacyGateway:
             # free text can name anyone
             "note": scrub_note(facts.note), "assumptions": GOAL_ASSUMPTIONS, "debts": [],
         }
+        if facts.committed_cents:
+            data["already_committed"] = _dollars(facts.committed_cents)
         if "debt_payoff" not in facts.offered:
             return data
         debts = load_debts(self._session, self._user_id) if debts is None else debts

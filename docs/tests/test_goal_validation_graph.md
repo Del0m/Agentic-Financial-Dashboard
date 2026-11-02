@@ -87,3 +87,9 @@ Uses the TPC-23 synthetic profile and in-memory database; scripted replies requi
 **What it does:** Five parameterized real-model runs at a $48.59 cap print outcome, calls, total, and dates. Each must produce a valid proposal; skipped if the configured model is unavailable.
 
 **Why it's there:** Measures real-model usefulness separately from deterministic safety.
+
+## `test_new_goal_cannot_spend_accepted_money`
+
+**What it does:** With a $583 accepted goal the cap is $194.40. A scripted $194.41 proposal is rejected as `over_cap` on both calls, the run is an `error`, and nothing is stored.
+
+**Why it's there:** Validation checks the cap net of accepted goals, so a retry can't spend their money either (TPC-25).
