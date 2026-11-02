@@ -117,13 +117,15 @@ def test_nothing_offered(user):
     assert (state["status"], fake.seen) == ("nothing_offered", [])
 
 
-def test_unusable_goals_dropped_and_listed(user):
+def test_unoffered_goals_rejected_not_partially_stored(user):
     set_prefs(user, {"skip_kinds": ["savings"]})
-    state = run_goals(user, UID, TODAY, model=model(g("savings", 5000), g("emergency_fund", 30000)))
-    assert state["status"] == "ok"
-    assert [(x.kind, x.priority) for x in stored(user)] == [("emergency_fund", 1)]
-    assert state["dropped"] == [{"kind": "savings", "reason": "not_offered"}]
-    assert run_row(user, state["run_id"]).summary_json["dropped"] == state["dropped"]
+    fake = model(g("savings", 5000), g("emergency_fund", 30000))
+    fake.replies *= 2
+    state = run_goals(user, UID, TODAY, model=fake)
+    assert state["status"] == "error" and stored(user) == []
+    assert state["dropped"] == [] and state["attempts"] == 2
+    assert state["validation_issues"][0]["code"] == "not_offered"
+    assert run_row(user, state["run_id"]).summary_json["validation_issues"] == state["validation_issues"]
 
 
 # live, qwen2.5:14b left the strategy out of 1 run in 25. dropping the goal put the emergency fund first; the prompt's
@@ -138,17 +140,21 @@ def test_debt_goal_without_a_strategy_is_avalanche(user):
         ("debt_payoff", 1, "avalanche", want.debt_free)
 
 
-def test_repeated_kind_dropped(user):
-    state = run_goals(user, UID, TODAY, model=model(g("savings", 5000), g("savings", 9000)))
-    assert [x.monthly_cents for x in stored(user)] == [5000]
-    assert state["dropped"] == [{"kind": "savings", "reason": "repeat"}]
+def test_repeated_kind_rejects_the_proposal(user):
+    fake = model(g("savings", 5000), g("savings", 9000))
+    fake.replies *= 2
+    state = run_goals(user, UID, TODAY, model=fake)
+    assert stored(user) == [] and state["status"] == "error"
+    assert state["validation_issues"][0]["code"] == "repeat"
 
 
 def test_nothing_usable_is_an_error(user):
     run_goals(user, UID, TODAY, model=model(g("savings", 5000)))
     set_prefs(user, {"skip_kinds": ["savings"]})
-    state = run_goals(user, UID, TODAY, model=model(g("savings", 9000)))
-    assert (state["status"], state["reason"]) == ("error", "no_usable_goals")
+    fake = model(g("savings", 9000))
+    fake.replies *= 2
+    state = run_goals(user, UID, TODAY, model=fake)
+    assert (state["status"], state["reason"]) == ("error", "validation_failed")
     assert run_row(user, state["run_id"]).status == "error"
     assert [x.monthly_cents for x in stored(user)] == [5000]        # the earlier proposal stands
 
@@ -214,7 +220,7 @@ def test_none_savings_balance_counts_zero(user):
 
 
 # plan review focus 3: the model picks the amount, so a plan that never ends can happen
-def test_never_goal_stored_without_a_date(db):
+def test_never_goal_rejected_without_a_date(db):
     with db() as s:
         item = add_user(s, "u1", "u1@x")
         acct = add_account(s, item, "Checking")
@@ -223,11 +229,13 @@ def test_never_goal_stored_without_a_date(db):
         for m in (8, 9, 10):
             add_txn(s, acct, -100000, "INCOME", day=date(2026, m, 1))
         s.commit()
-    state = run_goals(db, "u1", TODAY, model=model(g("debt_payoff", 100, "avalanche")))
-    assert state["status"] == "ok"
+    fake = model(g("debt_payoff", 100, "avalanche"))
+    fake.replies *= 2
+    state = run_goals(db, "u1", TODAY, model=fake)
+    assert state["status"] == "error"
     with db() as s:
-        [goal] = s.query(Goal).filter_by(user_id="u1", status="proposed").all()
-    assert goal.target_date is None and goal.target_cents == 1000000
+        assert s.query(Goal).filter_by(user_id="u1", status="proposed").count() == 0
+    assert state["validation_issues"][0]["code"] == "no_date"
 
 
 # plan review focus 4: a budget run holds the user's lock, so a goal run waits its turn
@@ -263,11 +271,13 @@ def test_cli_prints_goals(user, capsys):
     assert "Card first." in out and "2027-11" in out and "over cap" not in out
 
 
-def test_cli_marks_goals_over_the_cap(user, capsys):
-    cli(user, fake=model(g("debt_payoff", 70000, "avalanche"), g("savings", 10000)))
-    lines = capsys.readouterr().out.splitlines()
-    assert "over cap" not in next(line for line in lines if "debt_payoff" in line)
-    assert "over cap" in next(line for line in lines if "savings" in line)
+def test_cli_refuses_goals_over_the_cap(user, capsys):
+    fake = model(g("debt_payoff", 70000, "avalanche"), g("savings", 10000))
+    fake.replies *= 2
+    assert cli(user, fake=fake) == 1
+    text = capsys.readouterr().out
+    assert "$800.00" in text and "$777.40" in text and "exceeds cap" in text
+    assert "1. debt_payoff" not in text and stored(user) == []
 
 
 def test_cli_says_when_a_goal_has_no_end(db, capsys):
@@ -279,8 +289,10 @@ def test_cli_says_when_a_goal_has_no_end(db, capsys):
         for m in (8, 9, 10):
             add_txn(s, acct, -100000, "INCOME", day=date(2026, m, 1))
         s.commit()
-    assert cli(db, fake=model(g("debt_payoff", 100, "avalanche"))) == 0
-    assert "no end date" in capsys.readouterr().out
+    fake = model(g("debt_payoff", 100, "avalanche"))
+    fake.replies *= 2
+    assert cli(db, fake=fake) == 1
+    assert "cannot finish within 600 months" in capsys.readouterr().out
 
 
 # plan review focus 2: a simulated user's history stops at their simulated date, not the real one
@@ -330,8 +342,7 @@ def test_cli_busy_exit_1(user, capsys):
     assert "in progress" in capsys.readouterr().out
 
 
-# the ticket's done-when: a user with a 24% card gets a debt-payoff goal first. the total against the cap is printed,
-# not asserted: tpc-24 enforces it
+# TPC-23's live done-when remains: high-interest debt first. TPC-24 also enforces cap and dates.
 @pytest.mark.skipif(not ollama_has(config.OLLAMA_MODEL), reason="needs ollama running with OLLAMA_MODEL pulled")
 def test_live_card_debt_goal_first(user):
     state = run_goals(user, UID, TODAY)
@@ -341,6 +352,8 @@ def test_live_card_debt_goal_first(user):
     for x in goals:
         print(x.priority, x.kind, x.strategy, x.monthly_cents, x.target_cents, x.target_date, "|", x.rationale)
     assert goals[0].kind == "debt_payoff" and goals[0].strategy in ("avalanche", "snowball")
+    assert sum(x.monthly_cents for x in goals) <= state["cap_cents"]
+    assert all(x.target_date is not None for x in goals)
 
 
 # --- final review ---
