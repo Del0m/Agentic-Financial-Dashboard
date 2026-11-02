@@ -164,3 +164,33 @@ Uses the `db` fixture from `conftest.py` (see [test_plaid.md](test_plaid.md#shar
 **What it does:** Checks that `budget_lines.last_pace` is mapped as `Double`.
 
 **Why it's there:** The migration creates the column as `sa.Double()`, but the model left the type to SQLAlchemy. That gives `Double` on 2.1 (installed here) but `Float` on 2.0, which `requirements.txt` (`sqlalchemy>=2`) still allows, and autogenerate or `alembic check` would then report drift. The type is now pinned, the same way `Liability.apr` pins `Float`. The test passes on 2.1 either way; it's a guard against an install that resolves 2.0. The review on #11 found it.
+
+## The history window's edge
+
+`fitted_food(db, *months)` adds one food transaction per `(day, cents)` pair for a new user, runs `initialize_budget` on `TODAY`, and returns the window, the food line's monthly totals and its limit.
+
+`initialize_budget` loads one month before the window it fits. `fit_budget` decides where the history starts from the earliest transaction it's given, so without that month a first in-window transaction after the 3rd looks like the start of the history, and a complete month is dropped.
+
+## `test_longer_history_fits_all_three_months`
+
+**What it does:** Six months of food, April to September, each on the 5th. The window is July, August and September, the totals are $300 / $450 / $500, and the limit is $472.50.
+
+**Why it's there:** This is the bug itself. Before the fix the window was August and September, and the limit was $498.75.
+
+## `test_history_starting_mid_window_month_skips_it`
+
+**What it does:** History really starts on Jul 5. The window is August and September.
+
+**Why it's there:** Loading further back mustn't undo the partial-month rule. With nothing before July, July is still the user's real first month and still only partly covered. This test passes with or without the fix; it guards the rule against the fix.
+
+## `test_history_starting_mid_month_before_window_keeps_all_three`
+
+**What it does:** History starts on Jun 20, then one transaction on the 5th of each month from July to September. The window is all three months and June's $100 isn't in the totals.
+
+**Why it's there:** The boundary of the extra month. June is partial, but it's outside the window, so all it does is show that July is complete.
+
+## `test_rent_paid_just_before_window_counts_for_its_month`
+
+**What it does:** July's rent is paid on Jun 30, with rent on Aug 1 and Sep 1 and food on Jul 2. The rent line's monthly totals are $1,500 for each month.
+
+**Why it's there:** The other thing the extra month changes. A rent paid in the last 3 days of a month counts for the next one, and until the fix a rent paid just before the window wasn't loaded, so the window's first month showed $0.

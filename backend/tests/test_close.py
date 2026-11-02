@@ -301,3 +301,14 @@ def test_early_rent_not_adopted_doubled(db):
 # and october's rent paid on sep 30 still counts for october
 def test_rent_paid_early_counts_for_its_month(db):
     assert rent_paid_on(db, date(2026, 9, 30), rent=0) == (150000, 150000, 150000)
+
+
+# august's first transaction is the 15th paycheck, and july's history shows august is complete: income is the
+# median of aug, sep and oct. without august it would be halfway between sep's $4,200 and oct's $6,200
+def test_close_fits_income_on_all_three_months(db):
+    _, acct_id = setup(db)
+    with db() as s:
+        add_txn(s, s.get(Account, acct_id), -200000, "INCOME", merchant="Employer", day=date(2026, 10, 20))
+        s.commit()
+    close_due(db, "u1", NOV1)
+    assert period_at(db, NOV1).income_cents == 420000

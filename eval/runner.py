@@ -37,8 +37,8 @@ def run_once(scenario: Scenario, *, model, kb, audit_path: Path, run: int = 1,
     try:
         with temp_db() as Session, Session() as session:
             user_id = seed(session, scenario, today or date.today())
-            tools = make_tools(PrivacyGateway(session, user_id, audit_path=audit_path), kb)
-            graph = build_chat_graph(tools, retrieve=kb.search, model=model)
+            gateway = PrivacyGateway(session, user_id, audit_path=audit_path)
+            graph = build_chat_graph(make_tools(gateway, kb), retrieve=kb.search, model=model, today=gateway.today)
             # timed from here: the answer, not the throwaway database and seeding around it
             start = time.perf_counter()
             state = graph.invoke({"messages": [HumanMessage(scenario.question)], "tool_rounds": 0})

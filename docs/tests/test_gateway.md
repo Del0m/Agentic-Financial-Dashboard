@@ -92,6 +92,18 @@ Getting any of them wrong would give the model a wrong total to reason about.
 
 **Why it's there:** Plaid categories are upper-case enums, but models often send them in lowercase. Before this fix, both a lowercase name and a category with no spending returned `{}`, which the model can't tell apart from "no data". It would then tell the user they spent nothing on dining. Now the category is normalized and zero is stated explicitly.
 
+## `test_today_is_the_real_date_for_a_normal_user`
+
+**What it does:** Checks that `today()` returns the pinned date for a user with no simulation.
+
+**Why it's there:** Everyone but a simulated user must stay on the real date.
+
+## `test_simulated_user_follows_the_simulated_date`
+
+**What it does:** Gives a user a simulated date of 2026-03-10. It checks that `today()` returns it, and that the default spending window ends there, so a transaction dated after it is left out.
+
+**Why it's there:** The prompt and `get_spending` have to agree on the date. If they didn't, the model would be told one day while the tool's default range ended on another.
+
 ## `test_spending_defaults_to_last_30_days`
 
 **What it does:** With today pinned to 2026-10-21, a transaction on 2026-09-22 is included and one on 2026-09-21 is not.

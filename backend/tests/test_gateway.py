@@ -4,6 +4,7 @@ from datetime import date, timedelta
 import pytest
 
 from tests.factories import add_account, add_txn, add_user
+from app.db.models import User
 from app.privacy import gateway as gw
 from app.budget_engine.diagnose import overspend_facts
 from app.budget_engine.pace import PaceResult
@@ -187,6 +188,27 @@ def test_spending_defaults_to_last_30_days(db, tmp_path):
         totals = data(PrivacyGateway(s, "u-1", audit_path=tmp_path / "a.jsonl").build_context("spending"))
 
     assert totals == {"IN_WINDOW": 1.0}
+
+
+def test_today_is_the_real_date_for_a_normal_user(db, tmp_path):
+    with db() as s:
+        add_user(s, "u-1", "a@example.com")
+        s.commit()
+        assert PrivacyGateway(s, "u-1", audit_path=tmp_path / "a.jsonl").today() == TODAY
+
+
+# a simulated user's chat follows the simulation, like its dashboard: the 30 days end on the simulated date
+def test_simulated_user_follows_the_simulated_date(db, tmp_path):
+    with db() as s:
+        item = add_user(s, "u-1", "a@example.com")
+        acct = add_account(s, item, "Checking")
+        add_txn(s, acct, 100, "IN_WINDOW", day=date(2026, 3, 1))
+        add_txn(s, acct, 100, "AFTER_THE_DATE", day=date(2026, 3, 11))
+        s.get(User, "u-1").prefs_json = {"sim": {"profile": "p", "date": "2026-03-10"}}
+        s.commit()
+        g = PrivacyGateway(s, "u-1", audit_path=tmp_path / "a.jsonl")
+        assert g.today() == date(2026, 3, 10)
+        assert data(g.build_context("spending")) == {"IN_WINDOW": 1.0}
 
 
 def test_empty_user_builds_empty_context(db, tmp_path):

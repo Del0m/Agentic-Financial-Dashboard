@@ -28,6 +28,8 @@ from app.main import app
 def checkpoint_paths(tmp_path, monkeypatch):
     from app import config
     from app.api import budget_hooks, chat
+    # docker-compose.yml points the api at the demo user; tests create their own user, whatever the environment says
+    monkeypatch.setattr(config, "DEV_USER_EMAIL", "dev@localhost")
     monkeypatch.setattr(config, "BUDGET_CHECKPOINT_PATH", tmp_path / "budget_checkpoints.db")
     monkeypatch.setattr(config, "CHAT_CHECKPOINT_PATH", tmp_path / "checkpoints.db")
     budget_hooks._sqlite_saver.cache_clear()
