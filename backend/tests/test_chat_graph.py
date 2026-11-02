@@ -5,6 +5,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from pydantic import BaseModel
 
 from app import config
+from datetime import date
+
 from app.agents.chat_graph import MAX_TOOL_ROUNDS, SYSTEM_PROMPT, build_chat_graph
 from tests.fakes import ScriptedChatModel, ollama_has, tool_call
 
@@ -197,6 +199,41 @@ def test_retrieve_searches_each_new_question():
     graph.invoke({"messages": [HumanMessage("second?")], "tool_rounds": 0}, CONFIG)
 
     assert asked == ["first?", "second?"]
+
+
+# without the date the model guessed: "last month" searched february 2023 and answered $0
+def test_today_goes_in_the_system_prompt_and_is_read_on_every_call():
+    model = ScriptedChatModel(replies=[AIMessage("a"), AIMessage("b")])
+    days = iter([date(2026, 10, 20), date(2026, 10, 21)])
+    graph = build_chat_graph(TOOLS, model=model, checkpointer=MemorySaver(), retrieve=lambda q: [GUIDE],
+                             today=lambda: next(days))
+
+    graph.invoke({"messages": [HumanMessage("q")], "tool_rounds": 0}, CONFIG)
+    graph.invoke({"messages": [HumanMessage("q2")]}, CONFIG)
+
+    first, second = model.seen[0][0].content, model.seen[1][0].content
+    assert first.startswith(SYSTEM_PROMPT) and "Today's date is 2026-10-20." in first
+    assert first.index("Today's date") < first.index("Guidance retrieved")
+    # a thread picked up later gets the new date, and none of it is stored
+    assert "Today's date is 2026-10-21." in second and "2026-10-20" not in second
+    assert not any(isinstance(m, SystemMessage) for m in graph.get_state(CONFIG).values["messages"])
+
+
+# a small model read "last month" as the last 30 days, so the calendar month is spelled out, across a year too
+@pytest.mark.parametrize("today, this_month, last_from, last_to", [
+    (date(2026, 10, 8), "2026-10-01", "2026-09-01", "2026-09-30"),
+    (date(2027, 1, 31), "2027-01-01", "2026-12-01", "2026-12-31"),
+    (date(2028, 3, 1), "2028-03-01", "2028-02-01", "2028-02-29"),
+])
+def test_date_line_spells_out_the_calendar_months(today, this_month, last_from, last_to):
+    model = ScriptedChatModel(replies=[AIMessage("a")])
+    graph = build_chat_graph(TOOLS, model=model, checkpointer=MemorySaver(), today=lambda: today)
+
+    graph.invoke({"messages": [HumanMessage("q")], "tool_rounds": 0}, CONFIG)
+
+    system = model.seen[0][0].content
+    assert f"This month means {this_month} to {today.isoformat()}." in system
+    assert f"Last month means {last_from} to {last_to}." in system
 
 
 def test_no_guidance_when_nothing_retrieved():

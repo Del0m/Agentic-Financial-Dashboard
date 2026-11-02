@@ -52,8 +52,11 @@ def _inject(session_factory, user_id: str, users, profile, todays: list) -> int:
 def _sim(session_factory, user_id: str) -> dict:
     with session_factory() as s:
         sim = sim_prefs(s, user_id)
-    if not sim:
-        raise NotSimulated(user_id)
+    from app.budget_service.alerts import has_real_plaid_item
+    with session_factory() as s:
+        linked = has_real_plaid_item(s, user_id)
+    if not sim or linked:
+        raise NotSimulated("Only synthetic users without bank links can be advanced.")
     return sim
 
 

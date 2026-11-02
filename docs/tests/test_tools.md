@@ -1,6 +1,6 @@
 # Tests: `backend/tests/test_tools.py`
 
-These tests cover `app/agents/tools.py`, the chat agent's four tools. The three data tools, `get_accounts`, `get_debts` and `get_spending`, read through the privacy gateway (TPC-12). `search_kb` (TPC-14) searches the public knowledge base instead. The checks here are about the tool layer itself:
+These tests cover `app/agents/tools.py`, the chat agent's five tools. The data tools, `get_accounts`, `get_debts` and `get_spending`, read through the privacy gateway (TPC-12), and so does `plan_debt_payoff` (TPC-32), which runs the debt-payoff planner there. `search_kb` (TPC-14) searches the public knowledge base instead. The checks here are about the tool layer itself:
 - the model can't choose a user;
 - the argument schemas are small and forgiving where they can be;
 - bad arguments come back as errors the model can act on.
@@ -17,7 +17,7 @@ Run them from `backend/`:
 - `fixed_today` (autouse) pins the gateway's "today" to 2026-10-21.
 - `seeded` creates user `u-1` with:
   - a checking account;
-  - a credit card at 22% APR and a student loan at 5.25%;
+  - a $410 credit card at 22% APR with a $20 minimum, and a student loan at 5.25% with no minimum on file;
   - a Starbucks purchase (FOOD_AND_DRINK) and a Delta flight (TRAVEL).
 
   It also creates user `u-2`, who owns "Their Secret Card".
@@ -26,15 +26,15 @@ Run them from `backend/`:
 
 ---
 
-## `test_four_tools_with_descriptions`
+## `test_five_tools_with_descriptions`
 
-**What it does:** Checks that exactly `get_accounts`, `get_debts`, `get_spending` and `search_kb` exist, and that each has a description.
+**What it does:** Checks that the tools are exactly `get_accounts`, `get_debts`, `get_spending`, `search_kb` and `plan_debt_payoff`, in that order, and that each has a description.
 
 **Why it's there:** The model picks a tool from its name and description alone. A tool with no description is one it can't choose well.
 
 ## `test_no_tool_accepts_a_user`
 
-**What it does:** Checks that no tool has an argument containing "user", that `get_spending` takes exactly `category`, `start_date` and `end_date`, that `search_kb` takes exactly `query`, and that the other two take no arguments.
+**What it does:** Checks that no tool has an argument containing "user", that `get_spending` takes exactly `category`, `start_date` and `end_date`, that `search_kb` takes exactly `query`, that `plan_debt_payoff` takes exactly `extra_monthly` and `strategy`, and that the other two take no arguments.
 
 **Why it's there:** The tools are closures over a gateway that already knows the user. If any schema accepted a user id, a confused or prompt-injected model could read someone else's data. Pinning the exact argument set also keeps the schemas as small as an 8B model needs them.
 
@@ -91,6 +91,12 @@ Run them from `backend/`:
 **What it does:** Checks that `PFC_CATEGORIES` has Plaid's 16 primary categories and that the `get_spending` description includes them.
 
 **Why it's there:** The model can only use a category name it has been shown. The list lives in the description, and the architecture's decision log says these Plaid categories are the budget categories.
+
+## `test_future_start_is_measured_from_the_simulated_date`
+
+**What it does:** Gives the user a simulated date of 2026-03-10, with the real date pinned to 2026-10-21. A `start_date` of 2026-04-01 is before the real date but after the simulated one, and it should raise the "before" error.
+
+**Why it's there:** The reversed-range check has to use the same date as the gateway fills in. Otherwise the error wouldn't fire, and the gateway would reject the range with a message the model never sees.
 
 ## `test_future_start_alone_rejected`
 
@@ -154,7 +160,7 @@ Run them from `backend/`:
 
 ## `test_live_model_picks_get_debts`
 
-**What it does:** Runs the real chat graph (`build_chat_graph`, TPC-15) with all four tools (the knowledge base is a `FakeKB`) and asks "Which of my debts has the highest APR?" without naming a tool. It checks that the audit log has a `debts` call and that the answer mentions the credit card. If the model calls no tool, there's no audit file, and the test treats that as "no calls" so it fails on the assertion instead of crashing with `FileNotFoundError`. It's skipped unless Ollama is running with `OLLAMA_MODEL` pulled.
+**What it does:** Runs the real chat graph (`build_chat_graph`, TPC-15) with all the tools (the knowledge base is a `FakeKB`) and asks "Which of my debts has the highest APR?" without naming a tool. It checks that the audit log has a `debts` call and that the answer mentions the credit card. If the model calls no tool, there's no audit file, and the test treats that as "no calls" so it fails on the assertion instead of crashing with `FileNotFoundError`. It's skipped unless Ollama is running with `OLLAMA_MODEL` pulled.
 
 **Why it's there:** It tests the ticket's "Learn" goal: can an 8B model choose the right tool from these names and descriptions alone? It passed 3 out of 3 runs on 2026-10-21 with `llama3.1:8b`. On 2026-10-26 it still passed with `search_kb` added as a fourth choice, and again after the default chat model became `qwen2.5:14b` (TPC-15).
 
@@ -164,3 +170,49 @@ Run them from `backend/`:
 
 - **Choosing between tools in harder questions**, such as questions that need two tools or spending phrased as "dining out". That belongs in the M2 eval harness (TPC-16).
 - **Dates given as words** ("last month"). The tool rejects them with the format message; turning them into dates is left to the model.
+
+## `test_plan_debt_payoff_matches_gateway`
+
+**What it does:** Calls the tool with `extra_monthly` 200. Its data equals the gateway's `debt_plan` context built directly with 20,000 cents, it has both strategies, and the student loan is listed as excluded with "no minimum payment on file".
+
+**Why it's there:** The tool only validates and converts. The numbers the model sees come from the gateway, and so from the planner.
+
+## `test_plan_debt_payoff_blank_strategy_means_both`
+
+**What it does:** A strategy of `" "` returns both plans.
+
+**Why it's there:** Small models send blank strings for optional arguments they mean to leave out, as with `get_spending`.
+
+## `test_plan_debt_payoff_strategy_case_insensitive`
+
+**What it does:** `"Avalanche"` returns exactly one plan, the avalanche one.
+
+**Why it's there:** A capitalized method name is still the right method.
+
+## `test_plan_debt_payoff_dollars_to_cents`
+
+**What it does:** `extra_monthly` 200.1 reaches the planner as $200.10.
+
+**Why it's there:** Dollars are converted with `Decimal`, so a float like 200.1 doesn't become 20009 cents.
+
+## `test_plan_debt_payoff_bad_extra`
+
+**What it does:** −5 and 1,000,001 dollars each raise a `ToolException` naming `extra_monthly`.
+
+**Why it's there:** A negative extra would pay less than the minimums, and an absurd one is a typo. The error names the argument so the model can fix it.
+
+## `test_plan_debt_payoff_unknown_strategy`
+
+**What it does:** `"cheapest"` raises a `ToolException` that quotes `'cheapest'` and names the two methods.
+
+**Why it's there:** Echoing the bad value lets the model recognize its own mistake, the same as `get_spending`'s category check.
+
+## `test_live_debt_free_with_extra`
+
+**What it does:** Seeds the `debt-highest-apr` scenario's user (a $3,200 card at 24.99% and an $18,400 student loan at 5.5%) and asks the real chat graph "How fast am I debt-free if I add $200 a month?". It requires a `debt_plan` call in the audit log. The answer must state, for avalanche or for snowball, the planner's months to debt-free and its total interest within $1. Those are the same two facts the `debt-plan-extra-200` eval scenario scores. It's skipped unless Ollama is running with `OLLAMA_MODEL` pulled.
+
+**Why it's there:** It's the TPC-32 done-when: chat gives the same months and interest as `payoff.py`. On 2026-11-01 with `qwen2.5:14b`:
+- Before the tool description asked for them, the model often gave "by November 2030" and "$4,168.74 saved". Those are the planner's figures, but not the two the eval scores.
+- For a while the check accepted those forms. The final review found that left the live check and the eval disagreeing.
+- The description now says to give the months and the total interest. With the strict check back, it passed 3 out of 3 runs.
+

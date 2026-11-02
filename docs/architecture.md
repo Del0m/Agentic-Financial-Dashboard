@@ -19,6 +19,7 @@ The novel part is the **dynamic budget agent**: a scheduled, stateful loop that 
 | Autonomous scheduled runs | Scheduler triggers the Budget Agent daily and the Period-Close Agent at period end |
 | Multi-step tool use | LangGraph nodes call tools (sync, query spend, search KB, create alert) |
 | Adaptive decisions | LLM classifies the cause of an overspend and picks an action; budget is re-fit each period |
+| Temporal knowledge | A bitemporal knowledge graph of the user's finances and the finance guidance gives both agents "what was true when" context (section 6b) |
 
 The same daily run also looks past the budget (section 6a). It finds **recurring charges** and flags new subscriptions, price increases and income changes. It **forecasts cash flow** to the next paycheck and warns before the checking balance drops below a buffer. It **plans debt payoff** (avalanche vs snowball, plus what extra monthly payments would change) and proposes extra payments when the forecast shows a surplus. Each of these follows the budget agent's pattern: deterministic code computes, the LLM explains and picks an action, and the user approves anything that touches money.
 
@@ -69,6 +70,7 @@ java -jar plantuml.jar -tsvg docs/diagrams/*.puml
 | LLM | **Local Llama via Ollama** (`langchain-ollama` `ChatOllama`), behind a single `llm.py` wrapper. Chat agent model: **`qwen2.5:14b`** (since 2026-10-26; `llama3.1:8b` and `mistral` as benchmark comparisons). Judge model for evals: **`gemma3:12b`** (TPC-16), from a different family than every agent model. Runs on a MacBook Pro M5, 24 GB (70B models don't fit) | Financial data never leaves your machine; free to run thousands of eval calls; wrapper still lets you swap models for benchmarking | A hosted API (Claude, OpenAI) as a comparison baseline |
 | Embeddings | **`nomic-embed-text` via Ollama** (decided 2026-10-26), behind `get_embeddings()` in `llm.py` | 8192-token context fits ~500-token chunks; runs on the Ollama server the agent already uses; nothing leaves your machine; same model can score semantic similarity in evals | `all-MiniLM-L6-v2` (Chroma's default, but truncates at 256 word-pieces), `bge-small-en-v1.5` |
 | Vector store | **ChromaDB** (persistent client, local dir) | Required by the proposal; zero ops | pgvector |
+| Knowledge graph | **Bitemporal graph in the app DB** (`kg_nodes`, `kg_edges`, section 6b) | Same SQLite/Postgres, migrations and tests as everything else; the user half is exact data code can project; no extra service | Graphiti + Neo4j/Kuzu, NetworkX in memory |
 | App DB | **SQLite** in dev, **PostgreSQL** later, via **SQLAlchemy 2 + Alembic** | Start simple; migrations keep the schema honest | Supabase |
 | Agent state | **LangGraph checkpointer** (`SqliteSaver`, then `PostgresSaver`) | Resumable runs, per-user thread memory | Roll your own |
 | Scheduler | **APScheduler** inside the backend | One process, easy to trigger manually in dev | cron + CLI, Celery beat |
@@ -397,12 +399,13 @@ The LLM (inside `decide_action`, section 6a.4) writes the message and picks `ale
 
 ### 6a.3 Debt-payoff planner
 
-**Simulation** (`budget_engine/payoff.py`): `simulate(debts, extra_monthly_cents, strategy) -> Plan`, month by month.
-1. Interest each month = balance × APR / 12. Cards really compound daily on the average daily balance; monthly is close enough for planning, and the simplification is documented.
-2. Pay every debt's minimum, then put the extra on the target: highest APR for **avalanche**, smallest balance for **snowball**. When a debt is paid off, its minimum rolls into the extra (that's what makes both methods snowball).
+**Simulation** (`budget_engine/payoff.py`, TPC-32): `simulate(debts, extra_monthly_cents, strategy, *, start) -> Plan`, month by month, in integer cents. `compare` runs both strategies with the extra and again with $0, the baseline.
+1. Interest each month = balance × APR / 12, rounded to the cent. Cards really compound daily on the average daily balance; monthly is close enough for planning, and the simplification is documented.
+2. Every month pays one budget: the extra plus every included debt's original minimum. Minimums go first, each capped at what the debt owes. The rest goes to the target: highest APR for **avalanche** (ties by `avalanche_key`), smallest balance for **snowball** (then higher APR). What's left after clearing a debt spills to the next target that month. So a paid-off debt's minimum, and the unused part of a minimum bigger than its balance, roll over (that's what makes both methods snowball).
 3. Hold minimums at Plaid's current figure. Real card minimums shrink as the balance drops, so this is the conservative choice; say so in the output.
-4. Stop when every balance is 0 or after 600 months. If a debt's payment never covers its interest, the plan returns `never` and names that debt.
-5. Debts with no APR are left out and listed. Mortgages are left out unless `include_mortgage=True`.
+4. Stop when every balance is 0 or after 600 months. Any debt still open then is in `never` (its minimum doesn't cover its interest and nothing else reaches it), and the plan has no debt-free date.
+5. Debts with no APR or no minimum payment are left out and listed with the reason; the planner never invents either. Mortgages are left out unless `include_mortgage=True`. A 0% APR is a real rate and is planned. A balance of $0 or less (an overpaid card) is skipped silently.
+6. The plan starts on the 1st of next month. The balance is the account's current balance, the same number as the dashboard's, through one loader (`budget_service/debts.load_debts`) shared by the API and the gateway.
 
 The output gives each strategy's months to debt-free, total interest, and payoff order with dates, plus the difference an extra amount makes ("+$200/mo: 14 months sooner, $1,930 less interest").
 
@@ -411,7 +414,9 @@ The output gives each strategy's months to debt-free, total interest, and payoff
 - **Goal Agent (M4):** proposes a `debt_payoff` goal whose monthly amount fits within part of `monthly_surplus_cents`, with the strategy chosen and explained. The `cfpb-reduce-debt` KB page covers both methods.
 - **Daily run:** if a debt-payoff goal is accepted and the forecast shows more surplus than the goal assumed, propose an `extra_payment` alert. It is a proposal only.
 
-**Benchmark value:** every question has an exact answer, so the eval can check the agent's numbers by rule (months match, interest within $1) instead of with a judge.
+**Benchmark value:** every question has an exact answer, so the eval can check the agent's numbers by rule (months match, interest within $1) instead of with a judge. The `debt-plan-extra-200` scenario does that, with its facts generated from the planner (and a test that fails if they drift).
+
+**Live (TPC-32, `qwen2.5:14b`, 2026-11-01):** "How fast am I debt-free if I add $200 a month?" on the `debt-highest-apr` user (a $3,200 card at 24.99% and an $18,400 loan at 5.5%). The model called `plan_debt_payoff` every time. Its answers ("debt-free by November 2030", "49 months", "$4,168.74 saved in interest") were all the planner's figures. But it often gave the date and the savings instead of the month count and the total ($2,941.08), which the eval scenario scores. The tool's description now asks for the months and the total interest first, and the live test requires both (3 out of 3). A plan that's never paid off sends no total interest: 600 months of an unpaid debt's interest is a meaningless figure in the billions. When nothing could be planned, the model gets a note instead of "0 months".
 
 ### 6a.4 Wiring into the daily run
 
@@ -425,6 +430,168 @@ The budget graph (section 6.2) gets two deterministic nodes after `update_totals
 `BudgetState` gains `streams`, `stream_changes`, `forecast` and `low_balance`. `decide_action` handles every flag kind with one structured-output call per flag, so the LLM call count only grows with the number of flags. It still checks `advice_log` so it doesn't repeat itself. `budget-agent-loop.puml` needs both new nodes.
 
 The chat agent gets three tools: `get_recurring`, `get_cash_forecast` and `plan_debt_payoff`, for 7 in total. That's still small enough for `qwen2.5:14b`; the eval checks tool choice for each.
+
+---
+
+## 6b. Temporal knowledge graph (Milestone 6, TPC-34)
+
+Until now the agents' knowledge lived in two places: rows in the app DB, read by hand-written queries, and text chunks in Chroma, found by vector similarity. Neither can answer "what was true *when*?" or "how is this connected to that?". Both questions come up all the time. Was this merchant here last spring? Was the user's rule moving it into Dining in place when the overspend started? Which year's IRS limit is this? What did the user decide the last time we raised this?
+
+Milestone 6 adds one **bitemporal knowledge graph** that both agents read. It has two halves, linked by edges:
+
+- **The user's financial graph** (per user): accounts, merchants, categories, budget lines, recurring streams and advice, with every relationship valid for a time interval. Code builds it from the app DB. No LLM is involved, so section 4.3's rule holds.
+- **The guidance graph** (shared): finance concepts from the knowledge base (Roth IRA, 401(k), emergency fund, avalanche), their limits and rules, each valid for a tax year, with links back to the source page. It is extracted from the KB once, offline, by the LLM against a fixed schema, then reviewed and committed, the same way `kb/sources/` pins the text we cite.
+
+The two halves meet at fixed bridge edges: an account's subtype `IS_A` concept (a Roth IRA account is a Roth IRA), and a budget category `RELATES_TO` a concept (`LOAN_PAYMENTS` → debt avalanche).
+
+The research question for the writeup: **does giving the agents temporal, relational context improve their decisions and answers over row queries and vector RAG alone?** Section 6b.5 measures it as an ablation.
+
+The design follows the bitemporal edge model of Zep/Graphiti (Rasmussen et al., 2025) and the graph-plus-vector retrieval idea of GraphRAG (Edge et al., 2024). It is built on our own SQLite tables rather than either library: Graphiti needs a graph database and an LLM call per ingested episode, and the user half here is exact data that code can project directly.
+
+### 6b.1 Model
+
+Two tables (SQLAlchemy + Alembic, like everything else):
+
+```
+kg_nodes   id, user_id (null = shared guidance node), kind, key, label, props_json
+           unique (user_id, kind, key)
+kg_edges   id, user_id (null = guidance), src_id, rel, dst_id, value_json,
+           valid_from, valid_to (null = still true),          -- valid time: when it was true
+           recorded_at, expired_at (null = current belief),    -- transaction time: when we believed it
+           source (projection | user | kb_extract), evidence_json
+           index (user_id, rel, src_id), (user_id, dst_id), (user_id, valid_from)
+```
+
+**Two clocks, on purpose.** Valid time says when something was true in the world: the gym cost $35 from March to August. Transaction time says when the system believed it. The second clock matters when a fact is corrected after the fact, for example when the user recategorizes July's purchases in October. The old edge is *expired*, not deleted, and the corrected one is recorded. That lets the agent replay "what did I know on the day I raised that alert?", and lets the eval score a past decision against what the agent knew at the time. Nothing in `kg_edges` is ever deleted.
+
+Node kinds: `user`, `institution`, `account`, `merchant`, `category`, `stream`, `advice` (user half); `concept`, `source` (guidance half). Merchant keys use the same trimmed, casefolded name as `category_rules`.
+
+**User relations** (projected by code):
+
+| Relation | Edge | Value | Valid for | From |
+|---|---|---|---|---|
+| `HAS_ACCOUNT` | user → account | subtype | linked → removed | `accounts` |
+| `CONNECTED` | user → institution | status, last_error | each stretch of one status (`active`, `sync_failed`, …) is one edge, so "broken from Oct 3 to Oct 5" is queryable | `plaid_items` (section 6b.6) |
+| `SPENDS_AT` | user → merchant | cents, count, category | one calendar month per edge | `transactions` (resolved category, refunds netted as in section 5) |
+| `CATEGORIZED_AS` | merchant → category | — | rule created → replaced or deleted | `category_rules` (the user's decision) |
+| `BUDGETS` | user → category | limit_cents, group, source | the budget period's month | `budget_lines` |
+| `SUBSCRIBES` | user → stream (stream → merchant) | frequency, typical_cents | first date → stale; a price change closes the edge and opens a new one | `recurring_streams` (once TPC-33's code is on this branch) |
+| `ABOUT` | advice → category | cause, action, outcome | the advice's date; a decided outcome expires the pending edge and records the new one | `advice_log` + `alerts` |
+| `IS_A` | account → concept | — | always | fixed subtype map |
+| `RELATES_TO` | category → concept | — | always | fixed category map |
+
+**Guidance relations** (extracted, `user_id` null). The ontology is small and fixed: Pydantic `Literal`s, and anything outside it is dropped:
+
+| Relation | Example |
+|---|---|
+| `IS_A` | Roth IRA → individual retirement account |
+| `HAS_LIMIT` | Roth IRA → annual contribution `{cents: 700000, condition: "under 50"}`, valid for its tax year |
+| `HAS_RULE` | Roth IRA → withdrawals `{text: "contributions can be withdrawn tax- and penalty-free"}` |
+| `ALTERNATIVE_TO` | debt avalanche ↔ debt snowball |
+| `MENTIONED_IN` | any concept → source `{chunk_index}`, the bridge to Chroma for provenance |
+
+### 6b.2 Building and querying (`app/kg/`)
+
+- **`store.py`:** `assert_edge(src, rel, dst, value, valid_from, valid_to=None, source, evidence, correct=False)`.
+  - If the same current edge already has the same value, nothing happens, so projecting twice is safe.
+  - If the value differs, the open edge is closed at the new `valid_from` and a new edge opens: the world changed.
+  - With `correct=True`, the old edge gets `expired_at = now` and its replacement keeps the original valid time: we were wrong.
+  - `CATEGORIZED_AS` allows one open category per merchant; the other relations allow one open edge per (src, rel, dst).
+- **`project.py`:** pure functions from DB rows to edge assertions, unit-tested like `budget_engine/`.
+  - The current month is re-projected on every run.
+  - Closed months are projected once by close, with the final actuals.
+  - A transaction whose category changes retroactively re-projects its month with `correct=True`.
+- **`query.py`:** each query takes the user, an `as_of` date (default: the user's today, simulated or real), and an optional `known_at` for transaction time.
+
+  | Query | Returns |
+  |---|---|
+  | `as_of(user, date, known_at=None)` | the graph as it was valid on that date |
+  | `history(node, rel=None)` | that node's edges in time order |
+  | `months_active(merchant, window)` | the months the merchant had spending |
+  | `same_month_last_year(category)` | that category's merchants and spending a year earlier |
+  | `changes(user, start, end)` | edges opened or closed in the window |
+  | `neighborhood(nodes, as_of, hops=1, limit=25)` | the nodes' neighbours, at most `limit` edges |
+  | `triples(edges)` | one line per edge, e.g. `Roth IRA —HAS_LIMIT→ annual contribution: $7,000 (tax year 2025) [irs-ira-contribution-limits]` |
+
+- **When the user half updates:**
+  - A new node, `update_graph`, runs in the budget graph between `update_totals` and `detect_overspend`. It is deterministic and incremental.
+  - The close graph's `persist` projects the closed month and the new period's `BUDGETS`.
+  - `scripts/build_kg.py --user <id>` backfills a user's history, including seeded and simulated users.
+- **Building the guidance half:**
+  - `scripts/extract_kg.py` runs `qwen2.5:14b` with structured output (section 6.2's `invoke_structured`) over every KB chunk.
+  - Concept names must come from `kb/concepts.json`: about 40 canonical concepts with aliases. Any new name the model proposes is logged for review, never added automatically, so the same concept can't appear under two names.
+  - **A `HAS_LIMIT` fact needs a tax year stated in its chunk, or it is dropped.** This fixes the mixed-year problem noted in the system walkthrough, where the IRS chart holds several years of limits.
+  - The output is committed as `kb/graph.json`, after the facts are read by hand.
+  - `ingest_kb.py` reloads it into the guidance half on every rebuild, as it does Chroma.
+
+### 6b.3 What the budget agent does with it
+
+`overspend_facts` gains `graph_facts`, computed by code from the graph and handed to `diagnose` beside the existing facts. For a flagged category, the graph supplies:
+
+- **Merchant history over 13 months**: months active, first seen, and whether the merchant was active in the same month last year. That turns "seasonal" from a guess into a checkable fact. Today's `pattern` only sees the history window.
+- **Rule moves**: spending that arrived because a `CATEGORIZED_AS` rule moved a merchant into this category during the period. This gets a new cause, `reclassified`. A code guard limits its action to `alert` (explain the move) or `no_op`, because the user's spending didn't change, only where it is counted.
+- **Price changes**: a `SUBSCRIBES` edge that closed and reopened at a higher `typical_cents`. This is evidence for `recurring`.
+- **Advice history over 3 months**: `ABOUT` edges and their outcomes. Today's memory is this month's alerts plus recent advice. With the longer view, `decide_action` can see "the user dismissed a cut here in September and October" and choose not to repeat it.
+- **Related guidance**: up to 3 triples through `RELATES_TO`, so a message can cite a fact ("CFPB suggests…") with its source.
+
+Code still does every number. The LLM still only names the cause and picks the action, now from more context. The structured outputs and fallbacks from section 6.2 are unchanged. A setting `KG_MODE` (`off` | `on`, default `on`) switches graph facts off so the eval can compare the two.
+
+### 6b.4 What the chat agent does with it
+
+- **`graph_retrieve` node**, between `retrieve` and `agent`. It is app-side, like `retrieve`, because local models skip retrieval tools (decision log, 2026-10-26).
+  1. It links entities by exact or alias match against node labels: concept aliases from `concepts.json`, plus the user's merchant, category and account labels.
+  2. It reads a time from the question by rule: "in 2024", "last month", "since June", or else today.
+  3. It pulls `neighborhood(linked, as_of)`.
+  4. It puts the triples in the system prompt under "Facts (valid as of <date>)", beside the vector guidance.
+- **New tool `get_history(entity, relation?)`:** the time-ordered edges for one entity, for explicit "when did / how has" questions. This brings the chat agent to 5 tools.
+- **Privacy:** user-half triples are built through a new gateway purpose, `graph`, with the same allowlist as `spending`. Pseudonymized user, no account numbers, inflow streams as category and amount only. Every prompt is audited. The guidance half is public text and skips the gateway, like `search_kb`.
+- **Modes** for the eval: `KG_CHAT=vector` (today's behaviour), `graph`, `hybrid` (the default).
+
+### 6b.5 Evaluation: the ablation
+
+| Experiment | Compare | Measure |
+|---|---|---|
+| Budget-agent decisions | `KG_MODE` off vs on, 3 runs each | Cause accuracy, action accuracy, false alarms, repeat alerts |
+| Chat answers | `vector` vs `graph` vs `hybrid`, 3 runs each | Golden-fact match, judge pass rate, and a **temporal correctness** check (right year, right date range) |
+| Guidance extraction | hand labels | Precision on 30 sampled triples; recall on a 15-fact checklist (contribution limits per year, key rules) |
+
+**Budget-agent decisions** run on today's four planted users plus four new ones that need temporal context:
+- `overspend-seasonal-13mo`: holiday spending with a year of history.
+- `reclassified-by-rule`: a merchant moved into Dining mid-month.
+- `stream-price-increase`
+- `previously-dismissed`: the same cut was dismissed two months running.
+
+**Chat answers** run on the existing scenarios plus about 12 new scenarios tagged `temporal`. Examples:
+- "What's the Roth IRA limit this year?" vs "What was it in 2024?"
+- "When did my gym start?"
+- "How has my Dining budget changed since August?"
+- "What did I decide about the coffee suggestion?"
+
+Every experiment also reports three measures from the agent literature (Lectures 15–16):
+
+- **Reliability, pass^k (τ-bench):** beside each mean, the share of scenarios that pass on all 3 runs. No extra runs are needed. A 3-run mean of 80% can hide a pass^3 of 50%, and a demo only shows one run.
+- **Abstention (LongMemEval):** 4 chat scenarios tagged `abstain` that ask for something the user's data or the KB doesn't have. Examples: "What was my balance in 2019?", "What did I spend at Costco?" for a user who never shopped there, and "What's the 2030 Roth IRA limit?". The answer passes only if it says the information isn't available and states no number; a stated dollar amount is a fail. Together with the `temporal` scenarios, this covers LongMemEval's temporal reasoning, knowledge updates and abstention.
+- **Tool choice, BFCL-style:** each scenario lists the tools that must be called, the tools that may be called, and whether no call is correct (`expect.tools_none`, the irrelevance category). A run is scored on three counts: tool names (a required tool missing or an unlisted tool called is a fail), arguments (dates and categories within the accepted values), and irrelevance (any call where none fits is a fail). Reported per mode, so the ablation shows whether graph facts in the prompt change how often the model reaches for tools.
+
+Results go to `eval/results/<date>/kg_ablation/`. If the graph doesn't help somewhere, that is a finding and gets reported as one.
+
+### 6b.6 Bank-connection tools (TPC-41)
+
+Until now the chat agent only read what the last sync stored. Sync was a fixed first node of the budget graph that the LLM never chose. So the agent could answer confidently from three-day-old numbers, and couldn't say why. Two tools close that loop:
+
+| Tool | Does | Guard |
+|---|---|---|
+| `get_connections` | Each linked bank: institution name, status (`active`, `syncing`, `sync_failed`), `last_synced_at`, a short `last_error` code, and how many accounts it has | Read-only; gateway purpose `connections` (institution names and statuses only, no account numbers or tokens) |
+| `refresh_accounts(institution?)` | Syncs one or all of the user's items through the existing `sync_item`, then returns what changed: new transactions, balances updated, still failing | Reuses the per-item lock; at most once per item per 15 minutes (a sooner call returns the last result and says when it ran); never for simulated users |
+
+The prompt says to check `get_connections` before answering about balances or recent spending, and to refresh when data is more than a day old. The agent then answers from the fresh rows. That is a look, act, re-read loop: ReAct with a real observation from the environment. Code still decides the daily sync; the tool only adds an on-demand one.
+
+`plaid_items` gains `last_synced_at` and `last_error`, set by `sync_item`. Each status change also projects a `CONNECTED` edge (section 6b.1), so the graph remembers outages. The chat agent goes to 7 tools.
+
+Chat scenarios for this, tagged `tools`:
+- "Is my data up to date?" with a stale item: calls `get_connections` and names the date.
+- "Refresh my accounts" with a failing item: calls `refresh_accounts` and reports the failure without inventing numbers.
+- A question no tool fits, which should call none (BFCL's irrelevance category).
 
 ---
 
@@ -468,7 +635,7 @@ Because the LLM runs locally (Ollama), prompts never leave your machine, which r
 
 **Retrieval** (`search_kb` tool): embed the query as `search_query: <query>`, take the top 4, and return `{"purpose": "kb", "results": [{title, source_url, section, text}]}` with no similarity scores. The chat graph also runs this search itself on every question (the `retrieve` node) and puts the results in the system prompt as guidance; the app, not the model, lists their URLs as the answer's sources, because in live runs both local models skipped `search_kb` and invented citations. `scripts/search_kb.py "<query>"` prints the same results for checking by hand.
 
-Note on vocabulary: the proposal says "knowledge graph." What's described (LangGraph + ChromaDB, retrieve guidance) is a **vector-store RAG** plus an **agent graph**. That's fine; just use the precise terms in the report. A real knowledge graph (entities + relations) would be an optional extension.
+Note on vocabulary: the proposal says "knowledge graph." Through M5 the project had a **vector-store RAG** (ChromaDB) and an **agent graph** (LangGraph), which are not knowledge graphs. Milestone 6 adds a real one: entities and relations with validity intervals (section 6b). In the report, keep the three terms apart.
 
 ---
 
@@ -492,7 +659,9 @@ GET  /alerts?status=pending_user|all ; POST /alerts/{id}/accept | /dismiss   (40
 GET  /goals ; POST /goals/generate ; POST /goals/{id}/accept
 GET  /recurring                 -> active and stale streams, newest changes first
 GET  /forecast?days=            -> daily expected/low/high balance, scheduled events, buffer, monthly surplus
-POST /debt-plan                 { extra_monthly_cents, include_mortgage } -> avalanche and snowball plans
+POST /debt-plan                 { extra_monthly_cents: 0..100_000_000, include_mortgage? } -> { avalanche, snowball,
+                                    baseline: { avalanche, snowball }, excluded, start }; each plan has months,
+                                    debt_free, total_interest_cents, order (payoff month per debt), never (TPC-32)
 POST /chat                      { thread_id, message } -> text/event-stream: sources, tool_call, tool_result, token, done | error
 GET  /chat/{thread_id}          -> the conversation so far, grouped into turns (tools and sources per answer)
 POST /admin/run/{graph}?user_id (dev only: trigger an agent run manually)
@@ -539,6 +708,12 @@ Build the harness **early** (alongside Milestone 2), even with only two scenario
 | Forecast error | Replay a fixture: forecast from day *d*, compare with the actual balance on *d*+7 and *d*+14 (MAE) and how often the actual falls inside the low/high band | MAE ↓, band coverage ≈ 50% |
 | Overdraft warning lead time | Days between the `low_balance` alert and the planted dip | ≥ 3 days |
 | Debt-plan exactness | Agent's months-to-debt-free and total interest vs `payoff.py` run directly, by rule (months equal, interest within $1) | 100% |
+| KG ablation: budget decisions | Cause and action accuracy, false alarms and repeat alerts with `KG_MODE` off vs on, on 8 planted users (section 6b.5) | on ≥ off; report the difference |
+| KG ablation: chat | Golden-fact match, judge pass rate and temporal correctness for `vector`, `graph` and `hybrid` retrieval | report all three |
+| Reliability (pass^3) | Share of scenarios passing on all 3 runs, beside every mean (τ-bench's pass^k) | report; the gap to the mean is the point |
+| Abstention | 4 `abstain` scenarios: pass only if the answer says the data isn't there and states no number | 100% |
+| Tool choice (BFCL-style) | Required/allowed tool names, accepted argument values, and no call when none fits (`tools_none`) | report each |
+| Guidance extraction quality | Precision of 30 hand-labelled triples from `kb/graph.json`; recall on a 15-fact checklist | report both |
 
 ### 10.3 Tips
 - Fix the LLM `temperature` (e.g. 0) during evals and run each scenario 3 times; report mean and spread.
@@ -667,6 +842,7 @@ Assignment due **November 9, 2026**; everything is scheduled to finish by **Nove
 | M3 Autonomous budget agent | TPC-4 (TPC-17 to 22, TPC-31, TPC-33) | Oct 19 - Oct 28; section 6a additions to Nov 1 |
 | M4 Goal generation | TPC-5 (TPC-23 to 25, TPC-32) | Oct 29 - Nov 1 |
 | M5 Benchmarking | TPC-6 (TPC-26 to 28) | Nov 2 - Nov 5 |
+| M6 Temporal knowledge graph | TPC-34 (TPC-35 to 41) | Nov 1 - Nov 6 |
 | Writeup explaining these docs | TPC-7 (TPC-29, 30) | Nov 4 - Nov 7 |
 
 
@@ -710,6 +886,17 @@ Assignment due **November 9, 2026**; everything is scheduled to finish by **Nove
 ### M5. Benchmarking
 Grow scenarios to ~30-50, run the full metric table, chart results, and write up what changed between versions (prompt changes, thresholds, model swaps).
 
+### M6. Temporal knowledge graph
+1. TPC-35. Bitemporal store and query API: `kg_nodes`, `kg_edges`, `app/kg/store.py` and `query.py` (section 6b.1-6b.2).
+2. TPC-36. Project the user's finances: `project.py`, the `update_graph` node, projection at close, `scripts/build_kg.py`.
+3. TPC-37. Budget agent reads the graph: `graph_facts` in `diagnose`, the `reclassified` cause and its guard, `KG_MODE` (section 6b.3).
+4. TPC-38. Guidance graph: `kb/concepts.json`, `scripts/extract_kg.py`, the committed `kb/graph.json`, tax-year validity, bridge edges.
+5. TPC-39. Chat GraphRAG: the `graph_retrieve` node, the `get_history` tool, gateway purpose `graph`, `KG_CHAT` (section 6b.4).
+6. TPC-40. Ablation benchmark (section 6b.5).
+7. TPC-41. Bank-connection tools `get_connections` and `refresh_accounts` (section 6b.6).
+- **Done when:** on `reclassified-by-rule` and `overspend-seasonal-13mo`, the agent names the right cause with the graph on, and the result is recorded with it off. "What was the Roth IRA limit in 2024?" and "…this year?" both get the right year's number in `hybrid` mode. The ablation tables are in `eval/results/`.
+- **Learn:** knowledge-graph modelling, bitemporal data (valid vs transaction time), LLM-based relation extraction against a fixed ontology, GraphRAG, ablation studies.
+
 ---
 
 ## 15. Risks and open questions
@@ -728,6 +915,9 @@ Grow scenarios to ~30-50, run the full metric table, chart results, and write up
 | Forecast looks precise but income is irregular | Always show the low/high band; with no inflow stream, assume no income and say so; the band-coverage metric checks the band is honest |
 | Recurring detector misses or invents streams | Needs 3+ occurrences and a tight gap/amount match; precision and recall on planted streams; compare with Plaid's endpoint in Sandbox |
 | Debt plan treated as exact | Output names its simplifications (monthly interest, fixed minimums); "not financial advice" disclaimer |
+| The local model extracts wrong or duplicate guidance facts | Fixed ontology, a canonical concept list with aliases, tax year required for limits, and `kb/graph.json` read by hand before it is committed; extraction precision is measured |
+| Graph context bloats prompts or distracts a 14B model | At most 25 triples for chat, at most 3 guidance triples per flag; the ablation shows whether it helps |
+| M6 competes with M4 and M5 for the last week | Build order: store + projection, budget facts, budget ablation, then the guidance graph and chat. Each step works without the next |
 
 All initial open questions were decided on 2026-10-04 (see the decision log). Add new ones here as they come up.
 
@@ -737,6 +927,8 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-02 | The chat system prompt states today and the calendar bounds of this month and last month, from the gateway's `today()` | Without a date the model searched 2023 for "last month"; with only the date it read "last month" as the last 30 days. A simulated user's chat follows the simulation, like its dashboard; the debt planner stays on the real date, like the dashboard's payoff card |
+| 2026-11-02 | The Docker demo runs on a simulated date, set up by one-off `init` and `models` services | Planted data is dated and pace depends on the day of the month, so a demo tied to today would look different every day; the 9 GB model download mustn't block startup |
 | 2026-10-04 | Python/FastAPI backend, Next.js frontend, SQLite→Postgres | One language for agents + API; React Plaid Link support |
 | 2026-10-04 | Budget math is deterministic code; LLM only diagnoses and decides | Testable, benchmarkable, no arithmetic hallucinations |
 | 2026-10-04 | Budget periods are calendar months | Matches statements and how people think about budgets |
@@ -804,6 +996,14 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 | 2026-10-31 | Lines have a user-editable name and a group (`needs`, `wants`, `saving`, `free`); the rules read groups. Styles `caps` (default) and `50_30_20`, per user, from the next close; UI later | The user's requirement: nameable lines, adaptable to several budget types, 50/30/20 executable without UI |
 | 2026-10-31 | Transaction categories resolve user > merchant rule > LLM > savings transfer > Plaid in one place; a correction offers "Always for <merchant>?" | The user's choice: Plaid sets it automatically, the user fixes it when it's wrong, and one unusual purchase doesn't move a merchant |
 | 2026-11-02 | `initialize_budget` and close load one month before the 3-month fit window; `fit_budget` uses it only to find where the history starts and to count a bill paid early at its end, not for the usual bill | Fit reads the start of the history from the earliest transaction it's given, so with only the window loaded, a first in-window transaction after the 3rd dropped a complete month from every user with longer history. No eval or planted user's stored budget moved, since all of them have a transaction by the 3rd of each window month. Found in the TPC-23 final review |
+| 2026-11-01 | Add a temporal knowledge graph (Milestone 6) covering both the user's finances and the KB guidance, linked by bridge edges | The course is on AI knowledge systems, and vector RAG plus an agent graph isn't a knowledge graph. The user chose both halves, linked |
+| 2026-11-01 | Bitemporal edges (valid time + transaction time) in two app-DB tables, not Graphiti or a graph database | Corrections such as retroactive recategorization must not rewrite what the agent knew when it acted. Same DB, migrations and tests; nothing new to run |
+| 2026-11-01 | The user half is projected by code; only the guidance half is LLM-extracted, offline, against a fixed ontology, then reviewed and committed | Keeps "the LLM never does arithmetic that matters"; pins the cited facts the way `kb/sources/` pins the text |
+| 2026-11-01 | The chat agent gets `get_connections` and an on-demand `refresh_accounts`; the daily sync stays a fixed node | The agent should know how fresh its data is and fix it when asked. The rate limit and per-item lock keep a small model from hammering Plaid |
+| 2026-11-01 | Debt payoff: every month pays one budget (extra + all original minimums); minimums first, the rest to the target and spilling to the next | What makes both methods snowball, and no money is lost in the month a debt clears. The first draft only rolled over minimums of debts paid off in earlier months, which dropped the unused part (TPC-32) |
+| 2026-11-01 | A debt with no APR or no minimum is left out and listed, never estimated; the balance is the account's current one, from one loader for the API and the gateway | A guessed rate or minimum makes the plan look exact when it isn't. One loader means the card and chat can't disagree |
+| 2026-11-01 | `plan_debt_payoff` runs the planner inside the gateway (`debt_plan` purpose); the model gets only computed results, scrubbed names and the stated assumptions. Its description asks for the months and the total interest; the chat system prompt is unchanged | The model never does the amortization. Live, `qwen2.5:14b` quoted the planner's numbers exactly. Asking for the two scored facts makes the live check and the eval agree (final review) |
+| 2026-11-01 | The graph's value is shown by ablation (graph off vs on for budget decisions; vector vs graph vs hybrid for chat), not by a UI | The user's choice: numbers for the report |
 | | | |
 
 ---
@@ -814,3 +1014,5 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 - ChromaDB docs: https://docs.trychroma.com/
 - Ollama: https://ollama.com/ and `langchain-ollama`
 - PlantUML: https://plantuml.com/
+- Rasmussen et al., "Zep: A Temporal Knowledge Graph Architecture for Agent Memory," arXiv:2501.13956 (2025), the bitemporal edge model
+- Edge et al., "From Local to Global: A Graph RAG Approach to Query-Focused Summarization," arXiv:2404.16130 (2024), GraphRAG

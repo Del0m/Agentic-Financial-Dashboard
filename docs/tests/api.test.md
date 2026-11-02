@@ -96,3 +96,9 @@ npm test -- lib/api.test.ts
 **What it does:** Oct 3 is 28 days from October's end, and Feb 28 2028 is 1 (2028 is a leap year). On a month's last day it's the next month's end instead: Oct 31 gives 30, Sep 30 gives 31, and Dec 31 gives 31.
 
 **Why it's there:** It never returns 0, which the API rejects (plan Review Focus 3). On the last day it used to return 1, and a newly seeded user always starts on a month's last day, so "To month end" only reached the 1st and missed the month where the planted overspend happens. The review on #14 found it.
+
+## `posts the body and parses the response`
+
+**What it does:** `debtPlan(20000)` posts `{"extra_monthly_cents":20000,"include_mortgage":false}` to `/api/debt-plan` and returns the parsed plan.
+
+**Why it's there:** It pins the route and the body that `POST /debt-plan` (TPC-32) expects.

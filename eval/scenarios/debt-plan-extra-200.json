@@ -1,0 +1,67 @@
+{
+  "id": "debt-plan-extra-200",
+  "question": "How fast am I debt-free if I add $200 a month?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2150.0
+      },
+      {
+        "name": "Platinum Card",
+        "type": "credit",
+        "subtype": "credit card",
+        "balance": 3200.0,
+        "liability": {
+          "kind": "credit",
+          "apr": 24.99,
+          "min_payment": 95.0,
+          "due_in_days": 12
+        }
+      },
+      {
+        "name": "Student Loan",
+        "type": "loan",
+        "subtype": "student",
+        "balance": 18400.0,
+        "liability": {
+          "kind": "student",
+          "apr": 5.5,
+          "min_payment": 210.0,
+          "due_in_days": 20
+        }
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 4,
+        "amount": 42.1,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Chipotle"
+      }
+    ]
+  },
+  "golden_answer": "With an extra $200 a month you'd be debt-free in 49 months, paying $2,941.08 in total interest. Without the extra it would take 95 months and $7,109.82, so the $200 saves 46 months and $4,168.74. Avalanche and snowball give the same plan here, because the Platinum Card has both the highest APR and the smallest balance. This assumes monthly interest and today's minimum payments. This is general information, not financial advice.",
+  "expect": {
+    "facts": [
+      {
+        "number": 49,
+        "tol": 0
+      },
+      {
+        "number": 2941.08,
+        "tol": 1
+      }
+    ],
+    "forbid": [
+      "http",
+      "nerdwallet"
+    ],
+    "tools": [
+      "plan_debt_payoff"
+    ]
+  }
+}

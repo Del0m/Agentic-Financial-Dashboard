@@ -121,7 +121,18 @@ def test_only_unknown_id_rejected(tmp_path):
 
 
 def test_committed_scenarios_load():
-    assert len(load_scenarios(REPO / "eval" / "scenarios")) == 5
+    assert len(load_scenarios(REPO / "eval" / "scenarios")) == 6
+
+
+# the payoff scenario's facts are the planner's numbers (tpc-32); months and interest don't depend on the start date
+def test_debt_plan_scenario_matches_planner():
+    from app.budget_engine.payoff import compare
+    from app.budget_service.debts import load_debts
+
+    scenario = load_scenario(REPO / "eval" / "scenarios" / "debt-plan-extra-200.json")
+    with temp_db() as factory, factory() as s:
+        plan = compare(load_debts(s, seed(s, scenario, TODAY)), 20000, start=date(2026, 11, 1))["avalanche"]
+    assert [(f.number, f.tol) for f in scenario.expect.facts] == [(plan.months, 0), (plan.total_interest_cents / 100, 1)]
 
 
 # --- final-review fixes ---

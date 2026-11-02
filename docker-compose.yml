@@ -1,0 +1,55 @@
+# dev mode (docs/superpowers/specs/2026-11-01-docker-dev-design.md): the repo is mounted into both containers for
+# live reload, and ollama runs on the host for its gpu (docker-compose.ollama.yml runs it in a container instead).
+# there's no env_file: app/config.py loads the mounted .env, which the init service creates on a fresh clone
+x-backend: &backend
+  build: ./backend
+  working_dir: /app/backend
+  environment:
+    OLLAMA_BASE_URL: http://host.docker.internal:11434
+    TZ: America/New_York           # the app's "today" (date.today()) must be the host's, not utc's
+    DEV_USER_EMAIL: ${DEV_USER_EMAIL:-overspend-recurring@eval.local}
+    ENABLE_ADMIN: ${ENABLE_ADMIN:-1}
+  extra_hosts:
+    - "host.docker.internal:host-gateway"   # docker desktop has this name already; linux needs it spelled out
+  volumes:
+    - .:/app
+
+services:
+  # one-off, on every up: .env, migrations and the demo user. each step leaves existing work alone
+  init:
+    <<: *backend
+    command: sh -c "python scripts/setup_env.py && alembic upgrade head && python scripts/setup_demo.py"
+
+  # one-off: the models and the knowledge base. nothing waits for it, since the chat model is a 9 gb download
+  models:
+    <<: *backend
+    command: python scripts/setup_models.py
+
+  backend:
+    <<: *backend
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    ports:
+      - "127.0.0.1:8000:8000"        # the same address the host uvicorn binds, so the two clash instead of sharing
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  frontend:
+    build: ./frontend
+    working_dir: /app/frontend
+    command: npm run dev -- -H 0.0.0.0
+    environment:
+      BACKEND_URL: http://backend:8000
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - .:/app
+      - frontend_node_modules:/app/frontend/node_modules
+      - frontend_next:/app/frontend/.next
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  frontend_node_modules:
+  frontend_next:

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
-  acceptAlert, advanceSim, ApiError, dismissAlert, errorMessage, getAlerts, getBudget, getChatHistory, getRun, getSim,
+  acceptAlert, advanceSim, ApiError, debtPlan, dismissAlert, errorMessage, getAlerts, getBudget, getChatHistory, getRun, getSim,
   getSimJob, runBudget, streamChat, type ChatEvent,
 } from "@/lib/api";
 import { daysToMonthEnd } from "@/lib/format";
@@ -146,5 +146,18 @@ describe("simulation calls", () => {
     expect(daysToMonthEnd("2026-10-31")).toBe(30);
     expect(daysToMonthEnd("2026-09-30")).toBe(31);
     expect(daysToMonthEnd("2026-12-31")).toBe(31);
+  });
+});
+
+describe("debtPlan", () => {
+  test("posts the body and parses the response", async () => {
+    const plan = { avalanche: { months: 49 }, snowball: { months: 49 }, baseline: {}, excluded: [], start: "2026-12-01" };
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify(plan), { status: 200 }));
+    vi.stubGlobal("fetch", f);
+    const out = await debtPlan(20000);
+    expect(f.mock.calls[0][0]).toBe("/api/debt-plan");
+    expect(f.mock.calls[0][1].method).toBe("POST");
+    expect(JSON.parse(f.mock.calls[0][1].body)).toEqual({ extra_monthly_cents: 20000, include_mortgage: false });
+    expect(out.avalanche.months).toBe(49);
   });
 });
