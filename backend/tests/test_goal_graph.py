@@ -74,8 +74,8 @@ def test_valid_proposal_stored_from_code(user):
     run = run_row(user, state["run_id"])
     assert (run.graph, run.status) == ("goals", "ok") and run.finished_at is not None
     assert run.summary_json["goal_ids"] == [debt.id, saving.id] == state["goal_ids"]
-    assert run.summary_json["surplus_cents"] == state["surplus_cents"] == 127675
-    assert run.summary_json["cap_cents"] == state["cap_cents"] == 102140
+    assert run.summary_json["surplus_cents"] == state["surplus_cents"] == 97175
+    assert run.summary_json["cap_cents"] == state["cap_cents"] == 77740
     assert debt.run_id == saving.run_id == state["run_id"]
 
 
@@ -176,7 +176,7 @@ def test_prompt_gets_the_gateway_context(user, tmp_path):
     run_goals(user, UID, TODAY, model=fake)
     system, human = fake.seen[0]
     context = json.loads(human.content.split("\n", 1)[1])
-    assert context["purpose"] == "goals" and context["data"]["cap"] == 1021.4
+    assert context["purpose"] == "goals" and context["data"]["cap"] == 777.4
     assert "debt_payoff" in context["data"]["offered_kinds"] and "8%" in system.content
     lines = [json.loads(line) for line in (tmp_path / "audit.jsonl").read_text().splitlines()]
     assert [line["purpose"] for line in lines] == ["goals"]
@@ -258,13 +258,13 @@ def test_cli_prints_goals(user, capsys):
     code = cli(user, fake=model(g("debt_payoff", 20000, "avalanche", "Card first."), g("savings", 10000)))
     out = capsys.readouterr().out
     assert code == 0
-    assert "$1,276.75" in out and "$1,021.40" in out
+    assert "$971.75" in out and "$95.00 of card minimums" in out and "$777.40" in out
     assert "debt_payoff" in out and "$200.00" in out and "$21,600.00" in out and "avalanche" in out
     assert "Card first." in out and "2027-11" in out and "over cap" not in out
 
 
 def test_cli_marks_goals_over_the_cap(user, capsys):
-    cli(user, fake=model(g("debt_payoff", 100000, "avalanche"), g("savings", 10000)))
+    cli(user, fake=model(g("debt_payoff", 70000, "avalanche"), g("savings", 10000)))
     lines = capsys.readouterr().out.splitlines()
     assert "over cap" not in next(line for line in lines if "debt_payoff" in line)
     assert "over cap" in next(line for line in lines if "savings" in line)
@@ -451,3 +451,34 @@ def test_cli_unknown_user(db, capsys):
     assert main(["--user", "nobody", "--date", TODAY.isoformat()], session_factory=db,
                 model=ScriptedChatModel(replies=[])) == 1
     assert "no user" in capsys.readouterr().out.lower()
+
+
+def card_user(db, spend, minimum=9500):
+    with db() as s:
+        item = add_user(s, UID, "u1@x")
+        acct = add_account(s, item, "Checking")
+        add_account(s, item, "Card", type_="credit", balance=320000,
+                    liability={"kind": "credit", "apr": 24.99, "min_payment_cents": minimum})
+        for m in (8, 9, 10):
+            add_txn(s, acct, -300000, "INCOME", day=date(2026, m, 1))
+            add_txn(s, acct, spend, "GENERAL_MERCHANDISE", day=date(2026, m, 2))
+            add_txn(s, acct, minimum, "LOAN_PAYMENTS", day=date(2026, m, 3),
+                    detailed="LOAN_PAYMENTS_CREDIT_CARD_PAYMENT")
+        s.commit()
+
+
+# final review: goals are on top of the minimums, and a card's isn't in spending. $300 measured left $205 in hand
+def test_card_minimums_come_out_of_the_surplus(db, capsys):
+    card_user(db, 270000)
+    assert main(["--user", UID, "--date", TODAY.isoformat()], session_factory=db, model=model(g("savings", 5000))) == 0
+    assert "surplus $205.00 a month after $95.00 of card minimums; goals may use $164.00" in capsys.readouterr().out
+    with db() as s:
+        summary = s.query(AgentRun).filter_by(user_id=UID, graph="goals").one().summary_json
+    assert (summary["surplus_cents"], summary["cap_cents"], summary["card_minimums_cents"]) == (20500, 16400, 9500)
+
+
+def test_card_minimums_can_leave_no_surplus(db):
+    card_user(db, 295000)      # $50 measured, a $95 minimum
+    fake = ScriptedChatModel(replies=[])
+    state = run_goals(db, UID, TODAY, model=fake)
+    assert (state["status"], state["surplus_cents"], fake.seen) == ("no_surplus", -4500, [])

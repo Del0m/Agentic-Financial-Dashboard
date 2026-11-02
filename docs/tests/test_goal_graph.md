@@ -11,7 +11,7 @@ Run them from `backend/`:
 ## Shared setup
 
 - `audit_in_tmp` (autouse) keeps the prompt audit log under `tmp_path`.
-- The `user` fixture seeds `goals-card-24` (`eval/budget_users.py`): a $1,276.75 monthly surplus, so a $1,021.40 cap at the default 80%, a $3,200 card at 24.99%, an $18,400 student loan and a $1,000 savings account. `TODAY` is its date, 2026-11-02, so plans start on 2026-12-01.
+- The `user` fixture seeds `goals-card-24` (`eval/budget_users.py`): a $971.75 monthly surplus after the card's $95 minimum, so a $777.40 cap at the default 80%, a $3,200 card at 24.99%, an $18,400 student loan, payments on both and a $1,000 savings account. `TODAY` is its date, 2026-11-02, so plans start on 2026-12-01.
 - `g(kind, cents, strategy, why)` is one proposed goal, sent in dollars as the model answers; `model(*goals)` is a `ScriptedChatModel` that answers with them as JSON.
 - `stored(db, status)` reads the user's goals by priority; `run_row` reads a run; `set_prefs` sets the goal preferences.
 - `cli(db, *args, fake)` calls `main` with the user and date filled in.
@@ -86,7 +86,7 @@ Run them from `backend/`:
 
 ## `test_prompt_gets_the_gateway_context`
 
-**What it does:** The model's second message holds the gateway's `goals` context, with the $1,021.40 cap and `debt_payoff` offered. The system prompt carries the 8% rule, and one `goals` audit line exists.
+**What it does:** The model's second message holds the gateway's `goals` context, with the $777.40 cap and `debt_payoff` offered. The system prompt carries the 8% rule, and one `goals` audit line exists.
 
 **Why it's there:** User data reaches the model only through the gateway, audited. The 8% rule is what the done-when relies on.
 
@@ -134,7 +134,7 @@ Run them from `backend/`:
 
 ## `test_cli_marks_goals_over_the_cap`
 
-**What it does:** A $1,000 debt goal fits the $1,021.40 cap; the $100 savings goal after it pushes the total over, and only that line says `(over cap)`.
+**What it does:** A $700 debt goal fits the $777.40 cap; the $100 savings goal after it pushes the total over, and only that line says `(over cap)`.
 
 **Why it's there:** TPC-24 will refuse these. Until then the report makes them visible.
 
@@ -250,3 +250,17 @@ These came from the final review. `red_user(db)` seeds a user spending $2,000 a 
 **What it does:** An unknown `--user` says so and exits 1.
 
 **Why it's there:** It gave a traceback, from a foreign-key failure on the real database.
+
+## `test_card_minimums_come_out_of_the_surplus`
+
+`card_user(db, spend)` seeds $3,000 of income, that month's spending, a card with a $95 minimum, and its $95 payment from checking.
+
+**What it does:** With $2,700 of spending, the report says `surplus $205.00 a month after $95.00 of card minimums; goals may use $164.00`, and the run summary records all three.
+
+**Why it's there:** Found in the final review. Card payments aren't spending, so this user measured $300 and could be given a $240 goal with $205 in hand.
+
+## `test_card_minimums_can_leave_no_surplus`
+
+**What it does:** $50 measured less a $95 minimum is `no_surplus` at −$45, with no model call.
+
+**Why it's there:** A user whose minimums take everything has nothing to allocate.

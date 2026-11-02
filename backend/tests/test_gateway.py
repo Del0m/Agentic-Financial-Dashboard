@@ -549,7 +549,8 @@ def test_goals_cap_and_options_match_compare(db, tmp_path):
         want = compare(debts, round(option["extra_monthly"] * 100), start=PLAN_START)
         for s in ("avalanche", "snowball"):
             assert option[s] == {"months": want[s].months, "total_interest": want[s].total_interest_cents / 100}
-    assert d["assumptions"] == ("Debt plans charge interest monthly at APR/12 and hold minimum payments at "
+    assert d["assumptions"] == ("monthly_surplus is what's left after minimum payments. "
+                                "Debt plans charge interest monthly at APR/12 and hold minimum payments at "
                                 "today's amounts.")
 
 

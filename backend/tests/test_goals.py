@@ -1,6 +1,6 @@
 from datetime import date
 
-from app.budget_engine.goals import build_goal, emergency_gap, monthly_surplus, offered_kinds
+from app.budget_engine.goals import build_goal, card_minimums, emergency_gap, monthly_surplus, offered_kinds
 from app.budget_engine.payoff import Debt, simulate
 from app.budget_engine.txns import SAVINGS, Txn
 
@@ -119,3 +119,11 @@ def test_offered_kinds():
 def test_emergency_fund_past_the_planners_stop_has_no_date():
     plan = build_goal("emergency_fund", 1, 100, None, "x", debts=[], gap_cents=10_000_000, start=START)
     assert plan.target_date is None and plan.target_cents == 10_000_000
+
+
+# card payments aren't spending, so nothing else takes a card's minimum out of the surplus. loan payments are spending
+def test_card_minimums_are_cards_with_a_balance():
+    debts = [Debt(1, "Card", "credit", 24.99, 320000, 9500), Debt(2, "Store", "credit", None, 50000, 2500),
+             Debt(3, "Paid off", "credit", 18.0, 0, 2500), Debt(4, "No minimum", "credit", 18.0, 90000, None),
+             Debt(5, "Loan", "student", 5.5, 1840000, 21000), Debt(6, "Home", "mortgage", 4.0, 20000000, 120000)]
+    assert card_minimums(debts) == 12000

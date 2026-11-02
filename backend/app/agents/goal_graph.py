@@ -14,7 +14,8 @@ from app.agents.budget_llm import invoke_structured
 from app.agents.goal_llm import GoalProposal, goal_messages
 from app.agents.llm import get_chat_model
 from app.budget_engine.fit import HISTORY_MONTHS
-from app.budget_engine.goals import GoalFacts, GoalPlan, build_goal, emergency_gap, monthly_surplus, offered_kinds
+from app.budget_engine.goals import (GoalFacts, GoalPlan, build_goal, card_minimums, emergency_gap, monthly_surplus,
+                                     offered_kinds)
 from app.budget_engine.groups import NEEDS_DEFAULT
 from app.budget_engine.txns import add_months, month_start, round_cents
 from app.budget_service.daily import running_elsewhere, sim_today, user_lock
@@ -37,6 +38,7 @@ class GoalState(TypedDict, total=False):
     status: str            # ok | no_surplus | nothing_offered | error
     reason: Optional[str]
     surplus_cents: Optional[int]
+    card_minimums_cents: int
     cap_cents: Optional[int]
     gap_cents: int
     offered: list[str]
@@ -80,15 +82,19 @@ def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyG
         with session_factory() as s:
             # a month further back than it measures, so the window's edge doesn't look like the start of the history
             txns = load_txns(s, user_id, add_months(month_start(today), -HISTORY_MONTHS - 1), today)
-            surplus = monthly_surplus(txns, today)
-            if surplus is None or surplus <= 0:
-                return {"status": "no_surplus", "reason": "no_surplus", "surplus_cents": surplus}
-            prefs = user_goal_prefs(s, user_id)
             debts = load_debts(s, user_id)
+            minimums = card_minimums(debts)
+            measured = monthly_surplus(txns, today)
+            surplus = None if measured is None else measured - minimums
+            if surplus is None or surplus <= 0:
+                return {"status": "no_surplus", "reason": "no_surplus", "surplus_cents": surplus,
+                        "card_minimums_cents": minimums}
+            prefs = user_goal_prefs(s, user_id)
             gap = emergency_gap(txns, today, _needs(s, user_id), _savings_balance(s, user_id))
         offered = offered_kinds(debts, gap, prefs.skip_kinds, start=start)
         cap = round_cents(Decimal(surplus) * Decimal(str(prefs.max_share)))
-        facts = {"surplus_cents": surplus, "cap_cents": cap, "gap_cents": gap, "offered": offered,
+        facts = {"surplus_cents": surplus, "card_minimums_cents": minimums, "cap_cents": cap, "gap_cents": gap,
+                 "offered": offered,
                  "start": start.isoformat()}
         if not offered:
             return {**facts, "status": "nothing_offered", "reason": "nothing_offered"}
@@ -163,6 +169,7 @@ def _finish(session_factory, run_id: int, result: dict) -> None:
         row.finished_at = utcnow()
         row.summary_json = {"outcome": result["status"], "reason": result.get("reason"),
                             "surplus_cents": result.get("surplus_cents"), "cap_cents": result.get("cap_cents"),
+                            "card_minimums_cents": result.get("card_minimums_cents", 0),
                             "gap_cents": result.get("gap_cents"), "goal_ids": result.get("goal_ids", []),
                             "withdrawn": result.get("withdrawn", 0),
                             "dropped": result.get("dropped", [])}
@@ -224,7 +231,9 @@ def _print_report(state: dict) -> None:
         if withdrawn:
             print(withdrawn)
         return
-    print(f"surplus {_dollars(surplus)} a month; goals may use {_dollars(state['cap_cents'])}")
+    minimums = state.get("card_minimums_cents")
+    after = f" after {_dollars(minimums)} of card minimums" if minimums else ""
+    print(f"surplus {_dollars(surplus)} a month{after}; goals may use {_dollars(state['cap_cents'])}")
     if status == "nothing_offered":
         print("No goals: the preferences skip every kind that's available.")
         if withdrawn:

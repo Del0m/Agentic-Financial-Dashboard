@@ -113,3 +113,9 @@ Run them from `backend/`:
 **What it does:** A $100,000 gap at $1 a month keeps its target and has no date.
 
 **Why it's there:** 100,000 months is past year 9999, which crashed the run (final review). Past the planner's 600 months, it's "no end date", the same as a debt plan that never ends.
+
+## `test_card_minimums_are_cards_with_a_balance`
+
+**What it does:** Of six debts, only the two cards with a balance and a minimum count, including one with no APR on file: $120 in all. A paid-off card, a card with no minimum, a student loan and a mortgage don't.
+
+**Why it's there:** A minimum is owed whether or not the planner can plan the card. Loan payments are spending already, so counting them would take them out twice.

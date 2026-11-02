@@ -76,6 +76,12 @@ def monthly_surplus(txns: Iterable[Txn], today: date) -> Optional[int]:
     return _median_cents(left)
 
 
+# what the surplus still owes the cards: a goal is on top of the minimums, and a card payment isn't spending (it pays
+# for purchases already counted). a loan's payment is spending, so it's already out
+def card_minimums(debts: Sequence[Debt]) -> int:
+    return sum(d.min_payment_cents for d in debts if d.kind == "credit" and d.balance_cents > 0 and d.min_payment_cents)
+
+
 def emergency_gap(txns: Iterable[Txn], today: date, needs: frozenset[str], savings_balance_cents: int) -> int:
     txns = list(txns)
     months = history_months(txns, today)
@@ -105,7 +111,7 @@ def offered_kinds(debts: Sequence[Debt], gap_cents: int, skip_kinds: Sequence[st
 def build_goal(kind: GoalKind, priority: int, monthly_cents: int, strategy: Optional[str], rationale: str, *,
                debts: Sequence[Debt], gap_cents: int, start: date) -> GoalPlan:
     if kind == "debt_payoff":
-        # the monthly amount is an extra on top of the minimums, which the budget's lines already pay
+        # the monthly amount is an extra on top of the minimums, which the surplus has already allowed for
         target = sum(d.balance_cents for d in planned_debts(debts, start))
         when = simulate(debts, monthly_cents, strategy, start=start).debt_free
     elif kind == "emergency_fund":

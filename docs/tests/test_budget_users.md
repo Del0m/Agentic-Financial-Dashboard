@@ -179,3 +179,9 @@ Run them from `backend/`:
 **What it does:** `goals-card-24` isn't in `PROFILES` or `PLANTED`.
 
 **Why it's there:** Those lists drive the budget accuracy eval and the planted-overspend runs, whose results shouldn't change because of a goal user.
+
+## `test_goal_user_pays_its_debts`
+
+**What it does:** `goals-card-24`'s history has the $210 student loan payment and the $95 card payment, labelled as Plaid labels a card payment.
+
+**Why it's there:** Without them the goal graph measured money the user's debts already spoke for. The first version of this user had no debt payments, which hid that card minimums weren't coming out of the surplus (final review).

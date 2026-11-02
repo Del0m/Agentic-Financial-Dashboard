@@ -200,3 +200,12 @@ def test_goal_user_has_a_surplus(db):
 
 def test_goal_user_not_in_the_accuracy_eval():
     assert "goals-card-24" not in {p.id for p in PROFILES + PLANTED}
+
+
+# the debts' payments are in its history, or the goal graph would measure money that's already spoken for
+def test_goal_user_pays_its_debts(db):
+    with db() as s:
+        uid = seed_profile(s, goal_user())
+        payments = {(r.merchant_name, r.amount_cents, r.pf_category_detailed) for r in
+                    s.query(Transaction).filter_by(user_id=uid, pf_category_primary="LOAN_PAYMENTS")}
+    assert payments == {("Student Loan", 21000, None), ("Platinum Card", 9500, "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT")}

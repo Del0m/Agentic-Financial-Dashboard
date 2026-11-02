@@ -46,7 +46,8 @@ EXCLUDED_REASONS = {"no_apr": "no APR on file", "no_minimum": "no minimum paymen
                     "mortgage": "mortgage (left out)"}
 # the goal graph (tpc-23): the extras it shows the model, as shares of the cap, so it can see what paying more does
 GOAL_PLAN_SHARES = (0.25, 0.5, 0.75)
-GOAL_ASSUMPTIONS = "Debt plans charge interest monthly at APR/12 and hold minimum payments at today's amounts."
+GOAL_ASSUMPTIONS = ("monthly_surplus is what's left after minimum payments. Debt plans charge interest monthly at "
+                    "APR/12 and hold minimum payments at today's amounts.")
 PLAN_ASSUMPTIONS = ("Interest is charged monthly at APR/12; minimum payments are held at today's amounts; "
                     "not financial advice.")
 _audit_lock = threading.Lock()

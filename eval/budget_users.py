@@ -105,9 +105,11 @@ def seed_profile(session: Session, profile: Profile, until: Optional[date] = Non
     return user_id
 
 
-# plaid labels a transfer to the user's own savings; the saving line tracks it (tpc-22)
+# plaid labels a transfer to the user's own savings; the saving line tracks it (tpc-22). and a card payment, which
+# isn't spending (tpc-23)
 def detailed_for(category: str, merchant: str) -> Optional[str]:
-    return "TRANSFER_OUT_SAVINGS" if (category, merchant) == ("TRANSFER_OUT", "Savings") else None
+    return {("TRANSFER_OUT", "Savings"): "TRANSFER_OUT_SAVINGS",
+            ("LOAN_PAYMENTS", "Platinum Card"): "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"}.get((category, merchant))
 
 
 def txn_id(profile: Profile, n: int) -> str:
@@ -163,7 +165,9 @@ DECEMBER_SHOPS = (("Toy Barn", 1, 6000), ("Gift Gallery", 3, 7500), ("Book Nook"
 # the goal graph's done-when (tpc-23): a 24.99% card, the same debts as the debt-highest-apr chat scenario, and a
 # steady surplus. not in the accuracy eval, which has nothing to say about debts
 GOAL_USERS = (
-    Profile("goals-card-24", "a 24.99% card and a student loan, with money left each month", 21, (RENT, GROCER, *BASE),
+    Profile("goals-card-24", "a 24.99% card and a student loan, with money left each month", 21,
+            (RENT, GROCER, *BASE, Monthly("LOAN_PAYMENTS", "Platinum Card", 9500, day=12),
+             Monthly("LOAN_PAYMENTS", "Student Loan", 21000, day=20)),
             today=date(2026, 11, 2), start=date(2026, 8, 1), end=date(2026, 10, 31),
             accounts=(("Platinum Card", "credit", "credit card", 320000,
                        {"kind": "credit", "apr": 24.99, "min_payment_cents": 9500}),
