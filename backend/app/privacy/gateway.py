@@ -10,7 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from .. import config
 from ..budget_engine.diagnose import OverspendFacts
-from ..budget_engine.payoff import Plan, compare
+from ..budget_engine.goals import GoalFacts
+from ..budget_engine.payoff import Plan, compare, simulate
 from ..budget_engine.txns import Txn, add_months, month_start, spending
 from ..budget_service.debts import load_debts
 from ..db.models import Account, Liability, Transaction
@@ -21,7 +22,7 @@ from .scrub import scrub_account_name, scrub_merchant
 # rows are built field by field from these allowlists, never by serializing a model object,
 # so a column added later can't leak by accident.
 
-Purpose = Literal["accounts", "debts", "spending", "diagnose", "debt_plan"]
+Purpose = Literal["accounts", "debts", "spending", "diagnose", "debt_plan", "goals"]
 
 ACCOUNT_FIELDS = ("name", "type", "subtype", "balance", "available", "limit")
 DEBT_FIELDS = ("name", "kind", "apr", "balance", "min_payment", "next_due_date")
@@ -43,6 +44,9 @@ PSEUDONYM = re.compile(r"user_[0-9a-f]{4}")
 STRATEGIES = ("avalanche", "snowball")
 EXCLUDED_REASONS = {"no_apr": "no APR on file", "no_minimum": "no minimum payment on file",
                     "mortgage": "mortgage (left out)"}
+# the goal graph (tpc-23): the extras it shows the model, as shares of the cap, so it can see what paying more does
+GOAL_PLAN_SHARES = (0.25, 0.5, 0.75)
+GOAL_ASSUMPTIONS = "Debt plans charge interest monthly at APR/12 and hold minimum payments at today's amounts."
 PLAN_ASSUMPTIONS = ("Interest is charged monthly at APR/12; minimum payments are held at today's amounts; "
                     "not financial advice.")
 _audit_lock = threading.Lock()
@@ -78,7 +82,8 @@ class PrivacyGateway:
                       end: Optional[date] = None, category: Optional[str] = None,
                       facts: Optional[OverspendFacts] = None, transactions: Optional[list[Txn]] = None,
                       this_month_alerts: Sequence[dict] = (), past_advice: Sequence[dict] = (),
-                      extra_monthly_cents: Optional[int] = None, strategy: Optional[str] = None) -> str:
+                      extra_monthly_cents: Optional[int] = None, strategy: Optional[str] = None,
+                      goal_facts: Optional[GoalFacts] = None) -> str:
         if purpose == "diagnose":
             data = self._diagnose(facts, transactions or [])
             data["this_month_alerts"] = [{k: a.get(k) for k in ALERT_MEMORY_FIELDS} for a in this_month_alerts]
@@ -92,13 +97,16 @@ class PrivacyGateway:
             data = self._spending(start, end, category)
         elif purpose == "debt_plan":
             data = self._debt_plan(extra_monthly_cents or 0, strategy)
+        elif purpose == "goals":
+            data = self._goals(goal_facts)
         else:
             raise ValueError(f"unknown purpose: {purpose}")
 
         prompt = json.dumps({"user": self.pseudonym, "purpose": purpose, "data": data},
                             separators=(",", ":"), default=str, ensure_ascii=False)
         params = {k: v for k, v in (("start", start), ("end", end), ("category", category),
-                                    ("extra_monthly_cents", extra_monthly_cents), ("strategy", strategy))
+                                    ("extra_monthly_cents", extra_monthly_cents), ("strategy", strategy),
+                                    ("cap_cents", goal_facts.cap_cents if goal_facts else None))
                   if v is not None}
         self._audit(purpose, params, prompt)
         return prompt
@@ -166,6 +174,35 @@ class PrivacyGateway:
             out["note"] = ("None of the debts could be planned; see excluded." if first.excluded
                            else "No debts with a balance on file.")
         return out
+
+    def _goals(self, facts: GoalFacts) -> dict:
+        data = {
+            "monthly_surplus": _dollars(facts.surplus_cents), "cap": _dollars(facts.cap_cents),
+            "offered_kinds": list(facts.offered), "emergency_fund_gap": _dollars(facts.gap_cents),
+            "protected_categories": list(facts.protected_categories),
+            # free text can name anyone; the account-name scrub also catches "jane doe's"
+            "note": scrub_account_name(facts.note), "assumptions": GOAL_ASSUMPTIONS, "debts": [],
+        }
+        if "debt_payoff" not in facts.offered:
+            return data
+        debts = load_debts(self._session, self._user_id)
+        left_out = {key for key, _ in simulate(debts, 0, "avalanche", start=facts.start).excluded}
+        planned = sorted((d for d in debts if d.key not in left_out and d.balance_cents > 0),
+                         key=lambda d: avalanche_key(d.apr, d.balance_cents))
+        data["debts"] = [{"name": scrub_account_name(d.name), "kind": d.kind, "apr": d.apr,
+                          "balance": _dollars(d.balance_cents), "min_payment": _dollars(d.min_payment_cents)}
+                         for d in planned]
+
+        def option(share: float) -> dict:
+            extra = round(facts.cap_cents * share / 100) * 100       # to the dollar
+            plans = compare(debts, extra, start=facts.start)
+            return {"extra_monthly": _dollars(extra), **{
+                s: {"months": plans[s].months,
+                    "total_interest": _dollars(plans[s].total_interest_cents) if plans[s].months is not None else None}
+                for s in STRATEGIES}}
+
+        data["debt_plan_options"] = [option(share) for share in GOAL_PLAN_SHARES]
+        return data
 
     # minimized per question: totals by category, plus one category's rows only when asked for
     def _spending(self, start: Optional[date], end: Optional[date], category: Optional[str]) -> dict:

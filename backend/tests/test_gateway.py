@@ -511,3 +511,64 @@ def test_debt_plan_no_debts(db, tmp_path):
     _, d, _ = plan_context(db, tmp_path, extra_monthly_cents=0)
     assert (d["plans"], d["excluded"], d["note"]) == ([], [], "No debts with a balance on file.")
 
+
+
+# --- the goal graph's facts (tpc-23) ---
+
+from app.budget_engine.goals import GoalFacts
+
+
+def goal_facts(offered=("debt_payoff", "emergency_fund", "savings"), **over):
+    fields = dict(surplus_cents=90000, cap_cents=72000, offered=tuple(offered), gap_cents=820000, start=PLAN_START,
+                  protected_categories=("PERSONAL_CARE",), note="Jane Doe's card first")
+    return GoalFacts(**{**fields, **over})
+
+
+def goals_context(db, tmp_path, facts):
+    with db() as s:
+        prompt = PrivacyGateway(s, "u-1", audit_path=tmp_path / "a.jsonl").build_context("goals", goal_facts=facts)
+        debts = load_debts(s, "u-1")
+    return prompt, data(prompt), debts
+
+
+def test_goals_scrubs_debts_and_note(db, tmp_path):
+    seed_debts(db)
+    prompt, d, _ = goals_context(db, tmp_path, goal_facts())
+    assert "Jane" not in prompt and "4421" not in prompt
+    assert d["note"] == scrub_account_name("Jane Doe's card first")
+    assert d["protected_categories"] == ["PERSONAL_CARE"]
+
+
+def test_goals_cap_and_options_match_compare(db, tmp_path):
+    seed_debts(db)
+    _, d, debts = goals_context(db, tmp_path, goal_facts())
+    assert (d["monthly_surplus"], d["cap"], d["emergency_fund_gap"]) == (900.0, 720.0, 8200.0)
+    assert d["offered_kinds"] == ["debt_payoff", "emergency_fund", "savings"]
+    assert [o["extra_monthly"] for o in d["debt_plan_options"]] == [180.0, 360.0, 540.0]
+    for option in d["debt_plan_options"]:
+        want = compare(debts, round(option["extra_monthly"] * 100), start=PLAN_START)
+        for s in ("avalanche", "snowball"):
+            assert option[s] == {"months": want[s].months, "total_interest": want[s].total_interest_cents / 100}
+    assert d["assumptions"] == ("Debt plans charge interest monthly at APR/12 and hold minimum payments at "
+                                "today's amounts.")
+
+
+def test_goals_no_options_without_debt_offered(db, tmp_path):
+    seed_debts(db)
+    _, d, _ = goals_context(db, tmp_path, goal_facts(offered=("savings",)))
+    assert "debt_plan_options" not in d and d["debts"] == []
+
+
+# the store card has no APR, so it isn't something a goal can plan; the rest are highest APR first
+def test_goals_includable_debts_only(db, tmp_path):
+    seed_debts(db)
+    _, d, _ = goals_context(db, tmp_path, goal_facts())
+    assert [(x["kind"], x["apr"], x["balance"], x["min_payment"]) for x in d["debts"]] == \
+        [("credit", 24.99, 3200.0, 95.0), ("student", 5.5, 18400.0, 210.0)]
+
+
+def test_goals_audited_once(db, tmp_path):
+    seed_debts(db)
+    goals_context(db, tmp_path, goal_facts())
+    [line] = audit_lines(tmp_path / "a.jsonl")
+    assert (line["purpose"], line["params"]) == ("goals", {"cap_cents": 72000})
