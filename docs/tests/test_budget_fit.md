@@ -1,7 +1,7 @@
 # Tests: `backend/tests/test_budget_fit.py`
 
 These tests cover `app/budget_engine/fit.py`, which turns transaction history into the user's first budget (TPC-17, architecture 6.3). The rules:
-- The history is the last 3 complete calendar months.
+- The history is the last 3 complete calendar months. Callers also pass the month before them, which shows whether the first of the 3 is complete but is never fitted.
 - **Fixed** categories (rent, loan payments) get the lower median of the months that had the bill (TPC-18 replaced "the latest month").
 - **Flexible** categories get the median month × 1.05. `center="mean"` uses the mean instead; it exists only for the median-vs-mean accuracy comparison (TPC-18).
 - A month above 1.5× the median is recorded as an outlier, so the agent can explain it.
@@ -223,3 +223,9 @@ Run them from `backend/`:
 **What it does:** Rent posts Jul 1, Aug 1 and Aug 30 (September's). The totals are $1,500 for each month, and the limit is $1,500.
 
 **Why it's there:** Under the latest-non-zero rule, August held two rents and fitted $3,000, twice the real bill. The review on #15 found it. The Aug 30 charge is within 10% of the usual bill (the lower median of each month's largest rent charge) and in August's last 3 days, so it moves to September.
+
+## `test_usual_bill_ignores_month_before_window`
+
+**What it does:** Rent is $1,400 on Jun 1 and Jul 1, then $1,600 on Aug 1, with $1,600 rents paid early on Aug 30 and Sep 29. Fitting on the July-September window, the totals are $1,400 / $1,600 / $1,600.
+
+**Why it's there:** Callers now load the month before the window so its edge doesn't look like the start of the history. That month must not change the usual bill. Counted in it, June would pull the lower median down to $1,400, $1,600 would fall outside the 10% tolerance, and the early rents would stay put, doubling August's total. The usual bill reads the window only, the same months it read before the callers loaded more.

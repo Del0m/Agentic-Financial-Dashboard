@@ -45,15 +45,17 @@ class FitResult:
 
 
 def fit_budget(txns: Iterable[Txn], today: date, fixed: frozenset[str] = FIXED_DEFAULT,
-               center: Literal["median", "mean"] = "median") -> FitResult:
+               center: Literal["median", "mean"] = "median", *, history_start: Optional[date] = None) -> FitResult:
     txns = list(txns)    # read more than once below; a generator would come back empty
     if not txns:
         return FitResult((), ())
-    # complete months only (a partial month would drag every median down), and none before the history starts
+    # complete months only (a partial month would drag every median down), and none before the history starts.
+    # callers load a month further back than the window, so the window's edge doesn't look like the history's start
     current = month_start(today)
-    earliest = min(t.date for t in txns)
+    window_start = add_months(current, -HISTORY_MONTHS)
+    earliest = history_start or min(t.date for t in txns)
     start = month_start(earliest) if earliest.day <= FIRST_MONTH_DAY else add_months(month_start(earliest), 1)
-    first = max(add_months(current, -HISTORY_MONTHS), start)
+    first = max(window_start, start)
     months = []
     m = first
     while m < current:
@@ -62,7 +64,9 @@ def fit_budget(txns: Iterable[Txn], today: date, fixed: frozenset[str] = FIXED_D
     if not months:
         return FitResult((), ())
 
-    spent = shift_early_bills(spending(txns), _usual_bills(spending(txns), fixed))
+    # that extra month's only other use: a bill paid early at its end belongs to the window's first month
+    usual = _usual_bills([t for t in spending(txns) if t.date >= window_start], fixed)
+    spent = shift_early_bills(spending(txns), usual)
     per_month = [category_totals(spent, m, month_end(m)) for m in months]
     categories = sorted({cat for totals in per_month for cat, total in totals.items() if total > 0})
 

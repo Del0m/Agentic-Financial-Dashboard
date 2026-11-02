@@ -69,9 +69,10 @@ def test_history_window_follows_history_months(monkeypatch):
     monkeypatch.setattr(acc, "fit_budget", lambda txns, today, **kw: earliest.append(min(t.date for t in txns))
                         or real_fit(txns, today, **kw))
 
-    run_profile(replace(profile("vacation"), today=date(2026, 9, 1)))
+    run_profile(replace(profile("vacation"), today=date(2026, 10, 1)))
 
-    # a 4-month window on Sep 1 starts in May; a hardcoded 3 would start the history in June
+    # a 4-month window on Oct 1 starts in June, and the month before it is loaded too; a hardcoded 3 would load
+    # from June
     assert {d.replace(day=1) for d in earliest} == {date(2026, 5, 1)}
 
 
