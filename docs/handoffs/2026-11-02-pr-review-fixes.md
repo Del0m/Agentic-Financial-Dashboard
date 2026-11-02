@@ -13,11 +13,13 @@ Changes cover the review of PRs #18–22 across the branches listed below. No pu
 - Simulated users cannot create bank links. Simulation and demo replacement reject users with real bank links. Goal demo profiles support advancing simulated dates.
 - Both Compose frontends bind to `127.0.0.1`. The Docker bootstrap preserves existing effective Fernet keys, including exported and indented dotenv assignments.
 
-## Working copies
+## PR branches
 
-- Main checkout: goal, payoff, history, shared bank-boundary, and run-ownership fixes.
-- `.claude/worktrees/TPC-42`: Docker setup and bank-boundary fixes.
-- `.claude/worktrees/jolly-lamport-5f927a`: history boundary fix.
+- #19 `TPC-32`: high-APR payoff arithmetic and loopback frontend binding.
+- #18 `TPC-42`: inherits #19 and adds dotenv key preservation and synthetic-bank boundaries.
+- #20 `TPC-23`: inherits #19 and adds goal privacy, missing-obligation checks, run ownership, simulation, and history fixes.
+- #21 `codex/tpc-24-goal-validation`: inherits #20 and retains validation/retry-specific fixes, including progress reporting after failed persistence.
+- #22 `claude/jolly-lamport-5f927a`: independent history boundary correction.
 
 ## Validation
 

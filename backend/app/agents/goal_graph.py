@@ -219,7 +219,7 @@ def _finish(session_factory, run_id: int, result: dict) -> None:
 
 
 # one goal run at a time for a user, and not during a budget run: they read the same money. a busy user writes nothing.
-# the lock covers this process and the run rows cover the rest, since the cli is a separate one
+# A renewable database claim coordinates API and CLI processes; goal writes verify its owner token.
 def run_goals(session_factory, user_id: str, today: date, *, model: Optional[BaseChatModel] = None,
               audit_path=None) -> dict:
     lock = user_lock(user_id)
