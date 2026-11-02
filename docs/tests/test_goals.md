@@ -107,3 +107,9 @@ Run them from `backend/`:
 **What it does:** All three kinds with debts and a gap. No debts, or only a debt the planner can't plan, means no `debt_payoff`. No gap means no `emergency_fund`. `skip_kinds` removes a kind.
 
 **Why it's there:** The model is only offered what code can compute a target and date for, and what the user hasn't ruled out.
+
+## `test_emergency_fund_past_the_planners_stop_has_no_date`
+
+**What it does:** A $100,000 gap at $1 a month keeps its target and has no date.
+
+**Why it's there:** 100,000 months is past year 9999, which crashed the run (final review). Past the planner's 600 months, it's "no end date", the same as a debt plan that never ends.

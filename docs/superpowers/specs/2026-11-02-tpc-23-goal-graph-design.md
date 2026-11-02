@@ -74,7 +74,7 @@ class GoalPlan:
     priority: int
     monthly_cents: int
     target_cents: int
-    target_date: Optional[date]    # None only for a debt plan the simulation says never ends
+    target_date: Optional[date]    # None when the goal outlasts the planner's stop (MAX_MONTHS)
     strategy: Optional[str]
     rationale: str
 
@@ -169,8 +169,9 @@ The prompt is built like `budget_llm`'s: checked rules first, facts as JSON. It 
   - `needs` is the categories in `needs` lines of the user's open period when there is one, otherwise `groups.NEEDS_DEFAULT`;
   - the savings balance is the sum of `current_balance_cents` on `depository` accounts with subtype `savings`;
   - a surplus of `None` or ≤ 0 ends the run with status `no_surplus`, without calling the model;
-  - no offered kinds ends it with status `nothing_offered`.
-- **`propose`:** `invoke_structured(model, GoalProposal, messages)`. `None` (bad JSON twice) ends the run with status `error`, reason `bad_model_output`. A connection error propagates, as in the budget graph, and the run row records it as `error`.
+  - no offered kinds ends it with status `nothing_offered`;
+  - both of those withdraw the last proposal (it becomes `superseded`), because it no longer fits. A failed run leaves it (changed in the final review).
+- **`propose`:** `invoke_structured(model, GoalProposal, messages, raise_unreachable=True)`. An amount outside $1 to $1,000,000 fails validation and gets the retry. `None` (bad JSON twice) ends the run with status `error`, reason `bad_model_output`. A connection error propagates, as in the budget graph, and the run row records it as `error`.
 - **`build`:** keeps each proposed goal in order, dropping one whose kind wasn't offered or is a repeat. A `debt_payoff` with no strategy means avalanche, the prompt's default. Dropped goals are listed in the run summary. Nothing left ends the run with status `error`, reason `no_usable_goals`. Priorities are renumbered 1..n.
 - **`persist`:** one commit: earlier `proposed` goals for the user become `superseded`, and the new ones are written as `proposed` with the run id.
 

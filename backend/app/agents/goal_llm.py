@@ -8,6 +8,9 @@ from app.agents.budget_llm import Text
 # the goal graph's llm call (spec: tpc-23): the facts come from the privacy gateway as a json string, and the model
 # picks which goals, their order and their monthly amounts. code computes each goal's target and date
 
+MIN_MONTHLY_DOLLARS = 1
+MAX_MONTHLY_DOLLARS = 1_000_000
+
 GOAL_PROMPT = (
     "You propose savings and debt goals for a personal finance app. The facts below were computed from the user's "
     "accounts and transactions. Propose 1 to 3 goals, most important first, at most one of each kind, using only the "
@@ -26,7 +29,8 @@ GOAL_PROMPT = (
 
 class ProposedGoal(BaseModel):
     kind: Literal["debt_payoff", "emergency_fund", "savings"]
-    monthly_dollars: float = Field(gt=0)     # dollars, like every number in its facts; code converts to cents
+    # dollars, like every number in its facts; code converts to cents. out of bounds gets the retry
+    monthly_dollars: float = Field(ge=MIN_MONTHLY_DOLLARS, le=MAX_MONTHLY_DOLLARS)
     strategy: Optional[Literal["avalanche", "snowball"]] = None
     rationale: Text
 

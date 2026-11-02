@@ -1,16 +1,17 @@
 import logging
 import threading
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from langchain_core.language_models import BaseChatModel
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.agents.budget_graph import plaid_sync, run_budget
 from app.budget_service.alerts import has_real_plaid_item
 from app.budget_service.close import close_due
-from app.db.models import User
+from app.db.models import AgentRun, User
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,19 @@ _locks_guard = threading.Lock()
 def user_lock(user_id: str) -> threading.Lock:
     with _locks_guard:
         return _locks.setdefault(user_id, threading.Lock())
+
+
+# a run row older than this is left over from a process that died, not one still going
+STALE = timedelta(hours=2)
+
+
+# user_lock only covers this process; a run going in the api server or another script shows as a "running" row
+def running_elsewhere(session_factory, user_id: str) -> bool:
+    with session_factory() as s:
+        return s.scalar(select(AgentRun.id).where(
+            AgentRun.user_id == user_id, AgentRun.graph.in_(("budget", "simulate", "goals")),
+            AgentRun.status == "running",
+            AgentRun.started_at >= datetime.now(timezone.utc) - STALE).limit(1)) is not None
 
 
 # a simulated user's "today" (prefs_json["sim"]["date"]); None for everyone living on the real date

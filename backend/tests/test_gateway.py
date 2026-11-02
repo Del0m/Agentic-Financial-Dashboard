@@ -535,7 +535,7 @@ def test_goals_scrubs_debts_and_note(db, tmp_path):
     seed_debts(db)
     prompt, d, _ = goals_context(db, tmp_path, goal_facts())
     assert "Jane" not in prompt and "4421" not in prompt
-    assert d["note"] == scrub_account_name("Jane Doe's card first")
+    assert d["note"] == "[person]'s card first"
     assert d["protected_categories"] == ["PERSONAL_CARE"]
 
 
@@ -572,3 +572,10 @@ def test_goals_audited_once(db, tmp_path):
     goals_context(db, tmp_path, goal_facts())
     [line] = audit_lines(tmp_path / "a.jsonl")
     assert (line["purpose"], line["params"]) == ("goals", {"cap_cents": 72000})
+
+
+# final review: the account-name scrub turned "it's my priority" into "[person]'s my priority", losing the preference
+def test_goals_note_keeps_contractions(db, tmp_path):
+    seed_debts(db)
+    _, d, _ = goals_context(db, tmp_path, goal_facts(note="emergency fund first, it's my priority"))
+    assert d["note"] == "emergency fund first, it's my priority"

@@ -160,7 +160,7 @@ alerts           id, user_id, period_id, kind (overspend|new_subscription|price_
                  stream_id, message, status (pending_user|accepted|dismissed), created_at
 advice_log       id, user_id, run_id, category, advice_text, created_at, outcome
 goals            id, user_id, run_id, kind (debt_payoff|savings|emergency_fund), priority, monthly_cents,
-                 target_cents, target_date (none only for a debt plan that never ends),
+                 target_cents, target_date (none when the goal outlasts the planner's 600 months),
                  strategy (avalanche|snowball, debt_payoff only), rationale,
                  status (proposed|superseded|accepted|dismissed), created_at
 recurring_streams id, user_id, direction (in|out), merchant_key, merchant_name, category,
@@ -446,15 +446,16 @@ The chat agent gets three tools: `get_recurring`, `get_cash_forecast` and `plan_
 - The LLM picks the kinds, their order and their monthly amounts, in dollars, from facts sent through the gateway's `goals` purpose: the surplus, the cap, the debts, the emergency-fund gap, what some extras would do, and the scrubbed note.
 - Code computes each goal's target and date:
   - `debt_payoff`: the debts the planner can plan, and the planner's date. The monthly amount is an extra on top of the minimums. A missing strategy means avalanche.
-  - `emergency_fund`: 3 × the median month's `needs` spending, minus savings accounts; not offered when that's $0.
+  - `emergency_fund`: 3 × the median month's `needs` spending, minus savings accounts; not offered when that's $0. Past the planner's 600 months it has no date.
   - `savings`: 12 × the monthly amount, 12 months out.
-- A kind that wasn't offered, or a repeat, is dropped and listed in the run. Checking affordability and retrying with a reason is TPC-24's job, between `propose` and `build`. Until then the CLI marks a goal `(over cap)`.
+- An amount outside $1 to $1,000,000 a month gets the one retry. A kind that wasn't offered, or a repeat, is dropped and listed in the run. Checking affordability and retrying with a reason is TPC-24's job, between `propose` and `build`. Until then the CLI marks a goal `(over cap)`.
 
-A run marks the user's earlier `proposed` goals `superseded` in one commit with the new ones, so a failed run leaves the last proposal standing. It holds the same per-user lock as a budget run.
+A run marks the user's earlier `proposed` goals `superseded` in one commit with the new ones, so a failed run leaves the last proposal standing. A finished run with nothing to propose (no surplus, or every kind skipped) withdraws it instead, since it no longer fits. A run takes the same per-user lock as a budget run and also checks for a recent `running` row, because the lock only covers one process and the CLI is a separate one. An unreachable model is reported as such (`invoke_structured(raise_unreachable=True)`): the budget graph has a fallback alert to write, and the goal graph has nothing.
 
 **Live (TPC-23, `qwen2.5:14b`, 2026-11-02):** `goals-card-24` has a $1,276.75 surplus, so a $1,021.40 cap at 80%, a $3,200 card at 24.99%, an $18,400 loan at 5.5% and $1,000 saved. In 30 of 30 runs, `debt_payoff` came first with avalanche: $511 a month on top of the minimums, debt-free in April 2029. Then `emergency_fund` at $510.40, reaching its $6,221.78 target in December 2027. Two findings shaped this:
 - Asked for cents with facts in dollars, the model copied the prompt's example ($200) and added $22.14 for the emergency fund, finishing in 2050. Asking for dollars, and saying that money left over does nothing, fixed it.
 - In 1 run of 25 it left out the strategy. Dropping the goal put the emergency fund first; the prompt's default applies now.
+- The note first went through the account-name scrub, whose possessive rule also matches contractions. "it's the emergency fund that matters most" reached the model as "[person]'s the emergency fund..." and `debt_payoff` came first. `scrub_note` only takes capitalised names before a possessive, and the same note now puts the emergency fund first. A lowercase "jane doe's" gets through, the same limit as any bare name in free text.
 
 ## 6b. Temporal knowledge graph (Milestone 6, TPC-34)
 

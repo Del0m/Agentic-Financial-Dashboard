@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Iterable, Literal, Optional, Sequence
 
 from app.budget_engine.fit import FIRST_MONTH_DAY, HISTORY_MONTHS
-from app.budget_engine.payoff import Debt, simulate
+from app.budget_engine.payoff import MAX_MONTHS, Debt, simulate
 from app.budget_engine.txns import (Txn, add_months, category_totals, income_by_month, month_end, month_start,
                                     round_cents, savings, spending)
 
@@ -25,7 +25,7 @@ class GoalPlan:
     priority: int
     monthly_cents: int
     target_cents: int
-    target_date: Optional[date]    # None only for a debt plan the simulation says never ends
+    target_date: Optional[date]    # None when the goal outlasts the planner's stop (MAX_MONTHS)
     strategy: Optional[str]
     rationale: str
 
@@ -88,14 +88,14 @@ def emergency_gap(txns: Iterable[Txn], today: date, needs: frozenset[str], savin
 
 
 # the debts the planner would actually plan, by asking it: its rules for what's left out stay in one place
-def _planned(debts: Sequence[Debt], start: date) -> list[Debt]:
+def planned_debts(debts: Sequence[Debt], start: date) -> list[Debt]:
     excluded = {key for key, _ in simulate(debts, 0, "avalanche", start=start).excluded}
     return [d for d in debts if d.key not in excluded and d.balance_cents > 0]
 
 
 def offered_kinds(debts: Sequence[Debt], gap_cents: int, skip_kinds: Sequence[str], *, start: date) -> list[str]:
     available = {"savings"}
-    if _planned(debts, start):
+    if planned_debts(debts, start):
         available.add("debt_payoff")
     if gap_cents > 0:
         available.add("emergency_fund")
@@ -106,11 +106,12 @@ def build_goal(kind: GoalKind, priority: int, monthly_cents: int, strategy: Opti
                debts: Sequence[Debt], gap_cents: int, start: date) -> GoalPlan:
     if kind == "debt_payoff":
         # the monthly amount is an extra on top of the minimums, which the budget's lines already pay
-        target = sum(d.balance_cents for d in _planned(debts, start))
+        target = sum(d.balance_cents for d in planned_debts(debts, start))
         when = simulate(debts, monthly_cents, strategy, start=start).debt_free
     elif kind == "emergency_fund":
         target = gap_cents
-        when = add_months(start, math.ceil(gap_cents / monthly_cents) - 1)
+        months = math.ceil(gap_cents / monthly_cents)
+        when = add_months(start, months - 1) if months <= MAX_MONTHS else None
     else:
         target = monthly_cents * SAVINGS_MONTHS
         when = add_months(start, SAVINGS_MONTHS - 1)

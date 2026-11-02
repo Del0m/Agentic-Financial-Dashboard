@@ -271,7 +271,7 @@ The budget graph's `diagnose` step asks the LLM why one category is overspent. T
 
 **What it does:** The card named "Jane Doe's Visa ••4421" and the note "Jane Doe's card first" reach the prompt with no "Jane" and no "4421". Protected categories pass through.
 
-**Why it's there:** The note is free text a user typed, so it can name anyone. It uses the account-name scrub, which includes the possessive rule, rather than `scrub_text` alone. It has to catch "Jane Doe's".
+**Why it's there:** The note is free text a user typed, so it can name anyone. It uses `scrub_note`, which adds a rule for capitalised names before a possessive to `scrub_text`, so it catches "Jane Doe's".
 
 ## `test_goals_cap_and_options_match_compare`
 
@@ -297,3 +297,9 @@ The budget graph's `diagnose` step asks the LLM why one category is overspent. T
 
 **Why it's there:** Every prompt that leaves the system is audited, with the figure that shaped it.
 
+
+## `test_goals_note_keeps_contractions`
+
+**What it does:** The note "emergency fund first, it's my priority" reaches the prompt unchanged.
+
+**Why it's there:** Found in the final review. The account-name scrub replaces everything before the last `'s`, so this note became "[person]'s my priority", and live the model then put debt first. The user's preference was lost without a word.

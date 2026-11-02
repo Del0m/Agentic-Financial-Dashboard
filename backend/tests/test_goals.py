@@ -113,3 +113,9 @@ def test_offered_kinds():
     assert offered_kinds([Debt(4, "Store", "credit", None, 50000, 2500)], 0, (), start=START) == ["savings"]
     assert offered_kinds(DEBTS, 0, (), start=START) == ["debt_payoff", "savings"]
     assert offered_kinds(DEBTS, 100000, ("savings", "debt_payoff"), start=START) == ["emergency_fund"]
+
+
+# the same stop as the planner's: past it, the goal has no end date rather than a date past the calendar
+def test_emergency_fund_past_the_planners_stop_has_no_date():
+    plan = build_goal("emergency_fund", 1, 100, None, "x", debts=[], gap_cents=10_000_000, start=START)
+    assert plan.target_date is None and plan.target_cents == 10_000_000

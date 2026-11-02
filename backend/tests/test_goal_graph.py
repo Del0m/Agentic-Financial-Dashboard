@@ -1,15 +1,16 @@
 import json
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from langchain_core.messages import AIMessage
 
 from app import config
 from app.agents import goal_graph
+from app.agents.budget_graph import close_interrupted_runs
 from app.agents.goal_graph import main, run_goals
 from app.budget_engine.goals import SAVINGS_MONTHS
 from app.budget_engine.payoff import simulate
-from app.budget_service.daily import user_lock
+from app.budget_service.daily import running_elsewhere, user_lock
 from app.budget_service.debts import load_debts
 from app.budget_service.goal_prefs import set_goal_prefs
 from app.db.models import Account, AgentRun, BudgetLine, BudgetPeriod, Goal, User
@@ -160,12 +161,11 @@ def test_bad_json_twice_is_an_error(user):
     assert run_row(user, state["run_id"]).status == "error"
 
 
-def test_model_outage_recorded(user, monkeypatch):
-    def down(*a, **k):
-        raise ConnectionError("ollama is down")
-    monkeypatch.setattr(goal_graph, "invoke_structured", down)
-    state = run_goals(user, UID, TODAY, model=ScriptedChatModel(replies=[]))
+def test_model_outage_recorded(user, caplog):
+    fake = ScriptedChatModel(replies=[ConnectionError("ollama is down")])
+    state = run_goals(user, UID, TODAY, model=fake)
     assert (state["status"], state["reason"]) == ("error", "ConnectionError")
+    assert len(fake.seen) == 1 and "ollama is down" in caplog.text
     run = run_row(user, state["run_id"])
     assert run.status == "error" and run.summary_json["reason"] == "ConnectionError"
     assert stored(user) == []
@@ -341,3 +341,113 @@ def test_live_card_debt_goal_first(user):
     for x in goals:
         print(x.priority, x.kind, x.strategy, x.monthly_cents, x.target_cents, x.target_date, "|", x.rationale)
     assert goals[0].kind == "debt_payoff" and goals[0].strategy in ("avalanche", "snowball")
+
+
+# --- final review ---
+
+def red_user(db):
+    with db() as s:
+        acct = add_account(s, add_user(s, UID, "u1@x"), "Checking")
+        for m in (8, 9, 10):
+            add_txn(s, acct, -100000, "INCOME", day=date(2026, m, 1))
+            add_txn(s, acct, 200000, "GENERAL_MERCHANDISE", day=date(2026, m, 2))
+        s.add(Goal(user_id=UID, kind="savings", priority=1, monthly_cents=5000, target_cents=60000, rationale="x"))
+        s.commit()
+
+
+# a completed "nothing to propose" means the last proposal no longer fits; GET /goals must stop showing it
+def test_no_surplus_withdraws_the_last_proposal(db, capsys):
+    red_user(db)
+    assert main(["--user", UID, "--date", TODAY.isoformat()], session_factory=db,
+                model=ScriptedChatModel(replies=[])) == 0
+    assert stored(db) == [] and len(stored(db, "superseded")) == 1
+    assert "withdrawn" in capsys.readouterr().out
+
+
+def test_nothing_offered_withdraws_the_last_proposal(user):
+    run_goals(user, UID, TODAY, model=model(g("savings", 5000)))
+    set_prefs(user, {"skip_kinds": ["debt_payoff", "emergency_fund", "savings"]})
+    state = run_goals(user, UID, TODAY, model=ScriptedChatModel(replies=[]))
+    assert (state["status"], state["withdrawn"]) == ("nothing_offered", 1)
+    assert stored(user) == [] and len(stored(user, "superseded")) == 1
+
+
+# the window has to reach past the months it measures, or its first transaction looks like the start of the history
+def test_long_history_keeps_all_three_months(db):
+    with db() as s:
+        acct = add_account(s, add_user(s, UID, "u1@x"), "Checking")
+        for m in (5, 6, 7):
+            add_txn(s, acct, -100000, "INCOME", day=date(2026, m, 15))
+        for m in (8, 9, 10):
+            add_txn(s, acct, -300000, "INCOME", day=date(2026, m, 5))
+        add_txn(s, acct, 290000, "GENERAL_MERCHANDISE", day=date(2026, 9, 6))
+        s.commit()
+    state = run_goals(db, UID, TODAY, model=model(g("savings", 5000)))
+    assert state["surplus_cents"] == 300000      # $3,000, $100, $3,000; without August it was $1,550
+
+
+@pytest.mark.parametrize("dollars", [0.001, 0.5, 1e16])
+def test_unusable_amount_gets_a_retry(user, dollars):
+    bad = {"goals": [{**g("emergency_fund", 0), "monthly_dollars": dollars}]}
+    good = {"goals": [g("emergency_fund", 50000)]}
+    fake = ScriptedChatModel(replies=[AIMessage(content=json.dumps(bad)), AIMessage(content=json.dumps(good))])
+    state = run_goals(user, UID, TODAY, model=fake)
+    assert state["status"] == "ok" and len(fake.seen) == 2
+    assert [x.monthly_cents for x in stored(user)] == [50000]
+
+
+def test_running_budget_elsewhere_is_busy(user):
+    with user() as s:
+        s.add(AgentRun(user_id=UID, graph="budget", status="running"))
+        s.commit()
+    fake = model(g("savings", 5000))
+    state = run_goals(user, UID, TODAY, model=fake)
+    assert (state["status"], fake.seen) == ("busy", [])
+    assert stored(user) == []
+
+
+def test_stale_running_row_does_not_block(user):
+    with user() as s:
+        s.add(AgentRun(user_id=UID, graph="budget", status="running",
+                       started_at=datetime.now(timezone.utc) - timedelta(hours=3)))
+        s.commit()
+    assert run_goals(user, UID, TODAY, model=model(g("savings", 5000)))["status"] == "ok"
+
+
+def test_a_goal_run_counts_as_running_elsewhere(user):
+    with user() as s:
+        s.add(AgentRun(user_id=UID, graph="goals", status="running"))
+        s.commit()
+    assert running_elsewhere(user, UID)
+
+
+def test_interrupted_run_closes_its_row(user, monkeypatch):
+    def stop(*a, **k):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(goal_graph, "invoke_structured", stop)
+    with pytest.raises(KeyboardInterrupt):
+        run_goals(user, UID, TODAY, model=ScriptedChatModel(replies=[]))
+    with user() as s:
+        run = s.query(AgentRun).filter_by(user_id=UID, graph="goals").one()
+        assert (run.status, run.summary_json["reason"]) == ("error", "Interrupted")
+    assert not user_lock(UID).locked()
+
+
+def test_startup_closes_a_dead_goal_run(user):
+    with user() as s:
+        s.add(AgentRun(user_id=UID, graph="goals", status="running"))
+        s.commit()
+    assert close_interrupted_runs(user) == 1
+
+
+@pytest.mark.parametrize("prefs", ["[]", '""', "5"])
+def test_cli_refuses_prefs_that_are_not_an_object(user, capsys, prefs):
+    assert main(["--user", UID, "--date", TODAY.isoformat(), "--prefs", prefs], session_factory=user,
+                model=ScriptedChatModel(replies=[])) == 1
+    assert "bad --prefs" in capsys.readouterr().out
+
+
+def test_cli_unknown_user(db, capsys):
+    assert main(["--user", "nobody", "--date", TODAY.isoformat()], session_factory=db,
+                model=ScriptedChatModel(replies=[])) == 1
+    assert "no user" in capsys.readouterr().out.lower()

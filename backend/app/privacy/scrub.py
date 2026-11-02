@@ -20,6 +20,9 @@ REDACTIONS = re.compile(r"\[(?:email|phone|number)\]")
 # Account labels are user-provided: remove the whole prefix before the last possessive.
 # This covers James', THE JONES', Mary-Jane's, O'Brien's and joint/multiword names.
 POSSESSIVE = re.compile(r"^.+(?=['’][sS]\b|(?<=[sS])['’](?:\s|$))", re.DOTALL)
+# A note is a sentence, so only a capitalised name before a possessive goes; "it's" and "let's" are its meaning.
+NAME_POSSESSIVE = re.compile(r"\b(?!(?:It|That|Let|What|There|Here|He|She|Who|How|Where)['’])"
+                             r"[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*['’][sS]\b")
 
 
 def scrub_text(s: Optional[str]) -> Optional[str]:
@@ -37,6 +40,11 @@ def scrub_merchant(s: Optional[str]) -> Optional[str]:
         return match["service"] + match["connector"] + "[person]" + (
             " " + " ".join(markers) if markers else "")
     return P2P.sub(redact, s) if s else s
+
+
+def scrub_note(s: Optional[str]) -> Optional[str]:
+    s = scrub_text(s)
+    return NAME_POSSESSIVE.sub("[person]'s", s) if s else s
 
 
 def scrub_account_name(s: Optional[str]) -> Optional[str]:

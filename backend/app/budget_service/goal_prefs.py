@@ -34,13 +34,16 @@ def user_goal_prefs(session: Session, user_id: str) -> GoalPrefs:
 
 # validates and stages the change; the caller commits
 def set_goal_prefs(session: Session, user_id: str, raw: dict) -> GoalPrefs:
+    if not isinstance(raw, dict):
+        raise ValueError("Goal preferences must be a JSON object.")
     unknown = set(raw) - FIELDS
     if unknown:
         raise ValueError(f"Unknown goal preference: {', '.join(sorted(unknown))}.")
     prefs = _prefs(raw)
     if any(k not in GOAL_KINDS for k in prefs.skip_kinds):
         raise ValueError(f"skip_kinds must be from: {', '.join(GOAL_KINDS)}.")
-    if not isinstance(prefs.max_share, (int, float)) or not 0 < prefs.max_share <= 1:
+    share = prefs.max_share
+    if isinstance(share, bool) or not isinstance(share, (int, float)) or not 0 < share <= 1:
         raise ValueError("max_share must be above 0 and at most 1.")
     if any(c not in VALID_CATEGORIES for c in prefs.protected_categories):
         raise ValueError("protected_categories must be budget categories.")

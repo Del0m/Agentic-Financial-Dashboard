@@ -80,9 +80,9 @@ Run them from `backend/`:
 
 ## `test_model_outage_recorded`
 
-**What it does:** The model call raises `ConnectionError`: `run_goals` returns `error` with that name, the row says the same, and nothing is written.
+**What it does:** The model raises `ConnectionError` on its one call: `run_goals` returns `error` with that name, the row says the same, the log has the error, and nothing is written.
 
-**Why it's there:** The CLI and TPC-25's route get a result to report, and a run row is never left as `running`.
+**Why it's there:** The CLI and TPC-25's route get a result to report, and a run row is never left as `running`. This used to patch `invoke_structured` to raise, which hid that the real one swallowed the error and called it `bad_model_output` (final review).
 
 ## `test_prompt_gets_the_gateway_context`
 
@@ -180,3 +180,73 @@ Run them from `backend/`:
 
 **Why it's there:** It's the TPC-23 done-when. On 2026-11-02 with `qwen2.5:14b`, `debt_payoff` came first in 30 of 30 runs after the two fixes recorded in architecture section 6a.5.
 
+
+## Final review
+
+These came from the final review. `red_user(db)` seeds a user spending $2,000 a month on $1,000 of income, with one `proposed` savings goal.
+
+## `test_no_surplus_withdraws_the_last_proposal`
+
+**What it does:** A user now in the red has no goals `proposed`, the old one is `superseded`, and the CLI says it's withdrawn.
+
+**Why it's there:** `GET /goals` kept showing a plan funded from a surplus the user no longer had.
+
+## `test_nothing_offered_withdraws_the_last_proposal`
+
+**What it does:** After a proposal, skipping every kind ends with `nothing_offered` and withdraws it.
+
+**Why it's there:** It kept showing a kind the user had just excluded.
+
+## `test_long_history_keeps_all_three_months`
+
+**What it does:** Six months of history, with August's first transaction on Aug 5. The months leave $3,000, $100 and $3,000, so the surplus is $3,000.
+
+**Why it's there:** The loaded window started at August, so Aug 5 looked like the start of the user's history and August was skipped. The surplus came out as $1,550, the median of two months.
+
+## `test_unusable_amount_gets_a_retry`
+
+**What it does:** An amount of $0.001, $0.50 or $1e16 gets a second try, and the second answer is stored.
+
+**Why it's there:** $0.001 rounds to 0 cents, which crashed the emergency fund's date or stored a $0 goal, and took the valid goals in the same answer down with it. The answer in dollars opened this; the earlier integer cents couldn't reach 0.
+
+## `test_running_budget_elsewhere_is_busy`
+
+**What it does:** With a budget run's `running` row and no lock held, the run is `busy`, the model isn't called and nothing is stored.
+
+**Why it's there:** `user_lock` covers one process, and the CLI is its own. The lock tests alone passed while a real overlap went through.
+
+## `test_stale_running_row_does_not_block`
+
+**What it does:** A `running` row three hours old doesn't stop a run.
+
+**Why it's there:** It's left over from a process that died, and it mustn't block the user for good.
+
+## `test_a_goal_run_counts_as_running_elsewhere`
+
+**What it does:** A goal run's `running` row counts for `running_elsewhere`.
+
+**Why it's there:** A simulation shares this check, and now sees goal runs, and two goal runs can't overlap.
+
+## `test_interrupted_run_closes_its_row`
+
+**What it does:** Ctrl-C during the model call re-raises, the row is `error` with reason `Interrupted`, and the lock is released.
+
+**Why it's there:** `except Exception` doesn't catch it, so the row stayed `running` and would then have blocked the user's runs for two hours.
+
+## `test_startup_closes_a_dead_goal_run`
+
+**What it does:** `close_interrupted_runs` closes a goal run's `running` row.
+
+**Why it's there:** A killed process can't close its own row. This covers it when the API next starts.
+
+## `test_cli_refuses_prefs_that_are_not_an_object`
+
+**What it does:** `--prefs` of `[]`, `""` or `5` prints `bad --prefs` and exits 1.
+
+**Why it's there:** The first two gave a traceback.
+
+## `test_cli_unknown_user`
+
+**What it does:** An unknown `--user` says so and exits 1.
+
+**Why it's there:** It gave a traceback, from a foreign-key failure on the real database.

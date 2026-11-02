@@ -196,7 +196,6 @@ class AdviceLog(Base):
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     outcome: Mapped[Optional[str]]
 
-# one row per graph run (budget, close, goal)
 # one goal the agent proposed (tpc-23). code computes the target and the date; the llm chose the kind, order and amount.
 # proposed -> superseded by the next run, or accepted | dismissed once the user can decide (tpc-25)
 class Goal(Base):
@@ -216,6 +215,7 @@ class Goal(Base):
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
+# one row per graph run (budget, close, goal)
 class AgentRun(Base):
     __tablename__ = "agent_runs"
 

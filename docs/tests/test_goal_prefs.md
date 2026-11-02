@@ -38,3 +38,9 @@ Run them from `backend/`:
 **What it does:** An unknown kind, a `max_share` of 0, 1.5 or text, an unknown category, a 501-character note and a misspelled field each raise `ValueError`, and nothing is stored.
 
 **Why it's there:** A typo like `max_shar` would otherwise be ignored silently and leave the user thinking their limit applied.
+
+## `test_odd_json_raises`
+
+**What it does:** A list, a string, a number, and a `max_share` of `true` each raise `ValueError`.
+
+**Why it's there:** Found in the final review. Non-objects gave tracebacks. `true` passed as a number, was stored, and then failed every later run until the preferences were reset.

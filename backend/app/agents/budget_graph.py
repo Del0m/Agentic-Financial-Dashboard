@@ -497,7 +497,7 @@ if __name__ == "__main__":
 # row would say "running" forever; called at startup
 def close_interrupted_runs(session_factory) -> int:
     with session_factory() as s:
-        stuck = s.scalars(select(AgentRun).where(AgentRun.graph.in_(("budget", "simulate")),
+        stuck = s.scalars(select(AgentRun).where(AgentRun.graph.in_(("budget", "simulate", "goals")),
                                                  AgentRun.status == "running")).all()
         for row in stuck:
             row.status, row.finished_at, row.summary_json = "error", utcnow(), {"error": "Interrupted"}

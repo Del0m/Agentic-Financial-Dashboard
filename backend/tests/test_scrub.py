@@ -1,6 +1,6 @@
 import pytest
 
-from app.privacy.scrub import scrub_account_name, scrub_merchant, scrub_text
+from app.privacy.scrub import scrub_account_name, scrub_merchant, scrub_note, scrub_text
 
 
 def test_emails():
@@ -86,3 +86,17 @@ def test_account_possessive_unusual_names(raw, clean):
 ])
 def test_p2p_whole_counterparty(raw, clean):
     assert scrub_merchant(raw) == clean
+
+
+# a note is the user's own sentence: names before a possessive go, and the sentence stays readable
+@pytest.mark.parametrize("raw,clean", [
+    ("Jane Doe's card first", "[person]'s card first"),
+    ("pay O'Brien's loan", "pay [person]'s loan"),
+    ("Mom’s card", "[person]'s card"),
+    ("emergency fund matters most, it's my priority", "emergency fund matters most, it's my priority"),
+    ("It's the emergency fund, that's all", "It's the emergency fund, that's all"),
+    ("Let's pay the card first", "Let's pay the card first"),
+    ("email me@x.com", "email [email]"),
+])
+def test_note(raw, clean):
+    assert scrub_note(raw) == clean

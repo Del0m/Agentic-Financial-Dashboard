@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import sys
 from datetime import date
 from decimal import Decimal
@@ -16,12 +17,14 @@ from app.budget_engine.fit import HISTORY_MONTHS
 from app.budget_engine.goals import GoalFacts, GoalPlan, build_goal, emergency_gap, monthly_surplus, offered_kinds
 from app.budget_engine.groups import NEEDS_DEFAULT
 from app.budget_engine.txns import add_months, month_start, round_cents
-from app.budget_service.daily import sim_today, user_lock
+from app.budget_service.daily import running_elsewhere, sim_today, user_lock
 from app.budget_service.debts import load_debts
 from app.budget_service.goal_prefs import set_goal_prefs, user_goal_prefs
 from app.budget_service.initialize import load_txns
-from app.db.models import Account, AgentRun, BudgetLine, BudgetPeriod, Goal, utcnow
+from app.db.models import Account, AgentRun, BudgetLine, BudgetPeriod, Goal, User, utcnow
 from app.privacy.gateway import PrivacyGateway
+
+logger = logging.getLogger(__name__)
 
 # the goal agent (architecture section 4, spec: tpc-23). code measures what's left each month, the llm picks goals
 # within it, and code works out each goal's target and date. nothing pauses until approval arrives with tpc-25, so
@@ -43,6 +46,7 @@ class GoalState(TypedDict, total=False):
     plans: list[GoalPlan]
     dropped: list[dict]
     goal_ids: list[int]
+    withdrawn: int
     run_id: int
 
 
@@ -62,12 +66,20 @@ def _savings_balance(session, user_id: str) -> int:
                               Account.subtype == "savings")))
 
 
+def _supersede(session, user_id: str) -> int:
+    old = session.scalars(select(Goal).where(Goal.user_id == user_id, Goal.status == "proposed")).all()
+    for goal in old:
+        goal.status = "superseded"
+    return len(old)
+
+
 def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyGateway):
     def load_facts(state: GoalState) -> dict:
         user_id, today = state["user_id"], date.fromisoformat(state["today"])
         start = add_months(month_start(today), 1)
         with session_factory() as s:
-            txns = load_txns(s, user_id, add_months(month_start(today), -HISTORY_MONTHS), today)
+            # a month further back than it measures, so the window's edge doesn't look like the start of the history
+            txns = load_txns(s, user_id, add_months(month_start(today), -HISTORY_MONTHS - 1), today)
             surplus = monthly_surplus(txns, today)
             if surplus is None or surplus <= 0:
                 return {"status": "no_surplus", "reason": "no_surplus", "surplus_cents": surplus}
@@ -85,7 +97,7 @@ def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyG
         return {**facts, "context": context}
 
     def propose(state: GoalState) -> dict:
-        proposal = invoke_structured(model, GoalProposal, goal_messages(state["context"]))
+        proposal = invoke_structured(model, GoalProposal, goal_messages(state["context"]), raise_unreachable=True)
         if proposal is None:
             return {"status": "error", "reason": "bad_model_output"}
         return {"proposal": proposal.goals}
@@ -113,8 +125,7 @@ def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyG
     # one commit: the user only ever sees one current proposal, and a failed run leaves the last one standing
     def persist(state: GoalState) -> dict:
         with session_factory() as s:
-            for old in s.scalars(select(Goal).where(Goal.user_id == state["user_id"], Goal.status == "proposed")):
-                old.status = "superseded"
+            _supersede(s, state["user_id"])
             rows = [Goal(user_id=state["user_id"], run_id=state["run_id"], kind=p.kind, priority=p.priority,
                          monthly_cents=p.monthly_cents, target_cents=p.target_cents, target_date=p.target_date,
                          strategy=p.strategy, rationale=p.rationale) for p in state["plans"]]
@@ -122,17 +133,26 @@ def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyG
             s.commit()
             return {"status": "ok", "goal_ids": [r.id for r in rows]}
 
+    # a finished run with nothing to propose: the last proposal no longer fits. a failed run says nothing about that
+    def withdraw(state: GoalState) -> dict:
+        with session_factory() as s:
+            withdrawn = _supersede(s, state["user_id"])
+            s.commit()
+        return {"withdrawn": withdrawn}
+
     graph = StateGraph(GoalState)
     graph.add_node("load_facts", load_facts)
     graph.add_node("propose", propose)
     graph.add_node("build", build)
     graph.add_node("persist", persist)
+    graph.add_node("withdraw", withdraw)
     graph.add_edge(START, "load_facts")
     stopped = lambda state: END if state.get("status") else None
-    graph.add_conditional_edges("load_facts", lambda st: stopped(st) or "propose")
+    graph.add_conditional_edges("load_facts", lambda st: "withdraw" if st.get("status") else "propose")
     graph.add_conditional_edges("propose", lambda st: stopped(st) or "build")
     graph.add_conditional_edges("build", lambda st: stopped(st) or "persist")
     graph.add_edge("persist", END)
+    graph.add_edge("withdraw", END)
     return graph.compile()
 
 
@@ -144,17 +164,21 @@ def _finish(session_factory, run_id: int, result: dict) -> None:
         row.summary_json = {"outcome": result["status"], "reason": result.get("reason"),
                             "surplus_cents": result.get("surplus_cents"), "cap_cents": result.get("cap_cents"),
                             "gap_cents": result.get("gap_cents"), "goal_ids": result.get("goal_ids", []),
+                            "withdrawn": result.get("withdrawn", 0),
                             "dropped": result.get("dropped", [])}
         s.commit()
 
 
-# one goal run at a time for a user, and not during a budget run: they read the same money. a busy user writes nothing
+# one goal run at a time for a user, and not during a budget run: they read the same money. a busy user writes nothing.
+# the lock covers this process and the run rows cover the rest, since the cli is a separate one
 def run_goals(session_factory, user_id: str, today: date, *, model: Optional[BaseChatModel] = None,
               audit_path=None) -> dict:
     lock = user_lock(user_id)
     if not lock.acquire(blocking=False):
         return {"status": "busy", "goal_ids": [], "dropped": []}
     try:
+        if running_elsewhere(session_factory, user_id):
+            return {"status": "busy", "goal_ids": [], "dropped": []}
         model = model or get_chat_model()
         with session_factory() as s:
             run = AgentRun(user_id=user_id, graph="goals", status="running")
@@ -166,8 +190,12 @@ def run_goals(session_factory, user_id: str, today: date, *, model: Optional[Bas
                 gateway = PrivacyGateway(gs, user_id, audit_path=audit_path)    # one pseudonym per run
                 graph = build_goal_graph(session_factory, model=model, gateway=gateway)
                 result = graph.invoke({"user_id": user_id, "today": today.isoformat(), "run_id": run_id})
+        except KeyboardInterrupt:
+            _finish(session_factory, run_id, {"status": "error", "reason": "Interrupted"})
+            raise
         except Exception as exc:
             # an unreachable model, say: the run says so and the last proposal stands
+            logger.warning("goal run failed: %s", type(exc).__name__, exc_info=True)
             result = {"status": "error", "reason": type(exc).__name__}
         result = {"goal_ids": [], "dropped": [], **result, "run_id": run_id}
         _finish(session_factory, run_id, result)
@@ -189,13 +217,18 @@ def _print_report(state: dict) -> None:
         print(f"run failed: {state.get('reason')}")
         return
     surplus = state.get("surplus_cents")
+    withdrawn = "The earlier proposal no longer fits, so it's withdrawn." if state.get("withdrawn") else None
     if status == "no_surplus":
         print("No goals: no complete month to measure yet." if surplus is None
               else f"No goals: {_dollars(surplus)} left in a typical month.")
+        if withdrawn:
+            print(withdrawn)
         return
     print(f"surplus {_dollars(surplus)} a month; goals may use {_dollars(state['cap_cents'])}")
     if status == "nothing_offered":
         print("No goals: the preferences skip every kind that's available.")
+        if withdrawn:
+            print(withdrawn)
         return
     total = 0
     for p in state["plans"]:
@@ -222,6 +255,9 @@ def main(argv=None, session_factory=None, model: Optional[BaseChatModel] = None)
         from app.db.session import SessionLocal
         session_factory = SessionLocal
     with session_factory() as s:
+        if s.get(User, args.user) is None:
+            print(f"No user {args.user}.")
+            return 1
         if args.prefs:
             try:
                 set_goal_prefs(s, args.user, json.loads(args.prefs))

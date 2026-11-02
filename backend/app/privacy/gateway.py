@@ -10,13 +10,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from .. import config
 from ..budget_engine.diagnose import OverspendFacts
-from ..budget_engine.goals import GoalFacts
-from ..budget_engine.payoff import Plan, compare, simulate
+from ..budget_engine.goals import GoalFacts, planned_debts
+from ..budget_engine.payoff import Plan, compare
 from ..budget_engine.txns import Txn, add_months, month_start, spending
 from ..budget_service.debts import load_debts
 from ..db.models import Account, Liability, Transaction
 from ..finance import avalanche_key
-from .scrub import scrub_account_name, scrub_merchant
+from .scrub import scrub_account_name, scrub_merchant, scrub_note
 
 # the only code path that turns user data into LLM prompt text (architecture section 7).
 # rows are built field by field from these allowlists, never by serializing a model object,
@@ -180,15 +180,13 @@ class PrivacyGateway:
             "monthly_surplus": _dollars(facts.surplus_cents), "cap": _dollars(facts.cap_cents),
             "offered_kinds": list(facts.offered), "emergency_fund_gap": _dollars(facts.gap_cents),
             "protected_categories": list(facts.protected_categories),
-            # free text can name anyone; the account-name scrub also catches "jane doe's"
-            "note": scrub_account_name(facts.note), "assumptions": GOAL_ASSUMPTIONS, "debts": [],
+            # free text can name anyone
+            "note": scrub_note(facts.note), "assumptions": GOAL_ASSUMPTIONS, "debts": [],
         }
         if "debt_payoff" not in facts.offered:
             return data
         debts = load_debts(self._session, self._user_id)
-        left_out = {key for key, _ in simulate(debts, 0, "avalanche", start=facts.start).excluded}
-        planned = sorted((d for d in debts if d.key not in left_out and d.balance_cents > 0),
-                         key=lambda d: avalanche_key(d.apr, d.balance_cents))
+        planned = sorted(planned_debts(debts, facts.start), key=lambda d: avalanche_key(d.apr, d.balance_cents))
         data["debts"] = [{"name": scrub_account_name(d.name), "kind": d.kind, "apr": d.apr,
                           "balance": _dollars(d.balance_cents), "min_payment": _dollars(d.min_payment_cents)}
                          for d in planned]

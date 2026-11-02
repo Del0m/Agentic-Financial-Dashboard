@@ -52,3 +52,11 @@ def test_invalid_raises(user, raw):
         s.commit()
     with user() as s:
         assert user_goal_prefs(s, "u1") == GoalPrefs()
+
+
+# json that isn't an object, and a true that would pass as a number and fail every later run
+@pytest.mark.parametrize("raw", [[], "x", 5, {"max_share": True}])
+def test_odd_json_raises(user, raw):
+    with user() as s:
+        with pytest.raises(ValueError):
+            set_goal_prefs(s, "u1", raw)
