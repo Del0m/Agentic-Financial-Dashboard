@@ -50,7 +50,7 @@ def main(argv=None, session_factory=None, model=None) -> int:
             set_user_style(s, args.user, args.style)
             s.commit()
     lock = user_lock(args.user)          # in-process only, so the run rows are checked too
-    if running_elsewhere(session_factory, args.user) or not lock.acquire(blocking=False):
+    if running_elsewhere(session_factory, args.user) or not lock.acquire(blocking=False, session_factory=session_factory):
         print("A budget run is already in progress.")
         return 1
     saver = budget_hooks.get_checkpointer()

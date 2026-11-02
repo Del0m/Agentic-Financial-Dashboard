@@ -90,13 +90,16 @@ def test_p2p_whole_counterparty(raw, clean):
 
 # a note is the user's own sentence: names before a possessive go, and the sentence stays readable
 @pytest.mark.parametrize("raw,clean", [
-    ("Jane Doe's card first", "[person]'s card first"),
-    ("pay O'Brien's loan", "pay [person]'s loan"),
-    ("Mom’s card", "[person]'s card"),
-    ("emergency fund matters most, it's my priority", "emergency fund matters most, it's my priority"),
-    ("It's the emergency fund, that's all", "It's the emergency fund, that's all"),
-    ("Let's pay the card first", "Let's pay the card first"),
-    ("email me@x.com", "email [email]"),
+    ("Jane Doe's card first", "Prioritize debt payoff."),
+    ("pay O'Brien's loan", "No supported priority or strategy hint was supplied."),
+    ("Mom’s card", "No supported priority or strategy hint was supplied."),
+    ("emergency fund matters most, it's my priority", "Prioritize the emergency fund."),
+    ("It's the emergency fund, that's all", "No supported priority or strategy hint was supplied."),
+    ("Let's pay the card first", "Prioritize debt payoff."),
+    ("email me@x.com", "No supported priority or strategy hint was supplied."),
+    ("Send money to Jane Doe at 123 Main Street", "No supported priority or strategy hint was supplied."),
+    ("Prefer snowball for Jane Doe", "Use the snowball strategy."),
+    ("Don't use snowball", "Use structured skip_kinds for exclusions; no free-text exclusion was forwarded."),
 ])
 def test_note(raw, clean):
     assert scrub_note(raw) == clean

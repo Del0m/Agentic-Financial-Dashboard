@@ -20,9 +20,6 @@ REDACTIONS = re.compile(r"\[(?:email|phone|number)\]")
 # Account labels are user-provided: remove the whole prefix before the last possessive.
 # This covers James', THE JONES', Mary-Jane's, O'Brien's and joint/multiword names.
 POSSESSIVE = re.compile(r"^.+(?=['’][sS]\b|(?<=[sS])['’](?:\s|$))", re.DOTALL)
-# A note is a sentence, so only a capitalised name before a possessive goes; "it's" and "let's" are its meaning.
-NAME_POSSESSIVE = re.compile(r"\b(?!(?:It|That|Let|What|There|Here|He|She|Who|How|Where)['’])"
-                             r"[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*['’][sS]\b")
 
 
 def scrub_text(s: Optional[str]) -> Optional[str]:
@@ -43,8 +40,29 @@ def scrub_merchant(s: Optional[str]) -> Optional[str]:
 
 
 def scrub_note(s: Optional[str]) -> Optional[str]:
-    s = scrub_text(s)
-    return NAME_POSSESSIVE.sub("[person]'s", s) if s else s
+    """Extract bounded hints, never forward unrestricted identifying text.
+
+    Structured preferences remain authoritative. Notes support a priority kind
+    and a payoff strategy; other wording stays local and has no model effect.
+    """
+    if not s:
+        return s
+    if re.search(r"\b(?:not|never|avoid|don['’]t)\b", s, re.I):
+        return "Use structured skip_kinds for exclusions; no free-text exclusion was forwarded."
+    hints = []
+    priorities = ((r"emergency[ _-]*fund", "Prioritize the emergency fund."),
+                  (r"debt[ _-]*payoff|\bcard\b|\bdebt\b", "Prioritize debt payoff."),
+                  (r"\bsavings?\b", "Prioritize savings."))
+    # Require an affirmative priority phrase rather than interpreting every mention.
+    for term, hint in priorities:
+        if re.search(r"(?:" + term + r").{0,30}(?:first|priority|matters most)", s, re.I):
+            hints.append(hint)
+            break
+    for strategy in ("avalanche", "snowball"):
+        if re.search(r"\b(?:use|prefer|choose)\s+(?:the\s+)?" + strategy + r"\b", s, re.I):
+            hints.append("Use the " + strategy + " strategy.")
+            break
+    return " ".join(hints) or "No supported priority or strategy hint was supplied."
 
 
 def scrub_account_name(s: Optional[str]) -> Optional[str]:

@@ -19,9 +19,9 @@ from app.budget_engine.goals import (GoalFacts, GoalPlan, build_goal, card_minim
 from app.budget_engine.groups import NEEDS_DEFAULT
 from app.budget_engine.txns import add_months, month_start, round_cents
 from app.budget_service.daily import running_elsewhere, sim_today, user_lock
-from app.budget_service.debts import load_debts
+from app.budget_service.debts import load_debts, incomplete_card_obligations
 from app.budget_service.goal_prefs import set_goal_prefs, user_goal_prefs
-from app.budget_service.initialize import load_txns
+from app.budget_service.initialize import load_txns, history_start
 from app.db.models import Account, AgentRun, BudgetLine, BudgetPeriod, Goal, User, utcnow
 from app.privacy.gateway import PrivacyGateway
 
@@ -75,22 +75,25 @@ def _supersede(session, user_id: str) -> int:
     return len(old)
 
 
-def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyGateway):
+def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyGateway, claim=None):
     def load_facts(state: GoalState) -> dict:
         user_id, today = state["user_id"], date.fromisoformat(state["today"])
         start = add_months(month_start(today), 1)
         with session_factory() as s:
             # a month further back than it measures, so the window's edge doesn't look like the start of the history
             txns = load_txns(s, user_id, add_months(month_start(today), -HISTORY_MONTHS - 1), today)
+            if incomplete_card_obligations(s, user_id):
+                return {"status": "error", "reason": "incomplete_card_obligations"}
             debts = load_debts(s, user_id)
             minimums = card_minimums(debts)
-            measured = monthly_surplus(txns, today)
+            boundary = history_start(s, user_id, today)
+            measured = monthly_surplus(txns, today, history_start=boundary)
             surplus = None if measured is None else measured - minimums
             if surplus is None or surplus <= 0:
                 return {"status": "no_surplus", "reason": "no_surplus", "surplus_cents": surplus,
                         "card_minimums_cents": minimums}
             prefs = user_goal_prefs(s, user_id)
-            gap = emergency_gap(txns, today, _needs(s, user_id), _savings_balance(s, user_id))
+            gap = emergency_gap(txns, today, _needs(s, user_id), _savings_balance(s, user_id), history_start=boundary)
         offered = offered_kinds(debts, gap, prefs.skip_kinds, start=start)
         cap = round_cents(Decimal(surplus) * Decimal(str(prefs.max_share)))
         facts = {"surplus_cents": surplus, "card_minimums_cents": minimums, "cap_cents": cap, "gap_cents": gap,
@@ -131,6 +134,8 @@ def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyG
     # one commit: the user only ever sees one current proposal, and a failed run leaves the last one standing
     def persist(state: GoalState) -> dict:
         with session_factory() as s:
+            if claim is not None:
+                claim.assert_owned(s)
             _supersede(s, state["user_id"])
             rows = [Goal(user_id=state["user_id"], run_id=state["run_id"], kind=p.kind, priority=p.priority,
                          monthly_cents=p.monthly_cents, target_cents=p.target_cents, target_date=p.target_date,
@@ -142,6 +147,8 @@ def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyG
     # a finished run with nothing to propose: the last proposal no longer fits. a failed run says nothing about that
     def withdraw(state: GoalState) -> dict:
         with session_factory() as s:
+            if claim is not None:
+                claim.assert_owned(s)
             withdrawn = _supersede(s, state["user_id"])
             s.commit()
         return {"withdrawn": withdrawn}
@@ -154,7 +161,7 @@ def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyG
     graph.add_node("withdraw", withdraw)
     graph.add_edge(START, "load_facts")
     stopped = lambda state: END if state.get("status") else None
-    graph.add_conditional_edges("load_facts", lambda st: "withdraw" if st.get("status") else "propose")
+    graph.add_conditional_edges("load_facts", lambda st: END if st.get("status") == "error" else ("withdraw" if st.get("status") else "propose"))
     graph.add_conditional_edges("propose", lambda st: stopped(st) or "build")
     graph.add_conditional_edges("build", lambda st: stopped(st) or "persist")
     graph.add_edge("persist", END)
@@ -177,11 +184,11 @@ def _finish(session_factory, run_id: int, result: dict) -> None:
 
 
 # one goal run at a time for a user, and not during a budget run: they read the same money. a busy user writes nothing.
-# the lock covers this process and the run rows cover the rest, since the cli is a separate one
+# A renewable database claim coordinates API and CLI processes; goal writes verify its owner token.
 def run_goals(session_factory, user_id: str, today: date, *, model: Optional[BaseChatModel] = None,
               audit_path=None) -> dict:
     lock = user_lock(user_id)
-    if not lock.acquire(blocking=False):
+    if not lock.acquire(blocking=False, session_factory=session_factory):
         return {"status": "busy", "goal_ids": [], "dropped": []}
     try:
         if running_elsewhere(session_factory, user_id):
@@ -195,15 +202,15 @@ def run_goals(session_factory, user_id: str, today: date, *, model: Optional[Bas
         try:
             with session_factory() as gs:
                 gateway = PrivacyGateway(gs, user_id, audit_path=audit_path)    # one pseudonym per run
-                graph = build_goal_graph(session_factory, model=model, gateway=gateway)
+                graph = build_goal_graph(session_factory, model=model, gateway=gateway, claim=lock)
                 result = graph.invoke({"user_id": user_id, "today": today.isoformat(), "run_id": run_id})
         except KeyboardInterrupt:
             _finish(session_factory, run_id, {"status": "error", "reason": "Interrupted"})
             raise
         except Exception as exc:
             # an unreachable model, say: the run says so and the last proposal stands
-            logger.warning("goal run failed: %s", type(exc).__name__, exc_info=True)
-            result = {"status": "error", "reason": type(exc).__name__}
+            logger.warning("goal run failed: %s", type(exc).__name__)
+            result = {"status": "error", "reason": type(exc).__name__, "plans": []}
         result = {"goal_ids": [], "dropped": [], **result, "run_id": run_id}
         _finish(session_factory, run_id, result)
         return result

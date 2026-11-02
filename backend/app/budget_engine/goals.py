@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Iterable, Literal, Optional, Sequence
 
 from app.budget_engine.fit import FIRST_MONTH_DAY, HISTORY_MONTHS
-from app.budget_engine.payoff import MAX_MONTHS, Debt, simulate
+from app.budget_engine.payoff import MAX_MONTHS, Debt, _excluded, simulate
 from app.budget_engine.txns import (Txn, add_months, category_totals, income_by_month, month_end, month_start,
                                     round_cents, savings, spending)
 
@@ -43,11 +43,11 @@ class GoalFacts:
 
 
 # complete months only, and none before the history starts: the same window fit_budget uses
-def history_months(txns: Sequence[Txn], today: date) -> list[date]:
+def history_months(txns: Sequence[Txn], today: date, history_start: Optional[date] = None) -> list[date]:
     if not txns:
         return []
     current = month_start(today)
-    earliest = min(t.date for t in txns)
+    earliest = history_start or min(t.date for t in txns)
     begin = month_start(earliest) if earliest.day <= FIRST_MONTH_DAY else add_months(month_start(earliest), 1)
     first = max(add_months(current, -HISTORY_MONTHS), begin)
     months = []
@@ -64,9 +64,9 @@ def _median_cents(values: Sequence[int]) -> int:
 
 # what's left each month after spending and saving, at the median. a month in the red stays negative: it's real
 # evidence against committing money. None with no complete month to measure
-def monthly_surplus(txns: Iterable[Txn], today: date) -> Optional[int]:
+def monthly_surplus(txns: Iterable[Txn], today: date, *, history_start: Optional[date] = None) -> Optional[int]:
     txns = list(txns)
-    months = history_months(txns, today)
+    months = history_months(txns, today, history_start)
     if not months:
         return None
     spent, saved = spending(txns), savings(txns)
@@ -82,9 +82,9 @@ def card_minimums(debts: Sequence[Debt]) -> int:
     return sum(d.min_payment_cents for d in debts if d.kind == "credit" and d.balance_cents > 0 and d.min_payment_cents)
 
 
-def emergency_gap(txns: Iterable[Txn], today: date, needs: frozenset[str], savings_balance_cents: int) -> int:
+def emergency_gap(txns: Iterable[Txn], today: date, needs: frozenset[str], savings_balance_cents: int, *, history_start: Optional[date] = None) -> int:
     txns = list(txns)
-    months = history_months(txns, today)
+    months = history_months(txns, today, history_start)
     if not months:
         return 0
     spent = spending(txns)
@@ -95,8 +95,7 @@ def emergency_gap(txns: Iterable[Txn], today: date, needs: frozenset[str], savin
 
 # the debts the planner would actually plan, by asking it: its rules for what's left out stay in one place
 def planned_debts(debts: Sequence[Debt], start: date) -> list[Debt]:
-    excluded = {key for key, _ in simulate(debts, 0, "avalanche", start=start).excluded}
-    return [d for d in debts if d.key not in excluded and d.balance_cents > 0]
+    return [d for d in debts if d.balance_cents > 0 and _excluded(d, False) is None]
 
 
 def offered_kinds(debts: Sequence[Debt], gap_cents: int, skip_kinds: Sequence[str], *, start: date) -> list[str]:
