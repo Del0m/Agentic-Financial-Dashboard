@@ -3,7 +3,7 @@ from fastapi import FastAPI, status
 import logging
 from . import config
 from .agents.budget_graph import close_interrupted_runs
-from .api import admin, alerts, budget, budget_hooks, chat, dashboard, debt_plan, plaid, transactions
+from .api import admin, alerts, budget, budget_hooks, chat, dashboard, debt_plan, goals, plaid, transactions
 from datetime import datetime, timezone
 from .scheduler import add_catch_up_jobs, build_scheduler
 
@@ -38,6 +38,7 @@ app.include_router(alerts.router)
 app.include_router(budget.router)
 app.include_router(transactions.router)
 app.include_router(debt_plan.router)
+app.include_router(goals.router)
 app.include_router(admin.router)
 
 # Create an endpoint that ensures it is up and running

@@ -1,6 +1,6 @@
 from datetime import date as Date, datetime, timezone
 from typing import Literal, Optional
-from sqlalchemy import JSON, Double, Enum, Float, ForeignKey, UniqueConstraint
+from sqlalchemy import DateTime, JSON, Double, Enum, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
@@ -196,6 +196,25 @@ class AdviceLog(Base):
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     outcome: Mapped[Optional[str]]
 
+# one goal the agent proposed (tpc-23). code computes the target and the date; the llm chose the kind, order and amount.
+# proposed -> superseded by the next run, or accepted | dismissed once the user can decide (tpc-25)
+class Goal(Base):
+    __tablename__ = "goals"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    run_id: Mapped[Optional[int]] = mapped_column(ForeignKey("agent_runs.id"))
+    kind: Mapped[str]
+    priority: Mapped[int]
+    monthly_cents: Mapped[int]
+    target_cents: Mapped[int]
+    target_date: Mapped[Optional[Date]]      # none only for a debt plan that never ends
+    strategy: Mapped[Optional[str]]          # debt_payoff only
+    rationale: Mapped[str]
+    status: Mapped[str] = mapped_column(default="proposed")
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
 # one row per graph run (budget, close, goal)
 class AgentRun(Base):
     __tablename__ = "agent_runs"
@@ -207,3 +226,11 @@ class AgentRun(Base):
     finished_at: Mapped[Optional[datetime]]
     status: Mapped[str]
     summary_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class UserRunClaim(Base):
+    __tablename__ = "user_run_claims"
+
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    owner: Mapped[str]
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

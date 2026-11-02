@@ -479,12 +479,19 @@ def main(argv=None, session_factory=None, model: Optional[BaseChatModel] = None)
         session_factory = SessionLocal
     config.BUDGET_CHECKPOINT_PATH.parent.mkdir(parents=True, exist_ok=True)
     saver = SqliteSaver(sqlite3.connect(str(config.BUDGET_CHECKPOINT_PATH), check_same_thread=False))
+    from app.budget_service.daily import user_lock
+    lock = user_lock(args.user)
+    if not lock.acquire(blocking=False, session_factory=session_factory):
+        print("A budget or goal run is already in progress.")
+        return 1
     try:
         state = run_budget(session_factory, args.user, args.date, model=model or get_chat_model(model=args.model),
                            sync_fn=None if args.no_sync else plaid_sync, checkpointer=saver)
     except Exception as exc:
-        print(f"run failed: {type(exc).__name__}: {exc}")
+        print(f"run failed: {type(exc).__name__}")
         return 1
+    finally:
+        lock.release()
     _print_report(state)
     return 0
 
@@ -493,12 +500,15 @@ if __name__ == "__main__":
     sys.exit(main())
 
 
-# a run's or a simulation's thread dies with the server (one worker, so none survives a restart). left alone, its
-# row would say "running" forever; called at startup
+# Recover abandoned runs at startup while preserving ownership held by other processes.
 def close_interrupted_runs(session_factory) -> int:
+    from app.db.models import UserRunClaim
     with session_factory() as s:
-        stuck = s.scalars(select(AgentRun).where(AgentRun.graph.in_(("budget", "simulate")),
-                                                 AgentRun.status == "running")).all()
+        stuck = s.scalars(select(AgentRun).where(AgentRun.graph.in_(("budget", "simulate", "goals")),
+                                                 AgentRun.status == "running",
+                                                 ~select(UserRunClaim.user_id).where(
+                                                     UserRunClaim.user_id == AgentRun.user_id,
+                                                     UserRunClaim.expires_at > utcnow()).exists())).all()
         for row in stuck:
             row.status, row.finished_at, row.summary_json = "error", utcnow(), {"error": "Interrupted"}
         s.commit()

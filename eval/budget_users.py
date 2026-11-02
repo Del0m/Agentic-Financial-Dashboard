@@ -57,6 +57,8 @@ class Profile:
     end: date = date(2026, 8, 31)
     run_date: Optional[date] = None        # planted users: the day to run the budget graph
     expected_cause: Optional[str] = None   # planted users: the cause diagnose should find
+    # more accounts beside checking: (name, type, subtype, balance_cents, liability or None) (tpc-23)
+    accounts: tuple = ()
 
 
 # (day, cents, category, merchant), sorted; the same profile always gives the same list
@@ -90,6 +92,8 @@ def seed_profile(session: Session, profile: Profile, until: Optional[date] = Non
     user_id = f"budget-{profile.id}"
     item = add_user(session, user_id, f"{profile.id}@eval.local")
     acct = add_account(session, item, "Checking")
+    for name, type_, subtype, balance, liability in profile.accounts:
+        add_account(session, item, name, type_=type_, subtype=subtype, balance=balance, liability=liability)
     for n, (day, cents, category, merchant) in enumerate(transactions(profile)):
         if until is None or day <= until:
             add_txn(session, acct, cents, category, merchant=merchant, day=day, plaid_id=txn_id(profile, n),
@@ -101,9 +105,11 @@ def seed_profile(session: Session, profile: Profile, until: Optional[date] = Non
     return user_id
 
 
-# plaid labels a transfer to the user's own savings; the saving line tracks it (tpc-22)
+# plaid labels a transfer to the user's own savings; the saving line tracks it (tpc-22). and a card payment, which
+# isn't spending (tpc-23)
 def detailed_for(category: str, merchant: str) -> Optional[str]:
-    return "TRANSFER_OUT_SAVINGS" if (category, merchant) == ("TRANSFER_OUT", "Savings") else None
+    return {("TRANSFER_OUT", "Savings"): "TRANSFER_OUT_SAVINGS",
+            ("LOAN_PAYMENTS", "Platinum Card"): "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"}.get((category, merchant))
 
 
 def txn_id(profile: Profile, n: int) -> str:
@@ -155,6 +161,20 @@ CORNER = Weekly("GENERAL_MERCHANDISE", "Corner Shop", 3500)
 DECEMBER_SHOPS = (("Toy Barn", 1, 6000), ("Gift Gallery", 3, 7500), ("Book Nook", 5, 9000),
                   ("Game Stop Shop", 7, 12000), ("Candle Co", 9, 6500), ("Sweater Hut", 11, 11000),
                   ("Craft Corner", 13, 8000), ("Kitchen Plus", 14, 10000))
+
+# the goal graph's done-when (tpc-23): a 24.99% card, the same debts as the debt-highest-apr chat scenario, and a
+# steady surplus. not in the accuracy eval, which has nothing to say about debts
+GOAL_USERS = (
+    Profile("goals-card-24", "a 24.99% card and a student loan, with money left each month", 21,
+            (RENT, GROCER, *BASE, Monthly("LOAN_PAYMENTS", "Platinum Card", 9500, day=12),
+             Monthly("LOAN_PAYMENTS", "Student Loan", 21000, day=20)),
+            today=date(2026, 11, 2), start=date(2026, 8, 1), end=date(2026, 10, 31),
+            accounts=(("Platinum Card", "credit", "credit card", 320000,
+                       {"kind": "credit", "apr": 24.99, "min_payment_cents": 9500}),
+                      ("Student Loan", "loan", "student", 1840000,
+                       {"kind": "student", "apr": 5.5, "min_payment_cents": 21000}),
+                      ("Savings", "depository", "savings", 100000, None))),
+)
 
 PLANTED = (
     Profile("overspend-one-time", "a $600 purchase at a new shop on Oct 12", 11,

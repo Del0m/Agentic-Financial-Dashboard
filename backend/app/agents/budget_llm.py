@@ -68,14 +68,17 @@ class Action(BaseModel):
 
 # ollama's `format` constrains decoding to the schema; pydantic still checks the reply, and a bad reply gets
 # one more try. a model that can't be reached (down, timed out) gives None at once, like a bad reply, so the
-# graph still writes its plain fallback alert: an outage must not hide an overspend
+# graph still writes its plain fallback alert: an outage must not hide an overspend. a caller with no fallback
+# passes raise_unreachable
 def invoke_structured(model: BaseChatModel, schema: type[BaseModel], messages: list,
-                      retries: int = 1) -> Optional[BaseModel]:
+                      retries: int = 1, raise_unreachable: bool = False) -> Optional[BaseModel]:
     bound = model.bind(format=schema.model_json_schema())
     for _ in range(retries + 1):
         try:
             text = str(bound.invoke(messages).content)
         except UNREACHABLE as exc:
+            if raise_unreachable:
+                raise
             logger.warning("budget llm unreachable: %s", type(exc).__name__)
             return None
         fenced = _FENCE.match(text)

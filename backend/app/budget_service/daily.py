@@ -1,29 +1,44 @@
 import logging
 import threading
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from langchain_core.language_models import BaseChatModel
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.agents.budget_graph import plaid_sync, run_budget
 from app.budget_service.alerts import has_real_plaid_item
 from app.budget_service.close import close_due
-from app.db.models import User
+from app.db.models import AgentRun, User
+from app.budget_service.run_lock import UserRunLock
 
 logger = logging.getLogger(__name__)
 
 # one budget run per user per day, whoever starts it (tpc-21): the scheduler, the run button, or a simulated day.
-# they share one lock per user, so they can never overlap; in-process, so the app runs one uvicorn worker
+# Entrypoints reserve both a local lock and a renewable database claim per user.
 
-_locks: dict[str, threading.Lock] = {}
+_locks: dict[str, UserRunLock] = {}
 _locks_guard = threading.Lock()
 
 
-def user_lock(user_id: str) -> threading.Lock:
+def user_lock(user_id: str) -> UserRunLock:
     with _locks_guard:
-        return _locks.setdefault(user_id, threading.Lock())
+        return _locks.setdefault(user_id, UserRunLock(user_id))
+
+
+# a run row older than this is left over from a process that died, not one still going
+STALE = timedelta(hours=2)
+
+
+# Also honor recent legacy runs that predate database claims.
+def running_elsewhere(session_factory, user_id: str) -> bool:
+    with session_factory() as s:
+        return s.scalar(select(AgentRun.id).where(
+            AgentRun.user_id == user_id, AgentRun.graph.in_(("budget", "simulate", "goals")),
+            AgentRun.status == "running",
+            AgentRun.started_at >= datetime.now(timezone.utc) - STALE).limit(1)) is not None
 
 
 # a simulated user's "today" (prefs_json["sim"]["date"]); None for everyone living on the real date
@@ -59,7 +74,7 @@ def run_daily_locked(session_factory, user_id: str, today: date, *, model: Optio
 def run_daily(session_factory, user_id: str, today: date, *, model: Optional[BaseChatModel],
               checkpointer: Optional[BaseCheckpointSaver]) -> Optional[dict]:
     lock = user_lock(user_id)
-    if not lock.acquire(blocking=False):
+    if not lock.acquire(blocking=False, session_factory=session_factory):
         return None
     try:
         return run_daily_locked(session_factory, user_id, today, model=model, checkpointer=checkpointer)

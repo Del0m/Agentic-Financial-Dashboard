@@ -1,6 +1,6 @@
 # Tests: `backend/tests/test_gateway.py`
 
-These tests cover `app/privacy/gateway.py`, the only code path that turns user data into LLM prompt text (architecture section 7). They check the per-purpose field allowlists (`accounts`, `debts`, `spending`, `diagnose`, and `debt_plan` for the payoff planner), the per-session pseudonym, scrubbing of free-text fields, spending minimization, and the JSONL audit log. Run them from `backend/`:
+These tests cover `app/privacy/gateway.py`, the only code path that turns user data into LLM prompt text (architecture section 7). They check the per-purpose field allowlists (`accounts`, `debts`, `spending`, `diagnose`, `debt_plan` for the payoff planner, and `goals` for the goal graph), the per-session pseudonym, scrubbing of free-text fields, spending minimization, and the JSONL audit log. Run them from `backend/`:
 
 ```bash
 ../venv/bin/python -m pytest tests/test_gateway.py -v
@@ -91,6 +91,18 @@ Getting any of them wrong would give the model a wrong total to reason about.
 **What it does:** With one FOOD_AND_DRINK purchase, asking for `food_and_drink` returns FOOD_AND_DRINK with its $6.50 total, and asking for TRAVEL returns `{"category": "TRAVEL", "total": 0.0, "direction": "outflow", "count": 0, "truncated": false, "transactions": []}`.
 
 **Why it's there:** Plaid categories are upper-case enums, but models often send them in lowercase. Before this fix, both a lowercase name and a category with no spending returned `{}`, which the model can't tell apart from "no data". It would then tell the user they spent nothing on dining. Now the category is normalized and zero is stated explicitly.
+
+## `test_today_is_the_real_date_for_a_normal_user`
+
+**What it does:** Checks that `today()` returns the pinned date for a user with no simulation.
+
+**Why it's there:** Everyone but a simulated user must stay on the real date.
+
+## `test_simulated_user_follows_the_simulated_date`
+
+**What it does:** Gives a user a simulated date of 2026-03-10. It checks that `today()` returns it, and that the default spending window ends there, so a transaction dated after it is left out.
+
+**Why it's there:** The prompt and `get_spending` have to agree on the date. If they didn't, the model would be told one day while the tool's default range ended on another.
 
 ## `test_spending_defaults_to_last_30_days`
 
@@ -262,3 +274,48 @@ The budget graph's `diagnose` step asks the LLM why one category is overspent. T
 **What it does:** A user with no debts gets no plans, no excluded debts, and the note "No debts with a balance on file."
 
 **Why it's there:** The same rule when there's nothing to plan at all: the model is told so instead of getting empty plans.
+
+## Goal graph (`goals`, TPC-23)
+
+`goal_facts(offered, **over)` builds the `GoalFacts` the graph hands the gateway: a $900 surplus, a $720 cap, an $8,200 emergency-fund gap, and a note that names a person. `goals_context(db, tmp_path, facts)` builds the context and returns the prompt, its data and the loaded debts. These tests use `seed_debts` from the section above.
+
+## `test_goals_scrubs_debts_and_note`
+
+**What it does:** The card named "Jane Doe's Visa ••4421" and the note "Jane Doe's card first" reach the prompt with no "Jane" and no "4421". Protected categories pass through.
+
+**Why it's there:** The note is free text a user typed, so it can name anyone. It uses `scrub_note`, which adds a rule for capitalised names before a possessive to `scrub_text`, so it catches "Jane Doe's".
+
+## `test_goals_cap_and_options_match_compare`
+
+**What it does:** The surplus, the cap and the gap are in dollars. The three debt options are 25%, 50% and 75% of the cap, and each option's months and interest equal `payoff.compare` at that extra. The assumptions sentence is exact.
+
+**Why it's there:** The model weighs what paying more does from these numbers, so they must be the planner's own.
+
+## `test_goals_no_options_without_debt_offered`
+
+**What it does:** When `debt_payoff` isn't offered, there are no options and no debts in the payload.
+
+**Why it's there:** It keeps the prompt to what the model may use. If it can't propose a debt goal, it shouldn't weigh debt plans. It also keeps debts out of the prompt when the user skipped them.
+
+## `test_goals_includable_debts_only`
+
+**What it does:** The store card with no APR isn't listed; the other two come highest APR first, with their kind, APR, balance and minimum.
+
+**Why it's there:** The model is only shown debts a goal can actually plan, in the order the high-interest rule cares about.
+
+## `test_goals_audited_once`
+
+**What it does:** One audit line, purpose `goals`, with params `{"cap_cents": 72000}`.
+
+**Why it's there:** Every prompt that leaves the system is audited, with the figure that shaped it.
+
+
+## `test_goals_note_keeps_contractions`
+
+**What it does:** The note "emergency fund first, it's my priority" reaches the prompt unchanged.
+
+**Why it's there:** Found in the final review. The account-name scrub replaces everything before the last `'s`, so this note became "[person]'s my priority", and live the model then put debt first. The user's preference was lost without a word.
+
+## TPC-24 correction coverage
+
+The graph can supply an explicit debt snapshot to the goals context; default callers still load debts through the gateway. `tests/test_goal_validation_graph.py` covers the outgoing correction context and audit record, stable facts/pseudonym, rejected-allocation allowlist, excluded rationale/raw output, and debt snapshot consistency. See [the test descriptions](test_goal_validation_graph.md).

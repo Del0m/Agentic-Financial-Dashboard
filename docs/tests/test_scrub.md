@@ -81,3 +81,9 @@ These are pure functions, so there are no fixtures or helpers.
 - **Names that don't follow a pattern.** A merchant string like "Jane Doe Photography" or an account named "Mom" passes through unchanged. Regex can't recognize arbitrary names, which is why the gateway's allowlist, not this scrub, is the main defense.
 - **Non-US phone formats.** Out of scope for Sandbox data. Add cases if real data shows them.
 - **Merchants paid through PayPal.** "PAYPAL *SPOTIFY" becomes "PAYPAL *[person]", because the scrub can't tell a business from a person after a P2P service. That costs the model a merchant name; the alternative would leak names.
+
+## `test_note`
+
+**What it does:** `scrub_note` replaces a capitalised name before a possessive ("Jane Doe's", "O'Brien's", "Mom's") with `[person]'s`, leaves "it's", "It's", "that's" and "Let's" alone, and still removes emails.
+
+**Why it's there:** A goal note is a sentence the user wrote, not an account label, so the sentence has to survive (TPC-23 final review). A lowercase "jane doe's" gets through, the same limit as any bare name in free text.

@@ -169,7 +169,7 @@ def put_style(req: StyleIn, user: User = Depends(get_current_user)):
 @router.post("/budget/run", status_code=202)
 def start_run(req: RunRequest, user: User = Depends(get_current_user)):
     lock = user_lock(user.id)       # shared with the scheduler and simulated days
-    if not lock.acquire(blocking=False):
+    if not lock.acquire(blocking=False, session_factory=budget_hooks.session_factory):
         return JSONResponse({"detail": "A budget run is already in progress."}, status_code=409)
     factory = budget_hooks.session_factory
     started, run_ids, failed = threading.Event(), [], []

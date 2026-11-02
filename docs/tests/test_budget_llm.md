@@ -102,3 +102,9 @@ Run them from `backend/`:
 **What it does:** When the flag is `high` and this month's earlier alerts topped out at `medium`, the summary line adds: "this flag is more severe: the user hasn't been told it is over the limit, so don't choose no_op". When the severity is the same, it doesn't.
 
 **Why it's there:** It was found in the TPC-21 live simulated week. The model warned about pace on Oct 10, then chose `no_op` on Oct 12, when the $600 purchase put the category over its limit, so the user was never told. With the note, both alerts are written and nothing repeats, twice in a row. The model still decides.
+
+## `test_raise_unreachable`
+
+**What it does:** With `raise_unreachable=True`, a `ConnectionError` is raised instead of giving `None`.
+
+**Why it's there:** The budget graph has a fallback alert to write when the model is down. The goal graph doesn't, and it has to tell the user that the server is down rather than report bad model output (TPC-23 final review).

@@ -29,6 +29,12 @@ The test file has two helpers and one fixture:
 
 **Why it's there:** Link only lists institutions that support everything in `products`. Putting `liabilities` there hides every bank that has Transactions but not Liabilities. Under `required_if_supported_products`, those banks still show up, and liabilities is still enabled at banks that have it. If someone moves liabilities back into `products`, this test fails.
 
+## `test_link_token_without_plaid_keys_explains_itself`
+
+**What it does:** Parametrized over no keys, blank keys and a blank secret. It calls `POST /plaid/link-token` and checks for a 503 whose `detail` mentions the Plaid keys.
+
+**Why it's there:** The demo runs without Plaid keys, and the dashboard's Link button shows `detail` as its error. Without this, a missing key is a bare 500 with no explanation.
+
 ## `test_link_token_sets_webhook_only_when_configured`
 
 **What it does:** Parametrized over a webhook URL and `None`. It sets `config.PLAID_WEBHOOK_URL`, calls `POST /plaid/link-token`, and checks that the body sent to Plaid has `webhook` set to that URL, or has no `webhook` key when it's unset.

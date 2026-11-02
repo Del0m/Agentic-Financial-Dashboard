@@ -39,6 +39,32 @@ def scrub_merchant(s: Optional[str]) -> Optional[str]:
     return P2P.sub(redact, s) if s else s
 
 
+def scrub_note(s: Optional[str]) -> Optional[str]:
+    """Extract bounded hints, never forward unrestricted identifying text.
+
+    Structured preferences remain authoritative. Notes support a priority kind
+    and a payoff strategy; other wording stays local and has no model effect.
+    """
+    if not s:
+        return s
+    if re.search(r"\b(?:not|never|avoid|don['’]t)\b", s, re.I):
+        return "Use structured skip_kinds for exclusions; no free-text exclusion was forwarded."
+    hints = []
+    priorities = ((r"emergency[ _-]*fund", "Prioritize the emergency fund."),
+                  (r"debt[ _-]*payoff|\bcard\b|\bdebt\b", "Prioritize debt payoff."),
+                  (r"\bsavings?\b", "Prioritize savings."))
+    # Require an affirmative priority phrase rather than interpreting every mention.
+    for term, hint in priorities:
+        if re.search(r"(?:" + term + r").{0,30}(?:first|priority|matters most)", s, re.I):
+            hints.append(hint)
+            break
+    for strategy in ("avalanche", "snowball"):
+        if re.search(r"\b(?:use|prefer|choose)\s+(?:the\s+)?" + strategy + r"\b", s, re.I):
+            hints.append("Use the " + strategy + " strategy.")
+            break
+    return " ".join(hints) or "No supported priority or strategy hint was supplied."
+
+
 def scrub_account_name(s: Optional[str]) -> Optional[str]:
     s = scrub_text(s)
     return POSSESSIVE.sub("[person]", s) if s else s

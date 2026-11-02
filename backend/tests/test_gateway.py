@@ -4,6 +4,7 @@ from datetime import date, timedelta
 import pytest
 
 from tests.factories import add_account, add_txn, add_user
+from app.db.models import User
 from app.privacy import gateway as gw
 from app.budget_engine.diagnose import overspend_facts
 from app.budget_engine.pace import PaceResult
@@ -187,6 +188,27 @@ def test_spending_defaults_to_last_30_days(db, tmp_path):
         totals = data(PrivacyGateway(s, "u-1", audit_path=tmp_path / "a.jsonl").build_context("spending"))
 
     assert totals == {"IN_WINDOW": 1.0}
+
+
+def test_today_is_the_real_date_for_a_normal_user(db, tmp_path):
+    with db() as s:
+        add_user(s, "u-1", "a@example.com")
+        s.commit()
+        assert PrivacyGateway(s, "u-1", audit_path=tmp_path / "a.jsonl").today() == TODAY
+
+
+# a simulated user's chat follows the simulation, like its dashboard: the 30 days end on the simulated date
+def test_simulated_user_follows_the_simulated_date(db, tmp_path):
+    with db() as s:
+        item = add_user(s, "u-1", "a@example.com")
+        acct = add_account(s, item, "Checking")
+        add_txn(s, acct, 100, "IN_WINDOW", day=date(2026, 3, 1))
+        add_txn(s, acct, 100, "AFTER_THE_DATE", day=date(2026, 3, 11))
+        s.get(User, "u-1").prefs_json = {"sim": {"profile": "p", "date": "2026-03-10"}}
+        s.commit()
+        g = PrivacyGateway(s, "u-1", audit_path=tmp_path / "a.jsonl")
+        assert g.today() == date(2026, 3, 10)
+        assert data(g.build_context("spending")) == {"IN_WINDOW": 1.0}
 
 
 def test_empty_user_builds_empty_context(db, tmp_path):
@@ -511,3 +533,72 @@ def test_debt_plan_no_debts(db, tmp_path):
     _, d, _ = plan_context(db, tmp_path, extra_monthly_cents=0)
     assert (d["plans"], d["excluded"], d["note"]) == ([], [], "No debts with a balance on file.")
 
+
+
+# --- the goal graph's facts (tpc-23) ---
+
+from app.budget_engine.goals import GoalFacts
+
+
+def goal_facts(offered=("debt_payoff", "emergency_fund", "savings"), **over):
+    fields = dict(surplus_cents=90000, cap_cents=72000, offered=tuple(offered), gap_cents=820000, start=PLAN_START,
+                  protected_categories=("PERSONAL_CARE",), note="Jane Doe's card first")
+    return GoalFacts(**{**fields, **over})
+
+
+def goals_context(db, tmp_path, facts):
+    with db() as s:
+        prompt = PrivacyGateway(s, "u-1", audit_path=tmp_path / "a.jsonl").build_context("goals", goal_facts=facts)
+        debts = load_debts(s, "u-1")
+    return prompt, data(prompt), debts
+
+
+def test_goals_scrubs_debts_and_note(db, tmp_path):
+    seed_debts(db)
+    prompt, d, _ = goals_context(db, tmp_path, goal_facts())
+    assert "Jane" not in prompt and "4421" not in prompt
+    assert d["note"] == "Prioritize debt payoff."
+    assert d["protected_categories"] == ["PERSONAL_CARE"]
+
+
+def test_goals_cap_and_options_match_compare(db, tmp_path):
+    seed_debts(db)
+    _, d, debts = goals_context(db, tmp_path, goal_facts())
+    assert (d["monthly_surplus"], d["cap"], d["emergency_fund_gap"]) == (900.0, 720.0, 8200.0)
+    assert d["offered_kinds"] == ["debt_payoff", "emergency_fund", "savings"]
+    assert [o["extra_monthly"] for o in d["debt_plan_options"]] == [180.0, 360.0, 540.0]
+    for option in d["debt_plan_options"]:
+        want = compare(debts, round(option["extra_monthly"] * 100), start=PLAN_START)
+        for s in ("avalanche", "snowball"):
+            assert option[s] == {"months": want[s].months, "total_interest": want[s].total_interest_cents / 100}
+    assert d["assumptions"] == ("monthly_surplus is what's left after minimum payments. "
+                                "Debt plans charge interest monthly at APR/12 and hold minimum payments at "
+                                "today's amounts.")
+
+
+def test_goals_no_options_without_debt_offered(db, tmp_path):
+    seed_debts(db)
+    _, d, _ = goals_context(db, tmp_path, goal_facts(offered=("savings",)))
+    assert "debt_plan_options" not in d and d["debts"] == []
+
+
+# the store card has no APR, so it isn't something a goal can plan; the rest are highest APR first
+def test_goals_includable_debts_only(db, tmp_path):
+    seed_debts(db)
+    _, d, _ = goals_context(db, tmp_path, goal_facts())
+    assert [(x["kind"], x["apr"], x["balance"], x["min_payment"]) for x in d["debts"]] == \
+        [("credit", 24.99, 3200.0, 95.0), ("student", 5.5, 18400.0, 210.0)]
+
+
+def test_goals_audited_once(db, tmp_path):
+    seed_debts(db)
+    goals_context(db, tmp_path, goal_facts())
+    [line] = audit_lines(tmp_path / "a.jsonl")
+    assert (line["purpose"], line["params"]) == ("goals", {"cap_cents": 72000})
+
+
+# final review: the account-name scrub turned "it's my priority" into "[person]'s my priority", losing the preference
+def test_goals_note_extracts_priority_without_forwarding_text(db, tmp_path):
+    seed_debts(db)
+    _, d, _ = goals_context(db, tmp_path, goal_facts(note="emergency fund first, it's my priority"))
+    assert d["note"] == "Prioritize the emergency fund."

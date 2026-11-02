@@ -98,7 +98,8 @@ def _turn_events(user: User, req: ChatRequest):
         checkpointer = get_checkpointer()
         state = build_chat_graph([], checkpointer=checkpointer).get_state(cfg).values
         gateway, kb = PrivacyGateway(session, user.id, pseudonym=state.get("pseudonym")), make_kb()
-        graph = build_chat_graph(make_tools(gateway, kb), retrieve=kb.search, checkpointer=checkpointer)
+        graph = build_chat_graph(make_tools(gateway, kb), retrieve=kb.search, checkpointer=checkpointer,
+                                 today=gateway.today)
         turn = {"messages": [HumanMessage(req.message)], "tool_rounds": 0, "pseudonym": gateway.pseudonym}
         stream = graph.stream(turn, cfg, stream_mode=["messages", "updates"])
         for mode, payload in stream:
