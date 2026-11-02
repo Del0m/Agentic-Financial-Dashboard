@@ -61,3 +61,15 @@ Run them from `backend/`:
 **What it does:** `--replace` also deletes the user's merchant rules.
 
 **Why it's there:** `category_rules` (TPC-22) belongs to the user, so a reseed must not leave rules behind or fail on the foreign key.
+
+## `test_seed_goal_user`
+
+**What it does:** `--profile goals-card-24` seeds the goal graph's user with its two debts and prints the goal graph command.
+
+**Why it's there:** The README tells people to seed this user by name, and the script only knew the budget profiles (TPC-23).
+
+## `test_replace_deletes_goals`
+
+**What it does:** After a user has a goal, `--replace` deletes it along with everything else the user owns.
+
+**Why it's there:** `delete_user` names its tables one by one, so a new table has to be added. Otherwise a reseeded user would show the old user's goals. Each goal points at its run, so goals go first.

@@ -36,7 +36,7 @@ def user(db):
 
 
 def g(kind, cents, strategy=None, why="Because it fits."):
-    return {"kind": kind, "monthly_cents": cents, "strategy": strategy, "rationale": why}
+    return {"kind": kind, "monthly_dollars": cents / 100, "strategy": strategy, "rationale": why}
 
 
 def model(*goals):
@@ -118,13 +118,23 @@ def test_nothing_offered(user):
 
 def test_unusable_goals_dropped_and_listed(user):
     set_prefs(user, {"skip_kinds": ["savings"]})
-    state = run_goals(user, UID, TODAY, model=model(g("savings", 5000), g("debt_payoff", 20000),
-                                                    g("emergency_fund", 30000)))
+    state = run_goals(user, UID, TODAY, model=model(g("savings", 5000), g("emergency_fund", 30000)))
     assert state["status"] == "ok"
     assert [(x.kind, x.priority) for x in stored(user)] == [("emergency_fund", 1)]
-    assert state["dropped"] == [{"kind": "savings", "reason": "not_offered"},
-                                {"kind": "debt_payoff", "reason": "no_strategy"}]
+    assert state["dropped"] == [{"kind": "savings", "reason": "not_offered"}]
     assert run_row(user, state["run_id"]).summary_json["dropped"] == state["dropped"]
+
+
+# live, qwen2.5:14b left the strategy out of 1 run in 25. dropping the goal put the emergency fund first; the prompt's
+# default applies instead
+def test_debt_goal_without_a_strategy_is_avalanche(user):
+    state = run_goals(user, UID, TODAY, model=model(g("debt_payoff", 20000), g("savings", 5000)))
+    assert state["dropped"] == []
+    debt = stored(user)[0]
+    with user() as s:
+        want = simulate(load_debts(s, UID), 20000, "avalanche", start=START)
+    assert (debt.kind, debt.priority, debt.strategy, debt.target_date) == \
+        ("debt_payoff", 1, "avalanche", want.debt_free)
 
 
 def test_repeated_kind_dropped(user):
@@ -135,7 +145,8 @@ def test_repeated_kind_dropped(user):
 
 def test_nothing_usable_is_an_error(user):
     run_goals(user, UID, TODAY, model=model(g("savings", 5000)))
-    state = run_goals(user, UID, TODAY, model=model(g("debt_payoff", 20000)))
+    set_prefs(user, {"skip_kinds": ["savings"]})
+    state = run_goals(user, UID, TODAY, model=model(g("savings", 9000)))
     assert (state["status"], state["reason"]) == ("error", "no_usable_goals")
     assert run_row(user, state["run_id"]).status == "error"
     assert [x.monthly_cents for x in stored(user)] == [5000]        # the earlier proposal stands
@@ -317,3 +328,16 @@ def test_cli_busy_exit_1(user, capsys):
     finally:
         lock.release()
     assert "in progress" in capsys.readouterr().out
+
+
+# the ticket's done-when: a user with a 24% card gets a debt-payoff goal first. the total against the cap is printed,
+# not asserted: tpc-24 enforces it
+@pytest.mark.skipif(not ollama_has(config.OLLAMA_MODEL), reason="needs ollama running with OLLAMA_MODEL pulled")
+def test_live_card_debt_goal_first(user):
+    state = run_goals(user, UID, TODAY)
+    assert state["status"] == "ok", state
+    goals = stored(user)
+    print(f"\ncap {state['cap_cents']}, total {sum(x.monthly_cents for x in goals)}, dropped {state['dropped']}")
+    for x in goals:
+        print(x.priority, x.kind, x.strategy, x.monthly_cents, x.target_cents, x.target_date, "|", x.rationale)
+    assert goals[0].kind == "debt_payoff" and goals[0].strategy in ("avalanche", "snowball")

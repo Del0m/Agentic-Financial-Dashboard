@@ -95,15 +95,15 @@ def build_goal_graph(session_factory, *, model: BaseChatModel, gateway: PrivacyG
             debts = load_debts(s, state["user_id"])
         plans, dropped, seen = [], [], set()
         for goal in state["proposal"]:
-            reason = ("not_offered" if goal.kind not in state["offered"]
-                      else "repeat" if goal.kind in seen
-                      else "no_strategy" if goal.kind == "debt_payoff" and goal.strategy is None
-                      else None)
+            reason = "not_offered" if goal.kind not in state["offered"] else "repeat" if goal.kind in seen else None
             if reason:
                 dropped.append({"kind": goal.kind, "reason": reason})
                 continue
             seen.add(goal.kind)
-            plans.append(build_goal(goal.kind, len(plans) + 1, goal.monthly_cents, goal.strategy, goal.rationale,
+            monthly_cents = round_cents(Decimal(str(goal.monthly_dollars)) * 100)
+            # the prompt's default: a small model sometimes leaves it out, and that shouldn't cost the top goal
+            strategy = goal.strategy or "avalanche"
+            plans.append(build_goal(goal.kind, len(plans) + 1, monthly_cents, strategy, goal.rationale,
                                     debts=debts, gap_cents=state["gap_cents"],
                                     start=date.fromisoformat(state["start"])))
         if not plans:

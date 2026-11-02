@@ -12,7 +12,7 @@ Run them from `backend/`:
 
 - `audit_in_tmp` (autouse) keeps the prompt audit log under `tmp_path`.
 - The `user` fixture seeds `goals-card-24` (`eval/budget_users.py`): a $1,276.75 monthly surplus, so a $1,021.40 cap at the default 80%, a $3,200 card at 24.99%, an $18,400 student loan and a $1,000 savings account. `TODAY` is its date, 2026-11-02, so plans start on 2026-12-01.
-- `g(kind, cents, strategy, why)` is one proposed goal; `model(*goals)` is a `ScriptedChatModel` that answers with them as JSON.
+- `g(kind, cents, strategy, why)` is one proposed goal, sent in dollars as the model answers; `model(*goals)` is a `ScriptedChatModel` that answers with them as JSON.
 - `stored(db, status)` reads the user's goals by priority; `run_row` reads a run; `set_prefs` sets the goal preferences.
 - `cli(db, *args, fake)` calls `main` with the user and date filled in.
 
@@ -50,9 +50,15 @@ Run them from `backend/`:
 
 ## `test_unusable_goals_dropped_and_listed`
 
-**What it does:** Savings is skipped by the preferences and `debt_payoff` has no strategy, so both are dropped and listed in the state and the run summary. The emergency fund is stored, renumbered to priority 1.
+**What it does:** Savings is skipped by the preferences, so it's dropped and listed in the state and the run summary. The emergency fund is stored, renumbered to priority 1.
 
 **Why it's there:** Code keeps what it can compute. The run shows what was thrown away, so a pattern in the model's mistakes can be seen.
+
+## `test_debt_goal_without_a_strategy_is_avalanche`
+
+**What it does:** A `debt_payoff` goal with no strategy is stored with avalanche, first, with the planner's avalanche date, and nothing is dropped.
+
+**Why it's there:** Live, `qwen2.5:14b` left the strategy out of 1 run in 25. The first version dropped the goal, which put the emergency fund first and broke the done-when. The prompt's default applies instead.
 
 ## `test_repeated_kind_dropped`
 
@@ -167,3 +173,10 @@ Run them from `backend/`:
 **What it does:** With the lock held, it says a run is in progress and exits 1.
 
 **Why it's there:** The same, for a run that never started.
+
+## `test_live_card_debt_goal_first`
+
+**What it does:** Seeds `goals-card-24` and runs the graph with the real model. The first goal must be `debt_payoff` with a strategy. The total against the cap is printed, not asserted, since TPC-24 enforces it. It's skipped unless Ollama is running with `OLLAMA_MODEL` pulled.
+
+**Why it's there:** It's the TPC-23 done-when. On 2026-11-02 with `qwen2.5:14b`, `debt_payoff` came first in 30 of 30 runs after the two fixes recorded in architecture section 6a.5.
+

@@ -123,6 +123,18 @@ The API has `PUT /budget/style`, `PATCH /budget/lines/{id}` (rename a line, or m
 
 The dashboard's **Paying off your debts** card compares the two usual ways to pay off debt: **avalanche** (highest APR first) and **snowball** (smallest balance first). Type an extra amount per month and it shows each method's months to debt-free, total interest, the month each debt is paid off, and what the extra saves. In chat, ask "How fast am I debt-free if I add $200 a month?" and the answer comes from the same simulation. It charges interest monthly at APR/12 and holds minimum payments at today's amounts, so it's for comparing plans, not predicting a statement. Debts with no APR or minimum on file are listed and left out. The API is `POST /debt-plan`.
 
+## Goals
+
+The goal agent works out what you have left in a typical month, asks the local model for 1-3 goals (debt payoff, emergency fund, savings) that fit within 80% of it, and computes each goal's target and date. High-interest debt comes first. Run it for a user:
+
+```bash
+cd backend
+../venv/bin/python scripts/seed_budget_user.py --profile goals-card-24 --replace
+../venv/bin/python -m app.agents.goal_graph --user budget-goals-card-24 --date 2026-11-02
+```
+
+`--prefs '{"skip_kinds": ["savings"], "max_share": 0.5, "note": "emergency fund matters most"}'` sets your preferences. `GET /goals` returns the current proposal; generating goals from the app and accepting them come next.
+
 ## Run the agent every morning
 
 Set `ENABLE_SCHEDULER=1` and the API runs each real user's budget check daily at `DAILY_RUN_TIME` (06:00), plus the month-end close on the 1st at `CLOSE_RUN_TIME` (05:00), in `SCHEDULER_TZ`. If the server starts after today's slot, it runs it once at startup for anyone not yet checked today. Earlier missed days aren't replayed. Run a single uvicorn worker (the default); the scheduler lives inside it.

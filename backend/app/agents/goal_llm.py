@@ -14,9 +14,10 @@ GOAL_PROMPT = (
     "kinds in offered_kinds.\n"
     "If any debt has an APR of 8% or more, debt_payoff comes first if it's offered, with the avalanche strategy "
     "unless the user's note asks otherwise.\n"
-    "Set monthly_cents for each goal, in cents: $200.00 is 20000. Together they must not exceed cap, which is in "
-    "dollars. For debt_payoff, monthly_cents is an extra on top of the minimum payments, and strategy is avalanche "
-    "or snowball; debt_plan_options shows what some extras would do. Leave strategy empty for the other kinds.\n"
+    "Set monthly_dollars for each goal. Together they must not exceed cap, and they should use most of it: money "
+    "left over does nothing for the user. For debt_payoff, monthly_dollars is an extra on top of the minimum "
+    "payments, and strategy is avalanche or snowball; debt_plan_options shows what some extras would do. Leave "
+    "strategy empty for the other kinds.\n"
     "Respect the user's note. Don't propose anything that touches a category in protected_categories.\n"
     "Write rationale to the user in one or two plain sentences, using only numbers in the facts. Don't give "
     "financial advice beyond the plan. Answer in JSON with goals."
@@ -25,7 +26,7 @@ GOAL_PROMPT = (
 
 class ProposedGoal(BaseModel):
     kind: Literal["debt_payoff", "emergency_fund", "savings"]
-    monthly_cents: int = Field(gt=0)
+    monthly_dollars: float = Field(gt=0)     # dollars, like every number in its facts; code converts to cents
     strategy: Optional[Literal["avalanche", "snowball"]] = None
     rationale: Text
 

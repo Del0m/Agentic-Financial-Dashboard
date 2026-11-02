@@ -145,7 +145,7 @@ def set_goal_prefs(session, user_id, raw: dict) -> GoalPrefs
 ```python
 class ProposedGoal(BaseModel):
     kind: Literal["debt_payoff", "emergency_fund", "savings"]
-    monthly_cents: int = Field(gt=0)
+    monthly_dollars: float = Field(gt=0)     # code converts to cents (changed after the live runs: see the risk below)
     strategy: Optional[Literal["avalanche", "snowball"]] = None
     rationale: Text               # the budget_llm whitespace-rejecting string
 
@@ -156,7 +156,7 @@ class GoalProposal(BaseModel):
 The prompt is built like `budget_llm`'s: checked rules first, facts as JSON. It says:
 - propose 1-3 goals, most important first, using only `offered_kinds`, at most one of each kind;
 - if any debt has an APR of 8% or more, `debt_payoff` comes first, with avalanche unless the note asks otherwise;
-- the monthly amounts together must not exceed `cap` (amounts in cents);
+- the monthly amounts together must not exceed `cap`, and should use most of it;
 - respect the note and don't propose anything that touches a protected category;
 - `rationale` is one or two plain sentences to the user, using only numbers in the facts, with no financial advice beyond the plan.
 
@@ -171,7 +171,7 @@ The prompt is built like `budget_llm`'s: checked rules first, facts as JSON. It 
   - a surplus of `None` or ≤ 0 ends the run with status `no_surplus`, without calling the model;
   - no offered kinds ends it with status `nothing_offered`.
 - **`propose`:** `invoke_structured(model, GoalProposal, messages)`. `None` (bad JSON twice) ends the run with status `error`, reason `bad_model_output`. A connection error propagates, as in the budget graph, and the run row records it as `error`.
-- **`build`:** keeps each proposed goal in order, dropping one whose kind wasn't offered or is a repeat, and one that's `debt_payoff` with no strategy. Dropped goals are listed in the run summary. Nothing left ends the run with status `error`, reason `no_usable_goals`. Priorities are renumbered 1..n.
+- **`build`:** keeps each proposed goal in order, dropping one whose kind wasn't offered or is a repeat. A `debt_payoff` with no strategy means avalanche, the prompt's default. Dropped goals are listed in the run summary. Nothing left ends the run with status `error`, reason `no_usable_goals`. Priorities are renumbered 1..n.
 - **`persist`:** one commit: earlier `proposed` goals for the user become `superseded`, and the new ones are written as `proposed` with the run id.
 
 `run_goals(session_factory, user_id, today, *, model) -> dict` opens an `agent_runs` row (`graph="goals"`) and returns the state. The summary holds `surplus_cents`, `cap_cents`, `goal_ids` and `dropped`, plus `reason` on an early stop.
@@ -226,7 +226,7 @@ Only the current user's `proposed` goals, by priority. `[]` when there are none.
 - no surplus: status `no_surplus`, model never called;
 - a valid proposal: priorities, targets and dates from code, `proposed` status, run summary;
 - a second run supersedes the first;
-- a kind not offered, a repeat, and `debt_payoff` without a strategy are dropped and listed;
+- a kind not offered and a repeat are dropped and listed; `debt_payoff` without a strategy means avalanche;
 - nothing usable: `error`, nothing written;
 - bad JSON twice: `error`, nothing written;
 - the CLI prints the goals, marks `(over cap)`, exits 1 on error, and refuses bad `--prefs`;
@@ -249,6 +249,6 @@ Only the current user's `proposed` goals, by priority. `[]` when there are none.
 | Risk | Mitigation |
 |---|---|
 | The model exceeds the cap | Expected until TPC-24. The CLI marks it; nothing acts on goals until TPC-25 |
-| The model gets amounts wrong by a factor of 100 (dollars vs cents) | The prompt names cents and the facts show dollars. If live runs show it, the model field changes to dollars and code converts; decided from the live result |
+| The model gets amounts wrong (dollars vs cents) | Settled by the live runs: asked for cents, it copied the prompt's example and left most of the cap unused, so the field is in dollars and code converts |
 | Irregular income makes the median misleading | The same limit as the budget's income. TPC-31's forecast replaces this figure |
 | The surplus doesn't count a new bill that started this month | History only looks at complete months; accepted as a known limit until the forecast |

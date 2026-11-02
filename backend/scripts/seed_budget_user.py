@@ -28,9 +28,9 @@ from sqlalchemy.orm import Session
 
 from app.budget_engine.styles import STYLES
 from app.budget_service.settings import set_user_style
-from app.db.models import (Account, AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, CategoryRule, Liability,
+from app.db.models import (Account, AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, CategoryRule, Goal, Liability,
                            PlaidItem, Transaction, User)
-from eval.budget_users import PLANTED, PROFILES, default_start, seed_profile
+from eval.budget_users import GOAL_USERS, PLANTED, PROFILES, default_start, seed_profile
 
 
 # everything the user owns, children before parents so foreign keys hold
@@ -38,6 +38,7 @@ def delete_user(session: Session, user_id: str) -> None:
     periods = select(BudgetPeriod.id).where(BudgetPeriod.user_id == user_id)
     session.execute(delete(AdviceLog).where(AdviceLog.user_id == user_id))
     session.execute(delete(Alert).where(Alert.user_id == user_id))
+    session.execute(delete(Goal).where(Goal.user_id == user_id))
     session.execute(delete(AgentRun).where(AgentRun.user_id == user_id))
     session.execute(delete(BudgetLine).where(BudgetLine.period_id.in_(periods)))
     for model in (BudgetPeriod, Transaction, CategoryRule, Liability, Account, PlaidItem):
@@ -53,7 +54,7 @@ def main(argv=None, session_factory=None) -> int:
     parser.add_argument("--start", help="YYYY-MM-DD or 'default': seed history only up to this day and simulate from it")
     parser.add_argument("--style", choices=STYLES, default="caps", help="the style its first budget is fitted with")
     args = parser.parse_args(argv)
-    profiles = {p.id: p for p in PROFILES + PLANTED}
+    profiles = {p.id: p for p in PROFILES + PLANTED + GOAL_USERS}
     profile = profiles.get(args.profile)
     if profile is None:
         print(f"unknown profile {args.profile!r}; choose one of: {', '.join(profiles)}")
@@ -77,6 +78,8 @@ def main(argv=None, session_factory=None) -> int:
     print(f"seeded {user_id}: {profile.description}")
     if start is not None:
         print(f"simulated from {start}; advance it: python scripts/simulate.py --user {user_id} --days 30")
+    elif profile in GOAL_USERS:
+        print(f"run it: python -m app.agents.goal_graph --user {user_id} --date {profile.today}")
     else:
         run_date = profile.run_date or profile.today
         print(f"run it: python -m app.agents.budget_graph --user {user_id} --date {run_date} --no-sync")
