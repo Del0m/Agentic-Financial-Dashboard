@@ -83,6 +83,10 @@ def _queue_sync(session: Session, item: PlaidItem, background: BackgroundTasks) 
 def create_link_token(user: User = Depends(get_current_user)):
     try:
         token = plaid.create_link_token(client_user_id=user.id)
+    except plaid.PlaidNotConfigured:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Plaid keys aren't set in .env, so linking a bank is off. The demo data works "
+                                   "without them; see the README.")
     except (PlaidError, httpx.HTTPError) as err:
         raise _plaid_failure(err)
     return LinkTokenResponse(link_token=token)

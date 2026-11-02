@@ -927,6 +927,7 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-02 | The Docker demo runs on a simulated date, set up by one-off `init` and `models` services | Planted data is dated and pace depends on the day of the month, so a demo tied to today would look different every day; the 9 GB model download mustn't block startup |
 | 2026-10-04 | Python/FastAPI backend, Next.js frontend, SQLite→Postgres | One language for agents + API; React Plaid Link support |
 | 2026-10-04 | Budget math is deterministic code; LLM only diagnoses and decides | Testable, benchmarkable, no arithmetic hallucinations |
 | 2026-10-04 | Budget periods are calendar months | Matches statements and how people think about budgets |

@@ -1,6 +1,73 @@
 # Plaid-Agent-CAP6938
 
-Agentic financial dashboard: link bank accounts through Plaid, see balances, net worth and debts, and (in later milestones) chat with and get budgets from a local-LLM agent. Design: [`docs/architecture.md`](docs/architecture.md).
+Agentic financial dashboard: link bank accounts through Plaid, see balances, net worth and debts, chat about your money, and let a local-LLM budget agent flag overspending and propose changes. Design: [`docs/architecture.md`](docs/architecture.md).
+
+## Quickstart
+
+You need [Docker](https://www.docker.com/products/docker-desktop/) and [Ollama](https://ollama.com/download), about 13 GB of free disk space, and roughly 16 GB of memory for the chat model. No keys or accounts are needed.
+
+1. Start Docker and Ollama.
+2. From the repo root:
+
+   ```bash
+   docker compose up --build
+   ```
+
+3. Open http://localhost:3000. The dashboard opens as a demo user on a simulated date, October 1, 2026.
+
+The first start builds the images and downloads a 9 GB model. The app opens before the download finishes, but chat and the budget agent's advice need it. It's ready when the logs say `all set: chat and the budget agent are ready`. To stop, press Ctrl+C. To start again, run the same command; your progress is kept.
+
+**Setup runs by itself.** [`setup_env.py`](backend/scripts/setup_env.py) creates `.env` and generates its encryption key, [`setup_demo.py`](backend/scripts/setup_demo.py) seeds the demo user, and [`setup_models.py`](backend/scripts/setup_models.py) pulls the models and builds the knowledge base. If Ollama wasn't running the first time, start it and run `docker compose run --rm models`.
+
+### Demo walkthrough
+
+The demo user has a new $90 gym membership that its $42 personal care budget doesn't cover.
+
+1. Open **Alerts** and click **Advance 7 days**. It takes about 30 seconds on an Apple Silicon Mac. The date moves to October 8 and one alert appears, proposing a $135 personal care budget. The dashboard's Budget card shows the line over its limit.
+2. Click **Accept** on the alert.
+3. Click **To month end**, then **Advance 1 day**. Advancing takes about 2 minutes. On November 1 the month closes, and the dashboard's Budget card shows personal care at $135.
+4. Open **Chat** and try these:
+   - "What did I spend on personal care in October 2026?" ($130: $40 at Barber and $90 at FitClub Gym)
+   - "What is a Roth IRA?"
+   - "What is the 50/30/20 budgeting rule?"
+   - "What is my net worth?" ($100)
+
+Chat has limits: the model isn't told today's date, so name the month and year instead of saying "last month". It can also pick the wrong category for a merchant, so ask about "personal care" rather than "the gym".
+
+To restart the demo:
+
+```bash
+docker compose exec backend python scripts/seed_budget_user.py --profile overspend-recurring --replace --start default
+docker compose exec backend python scripts/setup_demo.py
+```
+
+### Link a bank with Plaid (optional)
+
+This needs Plaid sandbox keys, from your own free [Plaid](https://dashboard.plaid.com/signup) account or supplied separately. Sandbox keys only reach Plaid's test data. Add them to `.env`, along with a user that starts empty:
+
+```bash
+PLAID_CLIENT_ID=...
+PLAID_SECRET=...
+DEV_USER_EMAIL=dev@localhost
+```
+
+If you were given a complete `.env` instead, put it in the repo root and add only the `DEV_USER_EMAIL` line. Never commit `.env`.
+
+Run `docker compose up -d`, click **Connect a bank**, pick **First Platypus Bank**, and log in with `user_good` / `pass_good`. To return to the demo user, remove the `DEV_USER_EMAIL` line and run `docker compose up -d` again.
+
+### On other machines
+
+macOS is the tested setup. On Linux or Windows, or if you'd rather not install Ollama, run it in a container:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.ollama.yml up --build
+```
+
+That's CPU only, so the model will be slow. With an NVIDIA GPU, the [NVIDIA container toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) and Compose 2.30 or newer, add `-f docker-compose.gpu.yml` as well. Don't use the GPU file on a Mac, where Docker can't use the Apple GPU. To use Ollama on a Linux host instead of the container, make it listen beyond localhost with `OLLAMA_HOST=0.0.0.0`.
+
+With less memory, a smaller model may work: set `OLLAMA_MODEL=` in `.env` to one that supports tool calling, then run `docker compose run --rm models`. Answers will be different from the ones above.
+
+If a port is taken, stop whatever is using 3000 or 8000.
 
 ## Run locally
 
@@ -31,9 +98,9 @@ Linking returns immediately after saving the bank connection; its first full syn
 
 ## Run with Docker
 
-The backend and the frontend can also run as two containers on one Docker network, in dev mode with live reload. Ollama stays on the Mac, because Docker can't use the Apple GPU and `qwen2.5:14b` would crawl on the CPU.
+The details behind the quickstart, for developing in the containers. The backend and the frontend run as two containers on one Docker network, in dev mode with live reload. On a Mac, Ollama stays on the host, because Docker can't use the Apple GPU and `qwen2.5:14b` would crawl on the CPU.
 
-1. Start Ollama on the Mac (`ollama serve`, with the models pulled) and Docker Desktop.
+1. Start Ollama (`ollama serve`) and Docker Desktop.
 2. Stop the API and web servers from "Run locally" if they're running. They hold ports 8000 and 3000, and `docker compose up` fails with "Ports are not available ... address already in use" otherwise. Don't run both at once: they share `backend/dev.db`, and SQLite locking across the Docker mount isn't reliable.
 3. From the repo root:
 
@@ -43,7 +110,9 @@ The backend and the frontend can also run as two containers on one Docker networ
 
    Open http://localhost:3000. The API is still on http://localhost:8000 (`/docs`).
 
-The repo is mounted into both containers, so they use the same `.env`, `dev.db`, checkpoints and `kb/chroma` as running locally, and edits reload like `--reload` and `npm run dev`. The backend runs `alembic upgrade head` every time it starts. The frontend reaches the backend at `http://backend:8000` over the Compose network, and the backend reaches Ollama at `host.docker.internal:11434`.
+The repo is mounted into both containers, so they use the same `.env`, `dev.db`, checkpoints and `kb/chroma` as running locally, and edits reload like `--reload` and `npm run dev`. The one-off `init` service runs on every `up`, before the backend: it creates `.env` if needed, runs `alembic upgrade head`, and seeds the demo user if it's missing. The one-off `models` service pulls whatever's missing and builds the knowledge base if it's empty. Nothing waits for it. The frontend reaches the backend at `http://backend:8000` over the Compose network, and the backend reaches Ollama at `host.docker.internal:11434`.
+
+Compose sets `DEV_USER_EMAIL` to the demo user and `ENABLE_ADMIN` to `1` unless `.env` says otherwise. To see accounts you linked yourself, set `DEV_USER_EMAIL=dev@localhost` in `.env`.
 
 One-off commands run inside the backend container, where it's `python`, not `../venv/bin/python`:
 

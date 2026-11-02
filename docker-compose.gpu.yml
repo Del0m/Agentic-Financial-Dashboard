@@ -1,0 +1,5 @@
+# gives the ollama container an nvidia gpu (needs the nvidia container toolkit and compose 2.30+):
+#   docker compose -f docker-compose.yml -f docker-compose.ollama.yml -f docker-compose.gpu.yml up --build
+services:
+  ollama:
+    gpus: all
