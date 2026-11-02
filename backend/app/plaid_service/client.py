@@ -11,10 +11,14 @@ class PlaidError(Exception):
         self.error_code = error_code
         self.error_message = error_message
 
+# raised when .env has no plaid keys; the app still runs on seeded data without them
+class PlaidNotConfigured(RuntimeError):
+    pass
+
 # POST to plaid with our credentials added; the body holds the secret, so never log it
 def plaid_post(path: str, body: dict) -> dict:
     if not config.PLAID_CLIENT_ID or not config.PLAID_SECRET:
-        raise RuntimeError("PLAID_CLIENT_ID / PLAID_SECRET are not set in .env")
+        raise PlaidNotConfigured("PLAID_CLIENT_ID / PLAID_SECRET are not set in .env")
 
     resp = httpx.post(
         f"https://{config.PLAID_ENV}.plaid.com{path}",

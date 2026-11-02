@@ -335,6 +335,55 @@ def test_rule_moves_only_spending(db):
                    8000: ("LOAN_PAYMENTS", False), 3000: ("GENERAL_MERCHANDISE", True)}
 
 
+# --- the history window's edge isn't the start of the history ---
+
+def fitted_food(db, *months):
+    with db() as s:
+        acct = user(s)
+        for day, cents in months:
+            add_txn(s, acct, cents, "FOOD_AND_DRINK", day=day)
+        s.commit()
+        p = initialize_budget(s, "u1", TODAY)
+        food = next(ln for ln in p.lines if ln.category == "FOOD_AND_DRINK")
+        return p.fit_json["window"], food.fit_json["monthly_totals"], food.limit_cents
+
+
+def test_longer_history_fits_all_three_months(db):
+    window, totals, limit = fitted_food(db, *((date(2026, m, 5), cents) for m, cents in (
+        (4, 40000), (5, 40000), (6, 40000), (7, 30000), (8, 45000), (9, 50000))))
+    assert window == ["2026-07-01", "2026-08-01", "2026-09-01"]
+    assert totals == [30000, 45000, 50000]
+    assert limit == 47250     # 450 x 1.05; without july it would be 475 x 1.05
+
+
+def test_history_starting_mid_window_month_skips_it(db):
+    window, totals, _ = fitted_food(db, (date(2026, 7, 5), 30000), (date(2026, 8, 5), 45000), (date(2026, 9, 5), 50000))
+    assert window == ["2026-08-01", "2026-09-01"]
+    assert totals == [45000, 50000]
+
+
+# june is partial, but it's outside the window; only the months inside it matter
+def test_history_starting_mid_month_before_window_keeps_all_three(db):
+    window, totals, _ = fitted_food(db, (date(2026, 6, 20), 10000), (date(2026, 7, 5), 30000),
+                                    (date(2026, 8, 5), 45000), (date(2026, 9, 5), 50000))
+    assert window == ["2026-07-01", "2026-08-01", "2026-09-01"]
+    assert totals == [30000, 45000, 50000]
+
+
+# july's rent paid on jun 30 is july's, so loading june puts it back in the window
+def test_rent_paid_just_before_window_counts_for_its_month(db):
+    with db() as s:
+        acct = user(s)
+        add_txn(s, acct, 150000, "RENT_AND_UTILITIES", merchant="Landlord", day=date(2026, 6, 30))
+        for m in (8, 9):
+            add_txn(s, acct, 150000, "RENT_AND_UTILITIES", merchant="Landlord", day=date(2026, m, 1))
+        add_txn(s, acct, 40000, "FOOD_AND_DRINK", day=date(2026, 7, 2))
+        s.commit()
+        p = initialize_budget(s, "u1", TODAY)
+        rent = next(ln for ln in p.lines if ln.category == "RENT_AND_UTILITIES")
+        assert rent.fit_json["monthly_totals"] == [150000, 150000, 150000]
+
+
 # review on #11: the column is Double in the migration; a bare float maps to Float on sqlalchemy 2.0
 def test_last_pace_is_double():
     from sqlalchemy import Double

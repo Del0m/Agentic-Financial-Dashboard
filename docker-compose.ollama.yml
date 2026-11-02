@@ -1,0 +1,27 @@
+# runs ollama in a container too, for a host without it:
+#   docker compose -f docker-compose.yml -f docker-compose.ollama.yml up --build
+# cpu only unless docker-compose.gpu.yml is added. on a mac keep ollama on the host: docker can't use the apple gpu
+services:
+  ollama:
+    image: ollama/ollama:0.33.2
+    volumes:
+      - ollama_models:/root/.ollama
+
+  init:
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+
+  models:
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+    depends_on:
+      - ollama
+
+  backend:
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+    depends_on:
+      - ollama
+
+volumes:
+  ollama_models:

@@ -55,7 +55,7 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
                      end_date: Optional[str] = None) -> str:
         start, end = _parse_date("start_date", _blank(start_date)), _parse_date("end_date", _blank(end_date))
         # the gateway fills a missing end with today, so a future start alone is reversed too
-        if start and start > (end or gw._today()):
+        if start and start > (end or gateway.today()):
             raise ToolException("start_date must be on or before end_date (today when end_date is left out)")
         category = _blank(category)
         if category is not None:

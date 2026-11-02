@@ -124,6 +124,18 @@ Run them from `backend/`:
 
 **Why it's there:** Guidance has to match the question being asked now, not the first question of the conversation.
 
+## `test_today_goes_in_the_system_prompt_and_is_read_on_every_call`
+
+**What it does:** Builds the graph with a `today` that returns a different day on each call, and sends two questions on one thread. It checks that each system prompt has that call's date, placed before the guidance, and that no system message is stored in the thread.
+
+**Why it's there:** Without a date, the model searched February 2023 for "last month" and answered $0. Reading it on every call means a thread picked up tomorrow gets tomorrow's date.
+
+## `test_date_line_spells_out_the_calendar_months`
+
+**What it does:** Parametrized over a normal month, a January and a leap-year March. It checks that the prompt gives the right bounds for this month and last month.
+
+**Why it's there:** Given only the date, `qwen2.5:14b` read "last month" as the last 30 days. The cases cover the arithmetic most likely to go wrong: crossing a year, and a February with 29 days.
+
 ## `test_no_guidance_when_nothing_retrieved`
 
 **What it does:** Checks that when nothing is retrieved, the system prompt is exactly `SYSTEM_PROMPT`.

@@ -79,6 +79,12 @@ class PrivacyGateway:
         self._audit_path = audit_path or config.PROMPT_AUDIT_PATH
         self.pseudonym = pseudonym or "user_" + secrets.token_hex(2)
 
+    # this user's "today": a simulated user's chat follows the simulation, like its dashboard.
+    # imported here because budget_service.daily imports the budget graph, which imports this module
+    def today(self) -> date:
+        from ..budget_service.daily import sim_today
+        return sim_today(self._session, self._user_id) or _today()
+
     def build_context(self, purpose: Purpose, *, start: Optional[date] = None,
                       end: Optional[date] = None, category: Optional[str] = None,
                       facts: Optional[OverspendFacts] = None, transactions: Optional[list[Txn]] = None,
@@ -205,7 +211,7 @@ class PrivacyGateway:
 
     # minimized per question: totals by category, plus one category's rows only when asked for
     def _spending(self, start: Optional[date], end: Optional[date], category: Optional[str]) -> dict:
-        end = end or _today()
+        end = end or self.today()
         start = start or end - timedelta(days=DEFAULT_SPENDING_DAYS - 1)
         if start > end:
             raise ValueError("start date must be on or before end date")

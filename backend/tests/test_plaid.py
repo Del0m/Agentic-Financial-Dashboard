@@ -36,6 +36,18 @@ def items(db):
 
 # link token asks for transactions only and makes liabilities required-if-supported,
 # so Link still shows banks without liabilities
+# the demo runs without plaid keys, so a missing key is a message for the page, not a 500
+@pytest.mark.parametrize("client_id, secret", [(None, None), ("", ""), ("id", "")])
+def test_link_token_without_plaid_keys_explains_itself(client, monkeypatch, client_id, secret):
+    monkeypatch.setattr(config, "PLAID_CLIENT_ID", client_id)
+    monkeypatch.setattr(config, "PLAID_SECRET", secret)
+
+    resp = client.post("/plaid/link-token")
+
+    assert resp.status_code == 503
+    assert "Plaid keys" in resp.json()["detail"]
+
+
 def test_link_token_requires_only_transactions(client, monkeypatch):
     sent = {}
 

@@ -92,6 +92,12 @@ Run them from `backend/`:
 
 **Why it's there:** The model can only use a category name it has been shown. The list lives in the description, and the architecture's decision log says these Plaid categories are the budget categories.
 
+## `test_future_start_is_measured_from_the_simulated_date`
+
+**What it does:** Gives the user a simulated date of 2026-03-10, with the real date pinned to 2026-10-21. A `start_date` of 2026-04-01 is before the real date but after the simulated one, and it should raise the "before" error.
+
+**Why it's there:** The reversed-range check has to use the same date as the gateway fills in. Otherwise the error wouldn't fire, and the gateway would reject the range with a message the model never sees.
+
 ## `test_future_start_alone_rejected`
 
 **What it does:** With today pinned to 2026-10-21, a `start_date` of 2026-11-01 and no `end_date` should raise the same "before" `ToolException` as an explicitly reversed range.
