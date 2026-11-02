@@ -1,5 +1,7 @@
 # TPC-23 goal graph: how to verify it by hand
 
+**Historical handoff:** these are the TPC-23 checks and observations. TPC-24 now rejects over-cap/undated goals and retries invalid proposals; use the [TPC-24 handoff](2026-11-02-tpc-24-manual-verification.md) for current behavior.
+
 **What was built:** a goal agent. Code measures what a user has left each month, the local model proposes 1-3 goals within it, and code computes each goal's target and date. Goals are stored as `proposed`, and `GET /goals` reads them.
 
 **The ticket's done-when:** a synthetic user with a 24% APR card gets a debt-payoff goal first (check 1).

@@ -10,8 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from .. import config
 from ..budget_engine.diagnose import OverspendFacts
-from ..budget_engine.goals import GoalFacts, planned_debts
-from ..budget_engine.payoff import Plan, compare
+from ..budget_engine.goals import GoalAllocation, GoalFacts, GoalIssue, planned_debts
+from ..budget_engine.payoff import Debt, Plan, compare
 from ..budget_engine.txns import Txn, add_months, month_start, spending
 from ..budget_service.debts import load_debts
 from ..db.models import Account, Liability, Transaction
@@ -78,6 +78,8 @@ class PrivacyGateway:
         self._user_id = user_id
         self._audit_path = audit_path or config.PROMPT_AUDIT_PATH
         self.pseudonym = pseudonym or "user_" + secrets.token_hex(2)
+        self._goal_context: Optional[str] = None
+        self._goal_cap_cents: Optional[int] = None
 
     # this user's "today": a simulated user's chat follows the simulation, like its dashboard.
     # imported here because budget_service.daily imports the budget graph, which imports this module
@@ -90,7 +92,8 @@ class PrivacyGateway:
                       facts: Optional[OverspendFacts] = None, transactions: Optional[list[Txn]] = None,
                       this_month_alerts: Sequence[dict] = (), past_advice: Sequence[dict] = (),
                       extra_monthly_cents: Optional[int] = None, strategy: Optional[str] = None,
-                      goal_facts: Optional[GoalFacts] = None) -> str:
+                      goal_facts: Optional[GoalFacts] = None,
+                      goal_debts: Optional[Sequence[Debt]] = None) -> str:
         if purpose == "diagnose":
             data = self._diagnose(facts, transactions or [])
             data["this_month_alerts"] = [{k: a.get(k) for k in ALERT_MEMORY_FIELDS} for a in this_month_alerts]
@@ -105,7 +108,7 @@ class PrivacyGateway:
         elif purpose == "debt_plan":
             data = self._debt_plan(extra_monthly_cents or 0, strategy)
         elif purpose == "goals":
-            data = self._goals(goal_facts)
+            data = self._goals(goal_facts, goal_debts)
         else:
             raise ValueError(f"unknown purpose: {purpose}")
 
@@ -116,6 +119,24 @@ class PrivacyGateway:
                                     ("cap_cents", goal_facts.cap_cents if goal_facts else None))
                   if v is not None}
         self._audit(purpose, params, prompt)
+        if purpose == "goals":
+            self._goal_context = prompt
+            self._goal_cap_cents = goal_facts.cap_cents
+        return prompt
+
+    def goal_correction(self, allocations: Sequence[GoalAllocation], issues: Sequence[GoalIssue]) -> str:
+        if self._goal_context is None:
+            raise ValueError('build the goal context before a correction')
+        payload = json.loads(self._goal_context)
+        # Only normalized fields and code-generated reasons; never echo the rejected rationale or raw reply.
+        payload['correction'] = {
+            'attempt': 2,
+            'rejected_goals': [{'kind': a.kind, 'monthly_dollars': _dollars(a.monthly_cents),
+                                'strategy': a.strategy} for a in allocations],
+            'failures': [{'code': i.code, 'index': i.index, 'kind': i.kind, 'message': i.message} for i in issues],
+        }
+        prompt = json.dumps(payload, separators=(',', ':'), ensure_ascii=False)
+        self._audit('goals', {'cap_cents': self._goal_cap_cents, 'attempt': 2}, prompt)
         return prompt
 
     def _accounts(self) -> list[dict]:
@@ -182,7 +203,7 @@ class PrivacyGateway:
                            else "No debts with a balance on file.")
         return out
 
-    def _goals(self, facts: GoalFacts) -> dict:
+    def _goals(self, facts: GoalFacts, debts: Optional[Sequence[Debt]] = None) -> dict:
         data = {
             "monthly_surplus": _dollars(facts.surplus_cents), "cap": _dollars(facts.cap_cents),
             "offered_kinds": list(facts.offered), "emergency_fund_gap": _dollars(facts.gap_cents),
@@ -192,7 +213,7 @@ class PrivacyGateway:
         }
         if "debt_payoff" not in facts.offered:
             return data
-        debts = load_debts(self._session, self._user_id)
+        debts = load_debts(self._session, self._user_id) if debts is None else debts
         planned = sorted(planned_debts(debts, facts.start), key=lambda d: avalanche_key(d.apr, d.balance_cents))
         data["debts"] = [{"name": scrub_account_name(d.name), "kind": d.kind, "apr": d.apr,
                           "balance": _dollars(d.balance_cents), "min_payment": _dollars(d.min_payment_cents)}

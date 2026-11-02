@@ -4,12 +4,13 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from app.agents.budget_llm import Text
+from app.budget_engine.goals import MAX_MONTHLY_CENTS, MIN_MONTHLY_CENTS
 
 # the goal graph's llm call (spec: tpc-23): the facts come from the privacy gateway as a json string, and the model
 # picks which goals, their order and their monthly amounts. code computes each goal's target and date
 
-MIN_MONTHLY_DOLLARS = 1
-MAX_MONTHLY_DOLLARS = 1_000_000
+MIN_MONTHLY_DOLLARS = MIN_MONTHLY_CENTS // 100
+MAX_MONTHLY_DOLLARS = MAX_MONTHLY_CENTS // 100
 
 GOAL_PROMPT = (
     "You propose savings and debt goals for a personal finance app. The facts below were computed from the user's "
@@ -21,6 +22,9 @@ GOAL_PROMPT = (
     "left over does nothing for the user. For debt_payoff, monthly_dollars is an extra on top of the minimum "
     "payments, and strategy is avalanche or snowball; debt_plan_options shows what some extras would do. Leave "
     "strategy empty for the other kinds.\n"
+    "Every goal must finish within 600 months. If an emergency fund allocation would take longer, increase it "
+    "within the cap or choose a different offered kind. If correction is present, replace the entire rejected "
+    "proposal and fix every reported failure.\n"
     "Respect the user's note. Don't propose anything that touches a category in protected_categories.\n"
     "Write rationale to the user in one or two plain sentences, using only numbers in the facts. Don't give "
     "financial advice beyond the plan. Answer in JSON with goals."

@@ -25,6 +25,18 @@ def test_high_apr_returns_never_instead_of_decimal_failure():
     assert plan.total_interest_cents > 0
 
 
+def test_high_apr_does_not_prevent_tiny_cap_withdrawal(user):
+    run_goals(user, UID, TODAY, model=model(g('savings', 1000)))
+    with user() as s:
+        s.scalar(select(Liability).where(Liability.user_id == UID, Liability.kind == 'credit')).apr = 120
+        s.commit()
+    set_prefs(user, {'max_share': 0.00001})
+    fake = ScriptedChatModel(replies=[])
+    state = run_goals(user, UID, TODAY, model=fake)
+    assert state['status'] == 'no_affordable_goals' and state['withdrawn'] == 1
+    assert not fake.seen and not stored(user)
+
+
 @pytest.mark.parametrize('missing', ['minimum', 'liability', 'balance'])
 def test_unknown_card_obligation_preserves_old_proposal_without_model(user, missing):
     old = run_goals(user, UID, TODAY, model=model(g('savings', 1000)))['goal_ids']
@@ -43,7 +55,7 @@ def test_unknown_card_obligation_preserves_old_proposal_without_model(user, miss
     assert not fake.seen and [x.id for x in stored(user)] == old
 
 
-def test_storage_failure_preserves_proposal_and_never_logs_parameters(user, caplog):
+def test_storage_failure_preserves_progress_and_never_logs_parameters(user, caplog):
     old = run_goals(user, UID, TODAY, model=model(g('savings', 1000)))['goal_ids']
     with user() as s:
         s.execute(text("CREATE TRIGGER fail_goal BEFORE INSERT ON goals BEGIN SELECT RAISE(ABORT, 'storage failure'); END"))
@@ -51,8 +63,8 @@ def test_storage_failure_preserves_proposal_and_never_logs_parameters(user, capl
     fake = model(g('savings', 2000, why='PRIVATE_RATIONALE_SENTINEL'))
     state = run_goals(user, UID, TODAY, model=fake)
     summary = run_row(user, state['run_id']).summary_json
-    assert state['status'] == 'error' and summary['outcome'] == 'error'
-    assert len(fake.seen) == 1 and state['plans'] == []
+    assert state['status'] == 'error' and state['attempts'] == summary['attempts'] == len(fake.seen) == 1
+    assert len(state['validation_history']) == 1 and state['plans'] == []
     assert [x.id for x in stored(user)] == old
     assert 'PRIVATE_RATIONALE_SENTINEL' not in caplog.text and UID not in caplog.text
     assert 'INSERT INTO goals' not in caplog.text

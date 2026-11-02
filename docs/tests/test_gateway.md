@@ -315,3 +315,7 @@ The budget graph's `diagnose` step asks the LLM why one category is overspent. T
 **What it does:** The note "emergency fund first, it's my priority" reaches the prompt unchanged.
 
 **Why it's there:** Found in the final review. The account-name scrub replaces everything before the last `'s`, so this note became "[person]'s my priority", and live the model then put debt first. The user's preference was lost without a word.
+
+## TPC-24 correction coverage
+
+The graph can supply an explicit debt snapshot to the goals context; default callers still load debts through the gateway. `tests/test_goal_validation_graph.py` covers the outgoing correction context and audit record, stable facts/pseudonym, rejected-allocation allowlist, excluded rationale/raw output, and debt snapshot consistency. See [the test descriptions](test_goal_validation_graph.md).

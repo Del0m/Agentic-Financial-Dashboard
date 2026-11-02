@@ -17,6 +17,49 @@ GoalKind = Literal["debt_payoff", "emergency_fund", "savings"]
 GOAL_KINDS = ("debt_payoff", "emergency_fund", "savings")
 EMERGENCY_MONTHS = 3
 SAVINGS_MONTHS = 12
+MIN_MONTHLY_CENTS = 100
+MAX_MONTHLY_CENTS = 100_000_000
+
+
+@dataclass(frozen=True)
+class GoalAllocation:
+    kind: GoalKind
+    monthly_cents: int
+    strategy: Optional[str]
+    rationale: str
+
+
+@dataclass(frozen=True)
+class GoalIssue:
+    code: str
+    message: str
+    index: Optional[int] = None    # 1-based position in the rejected proposal
+    kind: Optional[str] = None
+
+
+def normalize_goal(kind: GoalKind, monthly_dollars: float, strategy: Optional[str], rationale: str) -> GoalAllocation:
+    cents = round_cents(Decimal(str(monthly_dollars)) * 100)
+    return GoalAllocation(kind, cents, (strategy or 'avalanche') if kind == 'debt_payoff' else None, rationale)
+
+
+def validate_allocations(goals: Sequence[GoalAllocation], *, cap_cents: int,
+                         offered: Sequence[str]) -> list[GoalIssue]:
+    issues, seen = [], set()
+    if not 1 <= len(goals) <= 3:
+        issues.append(GoalIssue('bad_count', 'Propose one to three goals.'))
+    for index, goal in enumerate(goals, 1):
+        if goal.kind not in offered:
+            issues.append(GoalIssue('not_offered', 'Choose only offered goal kinds.', index, goal.kind))
+        if goal.kind in seen:
+            issues.append(GoalIssue('repeat', 'Propose each kind at most once.', index, goal.kind))
+        seen.add(goal.kind)
+        if not MIN_MONTHLY_CENTS <= goal.monthly_cents <= MAX_MONTHLY_CENTS:
+            issues.append(GoalIssue('bad_amount', 'Monthly amounts must be $1 to $1,000,000.', index, goal.kind))
+    total = sum(g.monthly_cents for g in goals)
+    if total > cap_cents:
+        issues.append(GoalIssue('over_cap', f'Total ${total / 100:,.2f} exceeds cap ${cap_cents / 100:,.2f} '
+                                f'by ${(total - cap_cents) / 100:,.2f}. Reduce the combined monthly amounts.'))
+    return issues
 
 
 @dataclass(frozen=True)
@@ -40,6 +83,22 @@ class GoalFacts:
     start: date
     protected_categories: tuple[str, ...] = ()
     note: Optional[str] = None
+
+
+def validate_plans(plans: Sequence[GoalPlan], *, start: date) -> list[GoalIssue]:
+    issues = []
+    last = add_months(start, MAX_MONTHS - 1)
+    for plan in plans:
+        if plan.target_cents <= 0:
+            issues.append(GoalIssue('bad_target', 'The goal must have a positive target.', plan.priority, plan.kind))
+        if plan.target_date is None:
+            issues.append(GoalIssue('no_date', f'This allocation cannot finish within {MAX_MONTHS} months. '
+                                    'Increase its monthly amount within the cap or choose another offered kind.',
+                                    plan.priority, plan.kind))
+        elif not start <= plan.target_date <= last:
+            issues.append(GoalIssue('bad_date', f'The target date must be within {MAX_MONTHS} payments from start.',
+                                    plan.priority, plan.kind))
+    return issues
 
 
 # complete months only, and none before the history starts: the same window fit_budget uses

@@ -205,6 +205,8 @@ cd backend
 
 `--prefs '{"skip_kinds": ["savings"], "max_share": 0.5, "note": "emergency fund matters most"}'` sets your preferences. `GET /goals` returns the current proposal; generating goals from the app and accepting them come next.
 
+Goals are validated as a complete proposal before storage: the monthly total must fit the cap, kinds must be offered and unique, and every computed date must be achievable within 600 months. There are at most two model calls, including malformed replies; the correction receives scrubbed feedback. Failed attempts preserve the previous proposal and report why no replacement was generated. A cap below $1 withdraws it without calling the model. See the [TPC-24 verification handoff](docs/handoffs/2026-11-02-tpc-24-manual-verification.md) for deterministic failure checks and a live CLI walkthrough.
+
 ## Run the agent every morning
 
 Set `ENABLE_SCHEDULER=1` and the API runs each real user's budget check daily at `DAILY_RUN_TIME` (06:00), plus the month-end close on the 1st at `CLOSE_RUN_TIME` (05:00), in `SCHEDULER_TZ`. If the server starts after today's slot, it runs it once at startup for anyone not yet checked today. Earlier missed days aren't replayed. Run a single uvicorn worker (the default); the scheduler lives inside it.

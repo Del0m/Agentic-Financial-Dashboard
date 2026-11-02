@@ -119,7 +119,7 @@ Four graphs, sharing one tool set:
 | **Chat Agent** | User message | Retrieve guidance for the question, then a ReAct loop: LLM ↔ tools until it answers (at most 6 tool rounds, then one last call without tools) |
 | **Budget Agent** | Daily schedule | Fixed pipeline with one LLM branch (diagnose + decide). Also detects recurring charges and forecasts cash flow (section 6a). See `budget-agent-loop.png` |
 | **Period-Close Agent** | Period end (and the first daily run after it) | No LLM: `load_period → expire_proposals → gather → adapt → persist`, looping while another month is due. Compares budget vs actual, applies accepted proposals, smooths the rest, applies the budget style and opens the next period (section 6.5, TPC-22) |
-| **Goal Agent** | User request (a CLI today, TPC-23; from the app and after period close later) | `load_facts → propose → build → persist`: code measures the surplus, the LLM picks goals within it, code computes targets and dates with the debt-payoff planner. The user approves via `interrupt()` (TPC-25). Section 6a.5 |
+| **Goal Agent** | User request (a CLI today, TPC-23; from the app and after period close later) | `load_facts → propose → validate_candidate → persist`, with at most one `correction → propose` loop: code measures the surplus, the LLM picks goals within it, code computes targets and dates with the debt-payoff planner. The user approves via `interrupt()` (TPC-25). Section 6a.5 |
 
 **Deterministic Budget Engine:** plain Python functions for totals, pace, thresholds and budget fitting, plus recurring-stream detection, the cash-flow forecast and the debt-payoff simulation (section 6a). The LLM never does arithmetic that matters. This is a core design rule: it makes the system testable and keeps the benchmarks meaningful.
 
@@ -434,9 +434,9 @@ The chat agent gets three tools: `get_recurring`, `get_cash_forecast` and `plan_
 
 ---
 
-### 6a.5 Goal graph (Milestone 4, TPC-23)
+### 6a.5 Goal graph (Milestone 4, TPC-23/24)
 
-`agents/goal_graph.py`, a LangGraph graph with no checkpointer until approval arrives (TPC-25): `load_facts → propose → build → persist`. Run it with `python -m app.agents.goal_graph --user <id>`.
+`agents/goal_graph.py`, a LangGraph graph with no checkpointer until approval arrives (TPC-25): `load_facts → propose → validate_candidate → persist`, with at most one `correction → propose` loop. Run it with `python -m app.agents.goal_graph --user <id>`.
 
 **The surplus** (`budget_engine/goals.py`) is measured, not planned: the median over the last 3 complete months of income − spending − transfers to savings, with the same month window as `fit`, minus the minimums on cards with a balance. A card payment isn't spending, because it pays for purchases already counted, so nothing else takes a card's minimum out; a loan's payment is spending, so it's already out. The budget's Free line also has to cover spending with no line, so using it would double-count that money. TPC-31's `monthly_surplus_cents` replaces this figure when it lands. With no surplus, the run stops before calling the model.
 
@@ -448,9 +448,11 @@ The chat agent gets three tools: `get_recurring`, `get_cash_forecast` and `plan_
   - `debt_payoff`: the debts the planner can plan, and the planner's date. The monthly amount is an extra on top of the minimums. A missing strategy means avalanche.
   - `emergency_fund`: 3 × the median month's `needs` spending, minus savings accounts; not offered when that's $0. Past the planner's 600 months it has no date.
   - `savings`: 12 × the monthly amount, 12 months out.
-- An amount outside $1 to $1,000,000 a month gets the one retry. A kind that wasn't offered, or a repeat, is dropped and listed in the run. Checking affordability and retrying with a reason is TPC-24's job, between `propose` and `build`. Until then the CLI marks a goal `(over cap)`.
+- TPC-24 validates the complete proposal: monthly amounts must sum to at most the cap, kinds must be offered and unique, and every computed target must be positive and dated within 600 payments. Parsing and all validation failures share **two total model calls**, initial plus one correction. No partial or rejected proposal reaches storage.
+- The correction receives the same scrubbed facts and debt snapshot, normalized rejected amounts/kinds/strategies, and all code-generated validation reasons; raw output and rationale are not echoed. Its context is audited under the same pseudonym. `AgentRun.summary_json` records attempts, active validation issues, and per-attempt history. Free-text notes remain model guidance.
+- A cap below $1 stops without a model call as `no_affordable_goals` and withdraws the earlier proposal. Exhausted retries fail, print the reasons, and preserve the earlier proposal; it is not certified against the new facts.
 
-A run marks the user's earlier `proposed` goals `superseded` in one commit with the new ones, so a failed run leaves the last proposal standing. A finished run with nothing to propose (no surplus, or every kind skipped) withdraws it instead, since it no longer fits. A run takes the same per-user lock as a budget run and also checks for a recent `running` row, because the lock only covers one process and the CLI is a separate one. An unreachable model is reported as such (`invoke_structured(raise_unreachable=True)`): the budget graph has a fallback alert to write, and the goal graph has nothing.
+A run marks the user's earlier `proposed` goals `superseded` in one commit with the new ones, so a failed run leaves the last proposal standing. A finished run with nothing to propose (no surplus, every kind skipped, or a cap below $1) withdraws it instead, since it no longer fits. A run takes the same per-user lock as a budget run and also checks for a recent `running` row, because the lock only covers one process and the CLI is a separate one. An unreachable model is reported as such (`invoke_structured(raise_unreachable=True)`): the budget graph has a fallback alert to write, and the goal graph has nothing.
 
 **Live (TPC-23, `qwen2.5:14b`, 2026-11-02):** `goals-card-24` has a $3,200 card at 24.99%, an $18,400 loan at 5.5%, payments on both in its history, and $1,000 saved. Its surplus is $971.75 after the card's $95 minimum, so the cap at 80% is $777.40. `debt_payoff` came first with avalanche in 5 of 5 runs: $583 a month on top of the minimums, debt-free in February 2029, then usually `emergency_fund` at $194.40, reaching its $6,851.78 target in November 2029. Before the minimums came out, with no payments in the user's history, it was first in 30 of 30. These findings shaped this:
 - Asked for cents with facts in dollars, the model copied the prompt's example ($200) and added $22.14 for the emergency fund, finishing in 2050. Asking for dollars, and saying that money left over does nothing, fixed it.
@@ -1037,6 +1039,20 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 | | | |
 
 ---
+
+## 17. TPC-24 decisions and verification (2026-11-02)
+
+The user approved the TPC-24 design after the architecture interview. The graph now validates complete proposals and allows one correction before publishing. The baseline and red/green observations are recorded in the implementation plan.
+
+Validation rejects an entire goal proposal when its combined monthly amount exceeds the shared cap, a kind is repeated or not offered, or a computed goal cannot finish within the existing 600-month horizon. Parsing and all validation failures share a maximum of **two total model calls**, initial plus one correction. The correction receives the same scrubbed facts, the rejected normalized allocation, and all actionable code-generated reasons, excluding raw output and rationale. Structured preferences are hard rules; free-text notes remain model guidance.
+
+Both failed attempts preserve the earlier proposal and clearly report that no replacement was generated. A cap below the existing $1 minimum produces a no-affordable-goals outcome without a model call and withdraws the earlier proposal. New proposals are persisted atomically only after every check passes. Older proposals retained after a failed run are not certified against the new facts.
+
+Implementation used TDD with recorded red/green commands and results, deterministic tight-surplus acceptance cases, and five live tight-surplus trials when Ollama is available. The handoff follows TPC-23's concise host/venv format, using scripted pytest checks to demonstrate rejection/correction and a live CLI smoke check on disposable data. TPC-25 continues to own goal generation from the app, approval, and the Goals UI.
+
+See the [design and decision table](superpowers/specs/2026-11-02-tpc-24-goal-validation-design.md) for alternatives, reversibility, defaults, and risks, and the [TDD implementation plan](superpowers/plans/2026-11-02-tpc-24-goal-validation.md) for the test sequence and evidence record. Offline backend regressions: **807 passed, 21 deselected** (pre-change baseline: 773 passed). See the [verification handoff](handoffs/2026-11-02-tpc-24-manual-verification.md) for live results and executable commands.
+
+Docker follow-up also passed: **807 offline tests and five live tight-surplus trials** inside the backend container. All four existing Plaid Sandbox links refreshed successfully on a migrated disposable database copy; the linked history correctly returned `no_surplus` with zero model calls, and both goal/dashboard API handlers returned HTTP 200. The original configured database was unchanged. See the [Docker and linked-data report](handoffs/2026-11-02-tpc-24-docker-linked-verification.md).
 
 ## References
 - Plaid docs: https://plaid.com/docs/ (Link, Transactions `/transactions/sync`, Liabilities, Sandbox)

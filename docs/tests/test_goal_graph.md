@@ -1,6 +1,6 @@
 # Tests: `backend/tests/test_goal_graph.py`
 
-These tests cover `app/agents/goal_graph.py` and `goal_llm.py` (TPC-23): the graph `load_facts → propose → build → persist`, `run_goals`, and the CLI. Code measures the surplus and computes each goal's target and date; the model picks the goals, their order and their monthly amounts.
+These tests cover `app/agents/goal_graph.py` and `goal_llm.py` (TPC-23/24): the graph `load_facts → propose → validate_candidate → persist`, with one correction loop, `run_goals`, and the CLI. Code measures the surplus and computes each goal's target and date; the model picks the goals, their order and their monthly amounts.
 
 Run them from `backend/`:
 
@@ -48,11 +48,11 @@ Run them from `backend/`:
 
 **Why it's there:** With no kind to offer, any answer from the model would be dropped anyway.
 
-## `test_unusable_goals_dropped_and_listed`
+## `test_unoffered_goals_rejected_not_partially_stored`
 
-**What it does:** Savings is skipped by the preferences, so it's dropped and listed in the state and the run summary. The emergency fund is stored, renumbered to priority 1.
+**What it does:** Two proposals contain savings excluded by preferences. Both are rejected, no emergency-fund subset is stored, and the run records not_offered reasons.
 
-**Why it's there:** Code keeps what it can compute. The run shows what was thrown away, so a pattern in the model's mistakes can be seen.
+**Why it's there:** TPC-24 validates the complete allocation, including structured preferences.
 
 ## `test_debt_goal_without_a_strategy_is_avalanche`
 
@@ -60,23 +60,23 @@ Run them from `backend/`:
 
 **Why it's there:** Live, `qwen2.5:14b` left the strategy out of 1 run in 25. The first version dropped the goal, which put the emergency fund first and broke the done-when. The prompt's default applies instead.
 
-## `test_repeated_kind_dropped`
+## `test_repeated_kind_rejects_the_proposal`
 
-**What it does:** Two savings goals: the first is kept, the second dropped as `repeat`.
+**What it does:** Repeated savings kinds on both calls fail the run and store no goals.
 
-**Why it's there:** The prompt asks for at most one of each kind, and code doesn't rely on the model following that.
+**Why it's there:** A duplicate must trigger correction, not a partial plan.
 
 ## `test_nothing_usable_is_an_error`
 
-**What it does:** A run whose only goal is unusable ends in `error`, reason `no_usable_goals`, and the earlier proposal stays `proposed`.
+**What it does:** A run whose only goal is unusable ends in `error`, reason `validation_failed` after two rejected calls, and the earlier proposal stays `proposed`.
 
 **Why it's there:** A bad run mustn't wipe out a good proposal.
 
 ## `test_bad_json_twice_is_an_error`
 
-**What it does:** The model answers with junk twice: `error`, reason `bad_model_output`, exactly two calls, nothing written.
+**What it does:** Two malformed replies consume the entire two-call budget and end with bad_model_output.
 
-**Why it's there:** `invoke_structured` gets one retry on bad JSON; after that the run reports it. TPC-24 adds retries with a reason.
+**Why it's there:** Parsing and affordability share one retry budget; correction includes a fixed schema explanation.
 
 ## `test_model_outage_recorded`
 
@@ -108,11 +108,11 @@ Run them from `backend/`:
 
 **Why it's there:** It's plan Review Focus 5: Plaid can leave a balance out, and that must not crash or count as money.
 
-## `test_never_goal_stored_without_a_date`
+## `test_never_goal_rejected_without_a_date`
 
-**What it does:** A $1 extra on a $10,000 card at 30% with a $100 minimum is stored with no date and the full target.
+**What it does:** A $1 extra cannot amortize the card within 600 months. Two such replies fail with no_date and no goal rows.
 
-**Why it's there:** It's plan Review Focus 3: the model chooses the amount, so a plan that never ends can reach storage.
+**Why it's there:** Only achievable dated proposals may be published; low-level builders still describe impossible plans with null dates.
 
 ## `test_busy_when_the_lock_is_held`
 
@@ -132,17 +132,17 @@ Run them from `backend/`:
 
 **Why it's there:** Until TPC-25's page, this is how a person sees what the agent proposed.
 
-## `test_cli_marks_goals_over_the_cap`
+## `test_cli_refuses_goals_over_the_cap`
 
-**What it does:** A $700 debt goal fits the $777.40 cap; the $100 savings goal after it pushes the total over, and only that line says `(over cap)`.
+**What it does:** A combined $800 proposal exceeds the $777.40 cap on both calls. The CLI exits 1, explains the excess, and prints no numbered goal lines.
 
-**Why it's there:** TPC-24 will refuse these. Until then the report makes them visible.
+**Why it's there:** The command must not present a rejected allocation as a successful plan.
 
 ## `test_cli_says_when_a_goal_has_no_end`
 
-**What it does:** A never-ending debt goal prints "no end date".
+**What it does:** The CLI exits 1 and reports that the candidate cannot finish within 600 months.
 
-**Why it's there:** The other half of Review Focus 3: printing a `None` date must not crash the report.
+**Why it's there:** An undated candidate is refused rather than printed as a usable goal.
 
 ## `test_cli_defaults_to_the_simulated_date`
 
@@ -176,10 +176,9 @@ Run them from `backend/`:
 
 ## `test_live_card_debt_goal_first`
 
-**What it does:** Seeds `goals-card-24` and runs the graph with the real model. The first goal must be `debt_payoff` with a strategy. The total against the cap is printed, not asserted, since TPC-24 enforces it. It's skipped unless Ollama is running with `OLLAMA_MODEL` pulled.
+**What it does:** Runs the real model when available. Debt payoff is first, all stored monthly amounts fit the cap, and every goal is dated.
 
-**Why it's there:** It's the TPC-23 done-when. On 2026-11-02 with `qwen2.5:14b`, `debt_payoff` came first in 30 of 30 runs after the two fixes recorded in architecture section 6a.5.
-
+**Why it's there:** Retains the TPC-23 done-when while checking TPC-24 safety; skipped without the configured Ollama model.
 
 ## Final review
 
