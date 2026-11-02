@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -42,6 +42,12 @@ def category_rules(session: Session, user_id: str) -> dict[str, str]:
 
 
 # the user's spending history as budget_engine Txns
+def history_start(session: Session, user_id: str, end: date) -> Optional[date]:
+    """Read the real history boundary even when the month before the window is quiet."""
+    return session.scalar(select(func.min(Transaction.date)).where(
+        Transaction.user_id == user_id, Transaction.removed.is_(False), Transaction.date <= end))
+
+
 def load_txns(session: Session, user_id: str, start: date, end: date) -> list[Txn]:
     rules = category_rules(session, user_id)
     rows = session.scalars(select(Transaction).where(
@@ -69,8 +75,9 @@ def initialize_budget(session: Session, user_id: str, today: date,
     if existing is not None:
         return existing
     current = month_start(today)
-    txns = load_txns(session, user_id, add_months(current, -HISTORY_MONTHS), current - timedelta(days=1))
-    fit = fit_budget(txns, today, fixed)
+    # a month further back than it fits, so the window's edge doesn't look like the start of the history
+    txns = load_txns(session, user_id, add_months(current, -HISTORY_MONTHS - 1), current - timedelta(days=1))
+    fit = fit_budget(txns, today, fixed, history_start=history_start(session, user_id, current - timedelta(days=1)))
     if not fit.lines:
         return None
 

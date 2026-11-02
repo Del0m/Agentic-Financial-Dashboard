@@ -56,9 +56,9 @@ Run them from `backend/`:
 
 ## `test_history_window_follows_history_months`
 
-**What it does:** Sets `fit.HISTORY_MONTHS` to 4, runs the vacation profile on Sep 1, and records the history passed to each scored fit. Every fit's history must start in May, four months back.
+**What it does:** Sets `fit.HISTORY_MONTHS` to 4, runs the vacation profile on Oct 1, and records the history passed to each scored fit. Every fit's history must start in May: the window's four months start in June, and the month before the window is loaded too.
 
-**Why it's there:** The eval loaded history with a hardcoded `-3`, a copy of `initialize_budget`'s window. If `HISTORY_MONTHS` changed, the stored budget and the median/mean fits being scored would use different windows, and the comparison would no longer be like for like. The window now reads `fit.HISTORY_MONTHS` at call time. The review on #11 found it.
+**Why it's there:** The eval loaded history with a hardcoded `-3`, a copy of `initialize_budget`'s window. If `HISTORY_MONTHS` changed, the stored budget and the median/mean fits being scored would use different windows, and the comparison would no longer be like for like. The window now reads `fit.HISTORY_MONTHS` at call time. The review on #11 found it. It moved to Oct 1 when `initialize_budget` began loading the extra month: on Sep 1 the profile's history starts in May either way, so a hardcoded 3 would have passed.
 
 ## `test_profile_without_a_budget_is_reported`
 

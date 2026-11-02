@@ -248,3 +248,12 @@ def test_early_rent_counts_toward_next_month():
     rent = line(fit_budget(txns, TODAY), "RENT_AND_UTILITIES")
     assert rent.monthly_totals == (150000, 150000, 150000)
     assert rent.limit_cents == 150000
+
+
+# the month before the window only says where the history starts. counted in the usual bill, june would pull it
+# down to $1,400, and the $1,600 rents paid early on aug 30 and sep 29 would stay where they are
+def test_usual_bill_ignores_month_before_window():
+    txns = [t(2026, 6, 1, 140000, "RENT_AND_UTILITIES"), t(2026, 7, 1, 140000, "RENT_AND_UTILITIES"),
+            t(2026, 8, 1, 160000, "RENT_AND_UTILITIES"), t(2026, 8, 30, 160000, "RENT_AND_UTILITIES"),
+            t(2026, 9, 29, 160000, "RENT_AND_UTILITIES")]
+    assert line(fit_budget(txns, TODAY), "RENT_AND_UTILITIES").monthly_totals == (140000, 160000, 160000)
