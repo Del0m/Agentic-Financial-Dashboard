@@ -52,8 +52,11 @@ def _inject(session_factory, user_id: str, users, profile, todays: list) -> int:
 def _sim(session_factory, user_id: str) -> dict:
     with session_factory() as s:
         sim = sim_prefs(s, user_id)
-    if not sim:
-        raise NotSimulated(user_id)
+    from app.budget_service.alerts import has_real_plaid_item
+    with session_factory() as s:
+        linked = has_real_plaid_item(s, user_id)
+    if not sim or linked:
+        raise NotSimulated("Only synthetic users without bank links can be advanced.")
     return sim
 
 
@@ -77,7 +80,7 @@ def advance_days(session_factory, user_id: str, days: int, *, model: Optional[Ba
                  on_day: Optional[Callable[[dict], None]] = None) -> dict:
     sim = _sim(session_factory, user_id)
     users = _profiles()
-    profile = next(p for p in users.PROFILES + users.PLANTED if p.id == sim["profile"])
+    profile = next(p for p in users.PROFILES + users.PLANTED + users.GOAL_USERS if p.id == sim["profile"])
     # the whole generated history once, grouped by day, instead of regenerating it for every simulated day
     by_day: dict[date, list] = {}
     for n, row in enumerate(users.transactions(profile)):

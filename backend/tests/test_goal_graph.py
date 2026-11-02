@@ -171,7 +171,8 @@ def test_model_outage_recorded(user, caplog):
     fake = ScriptedChatModel(replies=[ConnectionError("ollama is down")])
     state = run_goals(user, UID, TODAY, model=fake)
     assert (state["status"], state["reason"]) == ("error", "ConnectionError")
-    assert len(fake.seen) == 1 and "ollama is down" in caplog.text
+    assert len(fake.seen) == 1 and "ollama is down" not in caplog.text
+    assert "ConnectionError" in caplog.text
     run = run_row(user, state["run_id"])
     assert run.status == "error" and run.summary_json["reason"] == "ConnectionError"
     assert stored(user) == []

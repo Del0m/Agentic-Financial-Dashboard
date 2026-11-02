@@ -535,7 +535,7 @@ def test_goals_scrubs_debts_and_note(db, tmp_path):
     seed_debts(db)
     prompt, d, _ = goals_context(db, tmp_path, goal_facts())
     assert "Jane" not in prompt and "4421" not in prompt
-    assert d["note"] == "[person]'s card first"
+    assert d["note"] == "Prioritize debt payoff."
     assert d["protected_categories"] == ["PERSONAL_CARE"]
 
 
@@ -576,7 +576,7 @@ def test_goals_audited_once(db, tmp_path):
 
 
 # final review: the account-name scrub turned "it's my priority" into "[person]'s my priority", losing the preference
-def test_goals_note_keeps_contractions(db, tmp_path):
+def test_goals_note_extracts_priority_without_forwarding_text(db, tmp_path):
     seed_debts(db)
     _, d, _ = goals_context(db, tmp_path, goal_facts(note="emergency fund first, it's my priority"))
-    assert d["note"] == "emergency fund first, it's my priority"
+    assert d["note"] == "Prioritize the emergency fund."

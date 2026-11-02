@@ -1,6 +1,6 @@
 from datetime import date as Date, datetime, timezone
 from typing import Literal, Optional
-from sqlalchemy import JSON, Double, Enum, Float, ForeignKey, UniqueConstraint
+from sqlalchemy import DateTime, JSON, Double, Enum, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
@@ -226,3 +226,11 @@ class AgentRun(Base):
     finished_at: Mapped[Optional[datetime]]
     status: Mapped[str]
     summary_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class UserRunClaim(Base):
+    __tablename__ = "user_run_claims"
+
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    owner: Mapped[str]
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from fractions import Fraction
 from typing import Iterable, Literal, Optional
 
-from app.budget_engine.txns import add_months, round_cents
+from app.budget_engine.txns import add_months
 from app.finance import avalanche_key
 
 # paying off every debt month by month (architecture 6a.3, tpc-32). pure: the caller loads the debts and picks the
@@ -73,6 +74,7 @@ def simulate(debts: Iterable[Debt], extra_monthly_cents: int, strategy: Strategy
         else:
             included.append(d)
 
+    rates = {d.key: Fraction(Decimal(str(d.apr))) / 1200 for d in included}
     balance = {d.key: d.balance_cents for d in included}
     interest = {d.key: 0 for d in included}
     budget = extra_monthly_cents + sum(d.min_payment_cents for d in included)
@@ -82,7 +84,9 @@ def simulate(debts: Iterable[Debt], extra_monthly_cents: int, strategy: Strategy
         month += 1
         open_debts = [d for d in included if balance[d.key] > 0]
         for d in open_debts:
-            charged = round_cents(Decimal(balance[d.key]) * Decimal(str(d.apr)) / 1200)
+            rate = rates[d.key]
+            numerator = balance[d.key] * rate.numerator
+            charged = (2 * numerator + rate.denominator) // (2 * rate.denominator)
             balance[d.key] += charged
             interest[d.key] += charged
         cleared = []
