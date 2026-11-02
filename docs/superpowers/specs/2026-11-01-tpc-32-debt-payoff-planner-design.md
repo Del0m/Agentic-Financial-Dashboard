@@ -87,7 +87,7 @@ class Plan:
     extra_monthly_cents: int
     months: Optional[int]          # None when never
     debt_free: Optional[date]
-    total_interest_cents: int      # up to the stop (600 months) when never
+    total_interest_cents: int      # up to the stop (600 months) when never; the API and the gateway send none then
     order: tuple[Payoff, ...]      # in payoff order
     never: tuple[int, ...]         # keys whose minimum doesn't cover their interest and nothing reaches them
     excluded: tuple[tuple[int, str], ...]   # (key, "no_apr" | "no_minimum" | "mortgage")
@@ -127,7 +127,7 @@ POST /debt-plan  { extra_monthly_cents: int (0 ≤ x ≤ 100_000_000), include_m
 -> { avalanche: PlanOut, snowball: PlanOut, baseline: { avalanche: PlanOut, snowball: PlanOut },
      excluded: [{ account_id, name, reason }], start: "YYYY-MM-DD" }
 PlanOut = { strategy, extra_monthly_cents, months, debt_free, total_interest_cents,
-            order: [{ account_id, name, month, date, interest_cents }], never: [account_id] }
+            order: [{ account_id, name, month, date, interest_cents }], never: [{ account_id, name }] }   # total_interest_cents is null when a debt is never paid off
 ```
 
 - The dev user (as every other route), `422` outside the bounds.
@@ -146,8 +146,9 @@ PlanOut = { strategy, extra_monthly_cents, months, debt_free, total_interest_cen
   "plans": [{"strategy": "avalanche", "months": 38, "debt_free": "2030-01", "total_interest": 4211.07,
              "order": [{"name": "Platinum Card", "paid_off": "2028-03", "interest": 1302.55}, ...],
              "without_extra": {"months": 52, "total_interest": 6140.12},
-             "difference": {"months_sooner": 14, "interest_saved": 1929.05}}],
-  "never": [], "excluded": [{"name": "...", "reason": "no APR on file"}],
+             "difference": {"months_sooner": 14, "interest_saved": 1929.05},
+             "never": []}],
+  "excluded": [{"name": "...", "reason": "no APR on file"}],
   "assumptions": "Interest is charged monthly at APR/12; minimum payments are held at today's amounts; not financial advice."
 }}
 ```
@@ -173,7 +174,7 @@ def plan_debt_payoff(extra_monthly: float = 0, strategy: Optional[str] = None) -
 - An "Extra per month" dollar input (default $0, whole dollars, ≥ 0). Changes are debounced by 300 ms; each calls `debtPlan(extraCents)`. A stale response (an older input) is ignored.
 - Two columns, avalanche and snowball: debt-free month and months, total interest, then the payoff order with each debt's month. The lower-interest strategy gets a "saves the most interest" tag (ties: none).
 - Each column ends with its difference against $0 extra, e.g. "+$200/mo: 14 months sooner, $1,929.05 less interest" (hidden at $0 extra).
-- Excluded debts listed with their reason; a `never` plan reads "<name>'s minimum payment doesn't cover its interest."
+- Excluded debts listed with their reason; a `never` plan reads "<name> isn't paid off within 50 years at this pace."
 - Footnote: the two simplifications and "Not financial advice."
 - Errors use `errorMessage()` like the other cards.
 
