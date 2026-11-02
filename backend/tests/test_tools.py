@@ -11,7 +11,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from app import config
 from app.agents.chat_graph import build_chat_graph
 from app.agents.tools import PFC_CATEGORIES, make_tools
-from app.db.models import Account, Transaction
+from app.db.models import Account, Transaction, User
 from app.privacy import gateway as gw
 from app.privacy.gateway import PrivacyGateway
 from tests.factories import add_account, add_txn, add_user
@@ -135,6 +135,16 @@ def test_category_list_is_plaids(tools):
 def test_future_start_alone_rejected(tools):
     with pytest.raises(ToolException, match="before"):
         tools["get_spending"].invoke({"start_date": "2026-11-01"})
+
+
+# "future" means after the simulated date for a simulated user, or get_spending would disagree with the prompt
+def test_future_start_is_measured_from_the_simulated_date(seeded, tmp_path, kb):
+    with seeded() as s:
+        s.get(User, "u-1").prefs_json = {"sim": {"profile": "p", "date": "2026-03-10"}}
+        s.commit()
+        made = {t.name: t for t in make_tools(PrivacyGateway(s, "u-1", audit_path=tmp_path / "a.jsonl"), kb)}
+        with pytest.raises(ToolException, match="before"):
+            made["get_spending"].invoke({"start_date": "2026-04-01"})
 
 
 # small models send "" for optional arguments they mean to leave out

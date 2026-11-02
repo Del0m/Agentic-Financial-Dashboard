@@ -60,10 +60,23 @@ On **Chat**:
 
 | Ask | Expected |
 |---|---|
-| What did I spend on personal care in October 2026? | $130: $40 at Barber, $90 at FitClub Gym |
+| What did I spend on personal care last month? | $130: $40 at Barber, $90 at FitClub Gym. The tool chip shows `2026-10-01` to `2026-10-31` |
+| What did I spend on rent last month? | $1,500 |
+| What did I spend on personal care in October 2026? | $130 |
+| How much have I spent so far this month? | $0, searching only November 1, because the planted data ends on October 31 |
 | What is a Roth IRA? | A sound answer, citing IRS sources |
 | What is the 50/30/20 budgeting rule? | A sound answer, citing the Budgeting basics page |
 | What is my net worth? | $100, no debts |
+
+To see the date fix on another day, restart the demo (see Undo), advance 7 days and ask again. On October 8:
+
+| Ask | Expected |
+|---|---|
+| How much did I spend on rent last month? | $1,500, searching `2026-09-01` to `2026-09-30` |
+| How much have I spent on personal care this month? | $90, searching `2026-10-01` to `2026-10-08` |
+| How much have I spent so far this month? | $1,590: $1,500 rent and $90 personal care |
+
+The model chooses the dates, so check them when an answer looks wrong. These were each run once.
 
 ### 5. A restart keeps progress
 
@@ -107,7 +120,7 @@ docker compose exec backend python -m pytest -q -k "not live and not sandbox"
 docker compose exec frontend npm test
 ```
 
-Expected: `694 passed, 15 deselected`, and `73 passed`. `npm run lint` is clean. The frontend's `npm run build` wasn't run.
+Expected: `701 passed, 15 deselected`, and `73 passed`. `npm run lint` is clean. The frontend's `npm run build` wasn't run.
 
 ## Failure paths to try
 
@@ -128,9 +141,10 @@ Expected: `694 passed, 15 deselected`, and `73 passed`. `npm run lint` is clean.
 ## Known limits that can look like bugs
 
 - **Ollama going down mid-advance writes an extra alert per day.** The agent falls back to a plain `Personal care is over its $42.00 limit` alert and doesn't deduplicate it. This happened in testing, with 4 extra alerts. It's existing behavior: an overspend is never hidden. Restart the demo if you see it.
-- **Chat doesn't know the date.** "How much did I spend on rent last month?" searched February 2023 and answered $0. This predates TPC-42. The README tells people to name the month and year.
-- **Chat can map a merchant to the wrong category.** "How much did I spend at the gym?" searched entertainment and answered $0. The README says to ask about personal care.
-- **The simulated date stops at chat's edge.** Chat's default date range uses the real date, not the simulated one.
+- **Chat can map a merchant to the wrong category.** "How much did I spend at the gym?" searched general services and answered $0. This predates TPC-42. The README says to ask about personal care.
+- **The debt planner stays on the real date.** Chat's date follows the simulation, but `plan_debt_payoff` starts next real month, to match the dashboard's payoff card. The demo user has no debts, so this doesn't show in the demo.
+- **The eval scenario `mixed-card-vs-emergency` fails on facts.** It scored 33% over 3 runs with the date line and 0% without it, and it was 0-50% on October 27. This isn't from TPC-42. A full eval with the date line, 1 run each, got 100% on the other 5 scenarios. Earlier eval results were made without the date line, and only this scenario was compared directly.
+- **The planted data ends on October 31.** November has a budget but no transactions.
 - **Your own Docker stack now opens as the demo user.** Set `DEV_USER_EMAIL=dev@localhost` in your `.env` to see your linked accounts. Compose also turns on `ENABLE_ADMIN` by default.
 - **The goal agent isn't in this branch.** TPC-42 branches from before TPC-23, so check the demo again after merging.
 

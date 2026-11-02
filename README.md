@@ -27,12 +27,13 @@ The demo user has a new $90 gym membership that its $42 personal care budget doe
 2. Click **Accept** on the alert.
 3. Click **To month end**, then **Advance 1 day**. Advancing takes about 2 minutes. On November 1 the month closes, and the dashboard's Budget card shows personal care at $135.
 4. Open **Chat** and try these:
-   - "What did I spend on personal care in October 2026?" ($130: $40 at Barber and $90 at FitClub Gym)
+   - "What did I spend on personal care last month?" ($130: $40 at Barber and $90 at FitClub Gym)
+   - "What did I spend on rent last month?" ($1,500)
    - "What is a Roth IRA?"
    - "What is the 50/30/20 budgeting rule?"
    - "What is my net worth?" ($100)
 
-Chat has limits: the model isn't told today's date, so name the month and year instead of saying "last month". It can also pick the wrong category for a merchant, so ask about "personal care" rather than "the gym".
+Chat follows the simulated date, so "last month" means October once the demo reaches November. The planted data ends on October 31, so November has no transactions. The model can also pick the wrong category for a merchant, so ask about "personal care" rather than "the gym".
 
 To restart the demo:
 

@@ -1,9 +1,11 @@
+from datetime import date, timedelta
 from typing import Annotated, Callable, Optional
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, MessagesState, StateGraph
+from ..budget_engine.txns import add_months, month_start
 from .llm import _run_tool, get_chat_model
 
 # the m2 chat agent (architecture section 4): retrieve, then a hand-built react loop, agent <-> tools.
@@ -40,6 +42,18 @@ CITATION_KEYS = ("title", "section", "source_url")
 INTERRUPTED = "error: the previous turn ended before this tool returned"
 
 
+# without it a model guesses the year from its training data, so "last month" searches the wrong dates.
+# the month boundaries are spelled out because a small model reads "last month" as the last 30 days
+def _date_line(today: Optional[Callable[[], date]]) -> str:
+    if today is None:
+        return ""
+    day = today()
+    this_month = month_start(day)
+    last_month = add_months(this_month, -1)
+    return (f"\n\nToday's date is {day.isoformat()}. This month means {this_month.isoformat()} to {day.isoformat()}. "
+            f"Last month means {last_month.isoformat()} to {(this_month - timedelta(days=1)).isoformat()}.")
+
+
 def _guidance(sources: list[dict]) -> str:
     if not sources:
         return ""
@@ -60,7 +74,8 @@ def _answered(messages: list) -> list:
 
 
 def build_chat_graph(tools: list[BaseTool], *, retrieve: Optional[Callable[[str], list[dict]]] = None,
-                     model: Optional[BaseChatModel] = None, checkpointer: Optional[BaseCheckpointSaver] = None):
+                     model: Optional[BaseChatModel] = None, checkpointer: Optional[BaseCheckpointSaver] = None,
+                     today: Optional[Callable[[], date]] = None):
     model = model or get_chat_model()
     by_name = {t.name: t for t in tools}
 
@@ -71,10 +86,10 @@ def build_chat_graph(tools: list[BaseTool], *, retrieve: Optional[Callable[[str]
         return {"sources": found, "tool_rounds": 0,
                 "sources_by_turn": {question.id: [{k: s[k] for k in CITATION_KEYS} for s in found]}}
 
-    # the system prompt and guidance are sent every call but never stored, so neither goes stale in old threads
+    # the system prompt, date and guidance are sent every call but never stored, so none go stale in old threads
     def agent(state: ChatState) -> dict:
         llm = model.bind_tools(tools) if state.get("tool_rounds", 0) < MAX_TOOL_ROUNDS else model
-        system = SystemMessage(SYSTEM_PROMPT + _guidance(state.get("sources", [])))
+        system = SystemMessage(SYSTEM_PROMPT + _date_line(today) + _guidance(state.get("sources", [])))
         return {"messages": [llm.invoke([system] + _answered(state["messages"]))]}
 
     def run_tools(state: ChatState) -> dict:

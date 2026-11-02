@@ -927,6 +927,7 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-02 | The chat system prompt states today and the calendar bounds of this month and last month, from the gateway's `today()` | Without a date the model searched 2023 for "last month"; with only the date it read "last month" as the last 30 days. A simulated user's chat follows the simulation, like its dashboard; the debt planner stays on the real date, like the dashboard's payoff card |
 | 2026-11-02 | The Docker demo runs on a simulated date, set up by one-off `init` and `models` services | Planted data is dated and pace depends on the day of the month, so a demo tied to today would look different every day; the 9 GB model download mustn't block startup |
 | 2026-10-04 | Python/FastAPI backend, Next.js frontend, SQLite→Postgres | One language for agents + API; React Plaid Link support |
 | 2026-10-04 | Budget math is deterministic code; LLM only diagnoses and decides | Testable, benchmarkable, no arithmetic hallucinations |
