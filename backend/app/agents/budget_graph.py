@@ -24,6 +24,7 @@ from app import config
 from app.agents.llm import get_chat_model
 from app.budget_engine.diagnose import overspend_facts, proposed_limit_cents
 from app.budget_engine.fit import HISTORY_MONTHS
+from app.kg import project
 from app.budget_engine.pace import BudgetLine as EngineLine, PaceResult, evaluate, history_start
 from app.budget_engine.recurring import monthly_cents
 from app.budget_engine.signals import (SIGNAL_CAP, PreviousDip, Signal, cancel_limit, choose, fallback_message,
@@ -70,6 +71,7 @@ class BudgetState(TypedDict, total=False):
     llm_failures: int
     llm_calls: int
     llm_retries: int
+    graph_error: bool
     signals: list[dict]
     signal_actions: dict[str, dict]
     signals_error: Optional[str]
@@ -180,6 +182,13 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
                 ln.spent_cents, ln.last_pace = by_cat[ln.category].spent_cents, by_cat[ln.category].pace
             s.commit()
         return {"results": [asdict(r) for r in results]}
+
+    # deterministic, and it never stops the run: the next run heals a failed projection (tpc-36)
+    def update_graph(state: BudgetState) -> dict:
+        with session_factory() as s:
+            ok = project.safely(s, "update_graph", lambda: project.project_run(s, state["user_id"], today_of(state)))
+            s.commit()
+        return {} if ok else {"graph_error": True}
 
     def detect_overspend(state: BudgetState) -> dict:
         return {"flags": [r for r in state["results"] if r["flagged"]]}
@@ -403,6 +412,9 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
                 ids.append(alert.id)
             # save the summary before forgetting prompt facts; resume needs only ids and decisions
             s.get(AgentRun, state["run_id"]).summary_json = summarize({**state, "alert_ids": ids})
+            # now, not on the next run: a decision has to find the pending belief already there
+            project.safely(s, "log_advice", lambda: project.project_advice(
+                s, state["user_id"], {state["run_id"]: today_of(state)}))
             s.commit()
         cleared = {"signals": [], "signal_actions": {}}
         if checkpointer is not None:
@@ -444,6 +456,7 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             "llm_failures": state.get("llm_failures", 0),
             "llm_calls": state.get("llm_calls", 0),
             "llm_retries": state.get("llm_retries", 0),
+            **({"graph_error": True} if state.get("graph_error") else {}),
             "decisions": {str(k): v for k, v in (state.get("decisions") or {}).items()},
             "as_of": state["today"],
             "streams": state.get("streams", {"count": 0, "new": [], "price_up": [], "income_change": []}),
@@ -477,7 +490,7 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
     graph = StateGraph(BudgetState)
     for name, fn in (("load_state", load_state), ("sync", sync), ("categorize", categorize),
                      ("update_totals", update_totals), ("detect_overspend", detect_overspend),
-                     ("detect_recurring", detect_recurring), ("decide_signals", decide_signals),
+                     ("detect_recurring", detect_recurring), ("update_graph", update_graph), ("decide_signals", decide_signals),
                      ("forecast_cash", forecast_cash),
                      ("diagnose", diagnose), ("decide_action", decide_action), ("log_advice", log_advice),
                      ("await_approval", await_approval), ("persist_state", persist_state)):
@@ -488,7 +501,8 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
     graph.add_conditional_edges("load_state", after_load, ["categorize", "detect_recurring"])
     graph.add_edge("categorize", "update_totals")
     graph.add_edge("update_totals", "detect_recurring")
-    graph.add_edge("detect_recurring", "forecast_cash")
+    graph.add_edge("detect_recurring", "update_graph")
+    graph.add_edge("update_graph", "forecast_cash")
     graph.add_conditional_edges("forecast_cash", after_recurring, ["detect_overspend", "decide_signals"])
     graph.add_conditional_edges("detect_overspend", after_detect, ["diagnose", "decide_signals"])
     graph.add_edge("diagnose", "decide_action")

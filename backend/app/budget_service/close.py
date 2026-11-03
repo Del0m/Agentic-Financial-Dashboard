@@ -20,6 +20,7 @@ from app.budget_service.goal_lines import committed_goals, expire_goal_proposals
 from app.budget_service.initialize import history_start, load_txns
 from app.budget_service.settings import user_style
 from app.db.models import AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, Goal, RecurringStream, utcnow
+from app.kg import project
 
 # period close (tpc-22, architecture 6.5): the db side of the close graph. gather reads the closed month,
 # adapt is pure (close_period for each line, then the user's style), and persist writes the whole month in
@@ -254,6 +255,12 @@ def persist_month(session_factory, period_id: int, gathered: dict, adapted: dict
             summary["style_fallback"] = adapted["style_fallback"]
         run = AgentRun(user_id=old.user_id, graph="close", status="ok", finished_at=utcnow(), summary_json=summary)
         s.add(run)
+        # the closed month's final actuals and the new period's limits (tpc-36)
+        def project_close() -> None:
+            project.project_month(s, old.user_id, gathered["month"])
+            project.project_period(s, old.user_id, period)
+            project.project_advice(s, old.user_id)
+        project.safely(s, "close", project_close)
         s.commit()
         return {**summary, "run_id": run.id}
 

@@ -569,6 +569,12 @@ Node kinds: `user`, `institution`, `account`, `merchant`, `category`, `stream`, 
 
 The store/query foundation is independent of agent prompts. The projection, agent integration, and extraction steps below are subsequent tickets; an empty migrated graph is valid until those producers populate it.
 
+- **As built (TPC-36), `app/kg/project.py`:**
+  - The daily run's first pass for a user builds their whole history, oldest first, so seeded and simulated users need no extra step. `scripts/build_kg.py` does the same on demand.
+  - `update_graph` sits after `detect_recurring`, so a new stream is projected on the run that found it. It's still between `update_totals` and `detect_overspend`.
+  - Advice is projected in `log_advice`, not on the next run, so a decision can correct a pending belief that's already there. A decision projects in the same transaction as the alert's new status.
+  - A projection that fails rolls back only itself, and never stops the run, a close or a user's decision. The next run heals it, and the run's summary records `graph_error`.
+  - **Limits:** a rule edge's date is the rule's date, but the first backfill applies today's rules to older months, because that's what the app's category lookup does. A new fact for a month older than the merchant's latest edge is refused by the store, so it's skipped and reported. `CONNECTED` waits for TPC-41, and the bridge maps use the concept keys TPC-38 must match.
 - **When the user half updates:**
   - A new node, `update_graph`, runs in the budget graph between `update_totals` and `detect_overspend`. It is deterministic and incremental.
   - The close graph's `persist` projects the closed month and the new period's `BUDGETS`.

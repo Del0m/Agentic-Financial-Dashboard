@@ -6,11 +6,12 @@ start
 :Trigger: scheduler, CLI or API;
 :Deterministic input boundary\nsync FIRST, then load_state and measure pace;
 if (No usable budget / period ended?) then (yes)
-  :detect_recurring -> forecast_cash -> decide_signals -> log_advice;
+  :detect_recurring -> update_graph -> forecast_cash -> decide_signals -> log_advice;
   :Output boundary: no_budget / period_ended;
   stop
 endif
 :detect_recurring: refresh and diff streams;
+:update_graph: project this month, rules, streams and advice;
 :forecast_cash: checking range, bill dip and surplus;
 if (Any category flagged?) then (yes)
   :Privacy input boundary\nfacts + current alerts + past advice/outcomes;

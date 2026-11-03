@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ..budget_engine.txns import FREE, SAVINGS, Txn, month_end, month_start, normalize_merchant, spending
 from ..budget_service.daily import sim_today
 from ..budget_service.initialize import category_rules, resolve_category
+from ..kg import project
 from ..db.models import BudgetLine, BudgetPeriod, CategoryRule, Transaction, User
 from . import budget_hooks
 from .deps import get_current_user
@@ -97,5 +98,12 @@ def correct_transaction(txn_id: int, edit: TxnEdit, user: User = Depends(get_cur
                 s.add(CategoryRule(user_id=user.id, merchant_name=key, category=edit.category))
             else:
                 rule.category = edit.category
+        s.flush()
+        # a rule is dated when it's made, and a corrected month replaces what the graph believed about it (tpc-36).
+        # only a month the graph already has: otherwise the first daily run's backfill records it in order
+        if project.has_graph(s, user.id):
+            today = project.current_day(s, user.id)
+            project.safely(s, "correct_transaction", lambda: (project.project_rules(s, user.id, today),
+                                                              project.project_month(s, user.id, row.date, today)))
         s.commit()
         return _out(row, category_rules(s, user.id), _period_lines(s, user.id, row.date))
