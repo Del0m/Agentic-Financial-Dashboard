@@ -210,3 +210,12 @@ def test_new_goal_cannot_spend_accepted_money(user):
     r = run_goals(user, UID, TODAY, model=over)
     assert r["status"] == "error" and any(i["code"] == "over_cap" for i in r["validation_issues"])
     assert stored(user) == []
+
+
+# tpc-27: the retry ablation. a malformed first reply gets no correction with retries off
+def test_retries_off_stops_after_one_goal_call(user, monkeypatch):
+    from app import config
+    monkeypatch.setattr(config, "RETRIES_ENABLED", False)
+    model = ScriptedChatModel(replies=[AIMessage("not json"), AIMessage("never used")])
+    result = run_goals(user, UID, TODAY, model=model)
+    assert result['status'] == 'error' and result['attempts'] == 1 and len(model.seen) == 1

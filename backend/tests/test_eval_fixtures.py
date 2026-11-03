@@ -347,3 +347,10 @@ def test_every_chat_scenario_has_one_group():
     for s in load_scenarios(REPO / "eval" / "scenarios"):
         if s.kind == "chat":
             assert len(groups & set(s.tags)) == 1, s.id
+
+
+def test_tool_args_load_and_bad_ones_are_rejected(tmp_path):
+    good = load_scenario(write(tmp_path, lambda d: d["expect"].update(tool_args={"get_spending": {"category": ["INCOME"]}})))
+    assert good.expect.tool_args == {"get_spending": {"category": ("INCOME",)}}
+    rejected(write(tmp_path, lambda d: d["expect"].update(tool_args={"nope": {"a": ["b"]}})), "tool_args")
+    rejected(write(tmp_path, lambda d: d["expect"].update(tool_args={"get_spending": {"category": []}})), "tool_args")

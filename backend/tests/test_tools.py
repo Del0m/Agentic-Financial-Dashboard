@@ -319,3 +319,18 @@ def test_live_debt_free_with_extra(db, tmp_path):
     matched = [s for s in ("avalanche", "snowball") if expected[s].months in numbers
                and any(abs(n - expected[s].total_interest_cents / 100) <= 1 for n in numbers)]
     assert matched, answer
+
+
+@pytest.mark.parametrize("mode, has_search", [("vector", True), ("hybrid", True), ("none", False), ("graph", False)])
+def test_search_kb_follows_the_retrieval_mode(db, tmp_path, monkeypatch, mode, has_search):
+    from app import config
+    from app.agents.tools import make_tools
+    from app.privacy.gateway import PrivacyGateway
+    from tests.factories import add_user
+    from tests.fakes import FakeKB
+    monkeypatch.setattr(config, "KG_CHAT", mode)
+    with db() as s:
+        add_user(s, "u9", "u9@x")
+        s.commit()
+        names = {t.name for t in make_tools(PrivacyGateway(s, "u9", audit_path=tmp_path / "a.jsonl"), FakeKB())}
+    assert ("search_kb" in names) is has_search

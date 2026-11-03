@@ -232,3 +232,9 @@ The committed count includes cash-before-payday, which checks get_cash_forecast 
 **What it does:** Every chat scenario has exactly one of `temporal`, `graph_suited` and `graph_unsuited` in its tags.
 
 **Why it's there:** The ablation reports by group, and `eval/preregistration.md` fixes the groups before any result exists.
+
+## `test_tool_args_load_and_bad_ones_are_rejected`
+
+**What it does:** `expect.tool_args` loads as accepted values per tool argument. An unknown tool or an empty list fails the load.
+
+**Why it's there:** An empty list could never be met, which would look like the agent choosing badly.

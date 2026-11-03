@@ -5,6 +5,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, MessagesState, StateGraph
+from .. import config
 from ..budget_engine.txns import add_months, month_start
 from .llm import _run_tool, get_chat_model
 
@@ -28,10 +29,29 @@ SYSTEM_PROMPT = (
     'say which year. Keep answers short and concrete. End with one line: "This is general information, '
     'not financial advice."'
 )
+GUIDANCE_SENTENCE = ("For general rules and strategies, use the guidance below and refer to it by its title; never "
+                     "write URLs or name other websites, because the app lists the sources for you. ")
+SEARCH_SENTENCE = "If the guidance doesn't cover the question, call search_kb. "
+LOOKUP_GUIDANCE_CLAUSE = " even when the guidance below covers the topic"
+# which chat retrieval modes use the vector knowledge base (tpc-27)
+VECTOR_MODES = ("vector", "hybrid", "hybrid-shuffled")
+# the graph modes need graph_retrieve (tpc-39); until then the eval refuses them instead of measuring nothing
+GRAPH_MODES = ("graph", "hybrid", "hybrid-shuffled")
+GRAPH_RETRIEVAL_BUILT = False
 DISCLAIMER = "This is general information, not financial advice."
 DISCLAIMER_MARK = "not financial advice"
 # a model that keeps calling tools gets one last call without them, so the user still gets an answer
 MAX_TOOL_ROUNDS = 6
+
+
+# the model must not be told about guidance or a tool the condition took away, or it could still reach for them.
+# so these conditions change the prompt too, and the paper says so
+def system_prompt() -> str:
+    if config.KG_CHAT == "none":
+        return SYSTEM_PROMPT.replace(GUIDANCE_SENTENCE, "").replace(SEARCH_SENTENCE, "").replace(LOOKUP_GUIDANCE_CLAUSE, "")
+    if config.KG_CHAT == "graph":
+        return SYSTEM_PROMPT.replace(SEARCH_SENTENCE, "")
+    return SYSTEM_PROMPT
 
 
 def _merge(old: Optional[dict], new: Optional[dict]) -> dict:
@@ -89,7 +109,7 @@ def build_chat_graph(tools: list[BaseTool], *, retrieve: Optional[Callable[[str]
 
     def retrieve_guidance(state: ChatState) -> dict:
         question = next(m for m in reversed(state["messages"]) if isinstance(m, HumanMessage))
-        found = retrieve(question.content) if retrieve else []
+        found = retrieve(question.content) if retrieve and config.KG_CHAT in VECTOR_MODES else []
         # the round count is per question: resetting it here means no caller can forget to
         return {"sources": found, "tool_rounds": 0,
                 "sources_by_turn": {question.id: [{k: s[k] for k in CITATION_KEYS} for s in found]}}
@@ -97,7 +117,7 @@ def build_chat_graph(tools: list[BaseTool], *, retrieve: Optional[Callable[[str]
     # the system prompt, date and guidance are sent every call but never stored, so none go stale in old threads
     def agent(state: ChatState) -> dict:
         llm = model.bind_tools(tools) if state.get("tool_rounds", 0) < MAX_TOOL_ROUNDS else model
-        system = SystemMessage(SYSTEM_PROMPT + _date_line(today) + _guidance(state.get("sources", [])))
+        system = SystemMessage(system_prompt() + _date_line(today) + _guidance(state.get("sources", [])))
         return {"messages": [llm.invoke([system] + _answered(state["messages"]))]}
 
     def run_tools(state: ChatState) -> dict:

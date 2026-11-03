@@ -9,12 +9,15 @@ Run from the repo root:
     venv/bin/python eval/run_eval.py [--model qwen2.5:14b] [--runs 3] [--only <id>] [--kind budget] [--judge gemma3:12b]
 """
 import argparse
+import hashlib
 import json
 import os
 import subprocess
 import sys
+from dataclasses import replace
 from datetime import date, datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 REPO = Path(__file__).resolve().parent.parent
 # make `eval` and `app` importable however the script is launched (same trick as backend/scripts/)
@@ -29,6 +32,7 @@ os.environ.setdefault("FERNET_KEY", Fernet.generate_key().decode())
 import httpx
 
 from app import config
+from app.agents.chat_graph import GRAPH_MODES, GRAPH_RETRIEVAL_BUILT
 from app.agents.llm import get_chat_model, get_embeddings
 from app.rag.store import KnowledgeBase
 from eval.agent_runner import run_budget_once, run_goal_once
@@ -36,6 +40,7 @@ from eval.fixtures import KINDS, ScenarioError, load_scenarios
 from eval.metrics import score_budget, score_goal, score_run, summarize, summarize_budget, summarize_goal
 from eval.runner import run_once
 
+RETRIEVAL_MODES = ("none", "vector", "graph", "hybrid", "hybrid-shuffled")
 JUDGE_MODEL = "gemma3:12b"
 SCENARIOS_DIR = REPO / "eval" / "scenarios"
 RESULTS_DIR = REPO / "eval" / "results"
@@ -50,6 +55,14 @@ def parse_args(argv):
     p.add_argument("--kind", choices=KINDS, help="run just this kind of scenario (default: all)")
     p.add_argument("--skip-tag", action="append", default=[], metavar="TAG",
                    help="leave out scenarios with this tag; can be repeated")
+    p.add_argument("--limit", type=int, help="the first N scenarios of each kind, for a pilot")
+    p.add_argument("--retrieval", choices=RETRIEVAL_MODES, help="chat retrieval (default: KG_CHAT)")
+    p.add_argument("--kg", choices=("off", "on"), help="graph facts in the budget agent (default: KG_MODE)")
+    p.add_argument("--retries", choices=("on", "off"), help="structured-output resend and goal correction (default: on)")
+    p.add_argument("--temperature", type=float, default=0.0, help="agent temperature (default: 0)")
+    p.add_argument("--seed", type=int, help="agent seed (default: none)")
+    p.add_argument("--today", type=date.fromisoformat, help="pin chat scenarios to this date (YYYY-MM-DD)")
+    p.add_argument("--label", help="add this condition to the results folder's name")
     args = p.parse_args(argv)
     if args.runs < 1:
         p.error("--runs must be at least 1")
@@ -79,8 +92,9 @@ def preflight(agent: str, judge: str, kb) -> list[str]:
 
 
 # a second run on the same day gets -2, -3... so earlier results are never overwritten
-def results_dir(root: Path, day: date, model: str) -> Path:
-    base = root / day.isoformat() / model.replace(":", "_").replace("/", "_")
+def results_dir(root: Path, day: date, model: str, label: Optional[str] = None) -> Path:
+    name = model.replace(":", "_").replace("/", "_") + (f"-{label}" if label else "")
+    base = root / day.isoformat() / name
     path, n = base, 1
     while path.exists():
         n += 1
@@ -95,6 +109,21 @@ def _git_commit() -> str:
                               text=True, check=True).stdout.strip()
     except Exception:
         return "unknown"
+
+
+def _ollama_version() -> str:
+    try:
+        return httpx.get(f"{config.OLLAMA_BASE_URL}/api/version", timeout=5).json()["version"]
+    except Exception:
+        return "unknown"
+
+
+# so two results folders can be refused as not comparable if their scenarios differ
+def _scenario_hash(scenarios) -> str:
+    digest = hashlib.sha256()
+    for s in sorted(scenarios, key=lambda s: s.id):
+        digest.update(s.path.read_bytes())
+    return digest.hexdigest()
 
 
 def _now() -> str:
@@ -135,6 +164,15 @@ def _print_table(summary: dict) -> None:
 
 def main(argv=None) -> int:
     args = parse_args(argv)
+    if args.retrieval in GRAPH_MODES and not GRAPH_RETRIEVAL_BUILT:
+        print(f"Can't run --retrieval {args.retrieval} yet: graph retrieval arrives with TPC-39")
+        return 2
+    if args.retrieval:
+        config.KG_CHAT = args.retrieval
+    if args.kg:
+        config.KG_MODE = args.kg
+    if args.retries:
+        config.RETRIES_ENABLED = args.retries == "on"
     try:
         scenarios = load_scenarios(SCENARIOS_DIR, only=args.only)
     except ScenarioError as exc:
@@ -143,6 +181,8 @@ def main(argv=None) -> int:
     if args.kind:
         scenarios = [s for s in scenarios if s.kind == args.kind]
     scenarios = [s for s in scenarios if not set(args.skip_tag) & set(s.tags)]
+    if args.limit:
+        scenarios = [s for kind in KINDS for s in [x for x in scenarios if x.kind == kind][:args.limit]]
     if not scenarios:
         print(f"Bad scenario: nothing to run for --kind {args.kind} --skip-tag {args.skip_tag}")
         return 2
@@ -153,13 +193,19 @@ def main(argv=None) -> int:
         print("Can't run the eval yet:\n" + "\n".join(f"- {p}" for p in problems))
         return 2
 
-    out = results_dir(RESULTS_DIR, date.today(), args.model)
+    if args.today:
+        # a scenario that pins its own date keeps it
+        scenarios = [replace(s, today=s.today or args.today) if s.kind == "chat" else s for s in scenarios]
+    out = results_dir(RESULTS_DIR, date.today(), args.model, args.label)
     cfg = {"model": args.model, "judge": args.judge, "embeddings": config.OLLAMA_EMBED_MODEL,
            "runs": args.runs, "commit": _git_commit(), "scenarios": [s.id for s in scenarios],
+           "scenario_hash": _scenario_hash(scenarios), "ollama_version": _ollama_version(), "label": args.label,
+           "retrieval": config.KG_CHAT, "kg_mode": config.KG_MODE, "retries": config.RETRIES_ENABLED,
+           "temperature": args.temperature, "seed": args.seed, "today": args.today and args.today.isoformat(),
            "started_at": _now()}
     _write(out / "config.json", cfg)
 
-    model = get_chat_model(temperature=0, model=args.model)
+    model = get_chat_model(temperature=args.temperature, model=args.model, seed=args.seed)
     judge_model = get_chat_model(temperature=0, model=args.judge) if has_chat else None
     embeddings = get_embeddings() if has_chat else None
     audit = out / "audit.jsonl"

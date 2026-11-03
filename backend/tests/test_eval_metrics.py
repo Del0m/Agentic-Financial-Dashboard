@@ -491,3 +491,43 @@ def test_abstain_accepts_saying_there_was_no_spending():
 def test_budget_lead_time_ignores_warnings_where_no_dip_was_planted():
     out = score_budget(budget_record(alerts=[alert(kind="low_balance", signal_days=1)]), budget_scenario())
     assert out["low_balance_days_ahead"] is None
+
+
+# tpc-27: tool choice and temporal correctness
+def _expect(**kw):
+    return Expect(facts=[], forbid=[], tools=kw.pop("tools", []), sources=[], **kw)
+
+
+def test_tool_choice_counts_missing_and_unlisted_tools():
+    from eval.metrics import tool_choice
+    e = _expect(tools=["get_debts"], allowed_tools=("get_debts", "search_kb"))
+    assert tool_choice(e, [{"name": "get_debts", "args": {}}])["names"] is True
+    assert tool_choice(e, [{"name": "get_debts", "args": {}}, {"name": "search_kb", "args": {}}])["names"] is True
+    assert tool_choice(e, [{"name": "search_kb", "args": {}}])["names"] is False
+    assert tool_choice(e, [{"name": "get_debts", "args": {}}, {"name": "get_accounts", "args": {}}])["names"] is False
+
+
+def test_tool_choice_irrelevance_and_unset_counts():
+    from eval.metrics import tool_choice
+    assert tool_choice(_expect(tools_none=True), [])["irrelevance"] is True
+    assert tool_choice(_expect(tools_none=True), [{"name": "x", "args": {}}])["irrelevance"] is False
+    assert tool_choice(_expect(), []) == {"names": None, "arguments": None, "irrelevance": None}
+
+
+def test_tool_choice_arguments():
+    from eval.metrics import tool_choice
+    e = _expect(tool_args={"get_spending": {"category": ("INCOME",)}})
+    assert tool_choice(e, [{"name": "get_spending", "args": {"category": "INCOME"}}])["arguments"] is True
+    assert tool_choice(e, [{"name": "get_spending", "args": {"category": "TRAVEL"}}])["arguments"] is False
+    assert tool_choice(e, [{"name": "get_debts", "args": {}}])["arguments"] is False
+
+
+def test_temporal_check_uses_whole_words():
+    from eval.fixtures import TemporalCheck
+    from eval.metrics import temporal_ok
+    e = _expect(temporal=TemporalCheck(("2024",), ("24,500", "May")))
+    assert temporal_ok("It was $23,000 in 2024.", e) is True
+    assert temporal_ok("It's $24,500 in 2024.", e) is False
+    assert temporal_ok("Maybe 2024.", e) is True
+    assert temporal_ok("It was $23,000.", e) is False
+    assert temporal_ok("anything", _expect()) is None

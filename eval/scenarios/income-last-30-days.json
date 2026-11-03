@@ -62,6 +62,13 @@
     "allowed_tools": [
       "get_spending",
       "get_accounts"
-    ]
+    ],
+    "tool_args": {
+      "get_spending": {
+        "category": [
+          "INCOME"
+        ]
+      }
+    }
   }
 }

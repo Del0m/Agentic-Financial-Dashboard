@@ -72,3 +72,9 @@ def test_blank_numeric_env_vars_use_defaults(monkeypatch):
     finally:
         monkeypatch.undo()
         importlib.reload(config)
+
+
+def test_seed_reaches_the_model_and_defaults_to_none():
+    from app.agents.llm import get_chat_model
+    assert get_chat_model(seed=7).seed == 7
+    assert get_chat_model().seed is None

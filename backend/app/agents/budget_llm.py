@@ -1,8 +1,10 @@
 import logging
 import re
+from collections import Counter
 from typing import Annotated, Literal, Optional, Sequence
 
 import httpx
+from app import config
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from ollama import ResponseError
@@ -93,9 +95,13 @@ def decide_signal(model: BaseChatModel, context: str) -> Optional[SignalAction]:
 # graph still writes its plain fallback alert: an outage must not hide an overspend. a caller with no fallback
 # passes raise_unreachable
 def invoke_structured(model: BaseChatModel, schema: type[BaseModel], messages: list,
-                      retries: int = 1, raise_unreachable: bool = False) -> Optional[BaseModel]:
+                      retries: int = 1, raise_unreachable: bool = False,
+                      stats: Optional[Counter] = None) -> Optional[BaseModel]:
     bound = model.bind(format=schema.model_json_schema())
-    for _ in range(retries + 1):
+    for attempt in range((retries if config.RETRIES_ENABLED else 0) + 1):
+        if stats is not None:
+            # how often a resend fired, so an ablation of a mechanism that never ran isn't read as "no benefit"
+            stats["retries" if attempt else "calls"] += 1
         try:
             text = str(bound.invoke(messages).content)
         except UNREACHABLE as exc:

@@ -353,3 +353,31 @@ def test_final_answer_always_carries_the_disclaimer(reply, expected):
         {"messages": [HumanMessage("hi")], "tool_rounds": 0})
     assert state["messages"][-1].content == expected
     assert len(state["messages"]) == 2      # replaced, not added as a second answer
+
+
+# tpc-27: a condition with no vector guidance can't reach it through a tool or be told it's there
+@pytest.mark.parametrize("mode, guidance, search", [
+    ("vector", True, True), ("hybrid", True, True), ("hybrid-shuffled", True, True),
+    ("graph", True, False), ("none", False, False),
+])
+def test_prompt_follows_the_retrieval_mode(monkeypatch, mode, guidance, search):
+    from app.agents.chat_graph import system_prompt
+    monkeypatch.setattr(config, "KG_CHAT", mode)
+    prompt = system_prompt()
+    assert ("guidance below" in prompt) is guidance
+    assert ("search_kb" in prompt) is search
+
+
+def test_vector_prompt_is_todays_prompt_byte_for_byte(monkeypatch):
+    from app.agents.chat_graph import system_prompt
+    monkeypatch.setattr(config, "KG_CHAT", "vector")
+    assert system_prompt() == SYSTEM_PROMPT
+
+
+@pytest.mark.parametrize("mode, retrieved", [("vector", True), ("hybrid", True), ("none", False), ("graph", False)])
+def test_retrieval_only_runs_in_vector_modes(monkeypatch, mode, retrieved):
+    monkeypatch.setattr(config, "KG_CHAT", mode)
+    calls = []
+    graph = build_chat_graph([], retrieve=lambda q: calls.append(q) or [], model=ScriptedChatModel(replies=[AIMessage("x")]))
+    graph.invoke({"messages": [HumanMessage("hi")], "tool_rounds": 0})
+    assert bool(calls) is retrieved

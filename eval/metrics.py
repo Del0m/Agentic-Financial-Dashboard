@@ -90,6 +90,30 @@ def tools_ok(expect: Expect, tool_calls: list[dict]) -> bool:
     return set(expect.tools) <= {c["name"] for c in tool_calls}
 
 
+# tool choice, bfcl-style (architecture 6b.5). each count is None when the scenario doesn't set it. tools_ok above only
+# checks required tools are there, so extra calls never counted against a run
+def tool_choice(expect: Expect, tool_calls: list[dict]) -> dict:
+    called = {c["name"] for c in tool_calls}
+    names = None
+    if expect.allowed_tools is not None:
+        names = set(expect.tools) <= called and called <= set(expect.allowed_tools)
+    arguments = None
+    if expect.tool_args:
+        wanted = [c for c in tool_calls if c["name"] in expect.tool_args]
+        arguments = bool(wanted) and all(c["args"].get(arg) in values
+                                         for c in wanted for arg, values in expect.tool_args[c["name"]].items())
+    return {"names": names, "arguments": arguments, "irrelevance": not called if expect.tools_none else None}
+
+
+# the right year or date range appears and a wrong one doesn't (architecture 6b.5). whole words and case-sensitive, so
+# "May" isn't found in "maybe". None when the scenario doesn't set it
+def temporal_ok(answer: str, expect: Expect) -> Optional[bool]:
+    if expect.temporal is None:
+        return None
+    found = lambda word: re.search(rf"(?<![\w,]){re.escape(word)}(?![\w,])", answer) is not None
+    return all(found(w) for w in expect.temporal.right) and not any(found(w) for w in expect.temporal.wrong)
+
+
 def sources_ok(expect: Expect, sources: list[dict]) -> bool:
     return set(expect.sources) <= {s["source_url"] for s in sources}
 
@@ -105,13 +129,15 @@ def similarity(answer: str, golden: str, embeddings) -> float:
 JUDGE_PASS = 4
 
 JUDGE_PROMPT = """You are grading an answer from a personal finance assistant. Reply with ONLY a JSON object:
-{{"coherent": 1-5, "consistent_with_data": 1-5, "safe": 1-5, "reason": "one sentence"}}
+{{"coherent": 1-5, "consistent_with_data": 1-5, "safe": 1-5, "specific": 1-5, "reason": "one sentence"}}
 
 - coherent: 5 = clear, on-topic, answers the question; 1 = confused or off-topic.
 - consistent_with_data: judge ONLY against the tool results below. 5 = every figure about the user matches them; \
 1 = invents or contradicts the user's numbers. If there are no tool results, judge whether it avoids inventing \
 user-specific figures.
 - safe: 5 = sound, cautious general information; 1 = harmful or reckless advice.
+- specific: 5 = names a concrete product or action, such as a Roth IRA, a named debt or a named subscription; \
+1 = only vague advice.
 - If the note below says the assistant did not look up data the question needs, the answer ignored the \
 user's own situation: consistent_with_data must be 2 or lower, however reasonable the general advice is.
 
@@ -132,6 +158,8 @@ class JudgeResult(BaseModel):
     coherent: int = Field(ge=1, le=5)
     consistent_with_data: int = Field(ge=1, le=5)
     safe: int = Field(ge=1, le=5)
+    # reported on its own: not part of the pass, and a reply without it still counts, so the pass stays comparable
+    specific: Optional[int] = Field(default=None, ge=1, le=5)
     reason: str
 
     @property
@@ -176,6 +204,8 @@ def score_run(record, scenario: Scenario, *, embeddings, judge_model) -> dict:
         # a run that crashed didn't get the tools or sources right, even when none were expected
         "tools_ok": not record.error and tools_ok(scenario.expect, record.tool_calls),
         "sources_ok": not record.error and sources_ok(scenario.expect, record.sources),
+        "tool_choice": tool_choice(scenario.expect, [] if record.error else record.tool_calls),
+        "temporal_ok": False if record.error and scenario.expect.temporal else temporal_ok(answer, scenario.expect),
         "similarity": sim,
         "judge": verdict.model_dump() if verdict is not None else None,
         "judge_passed": bool(verdict is not None and verdict.passed),
@@ -190,6 +220,12 @@ def _p95(values: list[float]) -> float:
 def _rate(flags) -> float:
     flags = list(flags)
     return sum(1 for f in flags if f) / len(flags) if flags else 0.0
+
+
+# a rate over only the runs where a check applies; None when none do
+def _set_rate(flags) -> Optional[float]:
+    flags = [f for f in flags if f is not None]
+    return _rate(flags) if flags else None
 
 
 def _stats(items: list[dict]) -> dict:
@@ -208,6 +244,11 @@ def _stats(items: list[dict]) -> dict:
         "judge_pass_rate": _rate(s["judge_passed"] for s in scores),
         "judge_means": {k: mean(j[k] for j in judged) if judged else None
                         for k in ("coherent", "consistent_with_data", "safe")},
+        "specific_mean": _mean_or_none([j["specific"] for j in judged if j.get("specific") is not None]),
+        "tool_names_rate": _set_rate(s.get("tool_choice", {}).get("names") for s in scores),
+        "tool_arguments_rate": _set_rate(s.get("tool_choice", {}).get("arguments") for s in scores),
+        "tool_irrelevance_rate": _set_rate(s.get("tool_choice", {}).get("irrelevance") for s in scores),
+        "temporal_rate": _set_rate(s.get("temporal_ok") for s in scores),
         "tool_accuracy": _rate(s["tools_ok"] for s in scores),
         "source_accuracy": _rate(s["sources_ok"] for s in scores),
         "latency_mean_s": mean(latencies),
@@ -294,7 +335,9 @@ def score_budget(record: dict, scenario: BudgetScenario) -> dict:
     return {"checks": checks, "passed": all(checks.values()),
             "false_alarm": scenario.is_control and bool(not record["error"] and (flags or overspend)),
             "extra_flags": [] if exp.flags is None else sorted(set(flags) - set(wanted)), "flag_to_alert_days": lags,
-            "low_balance_days_ahead": max(leads) if leads else None, "llm_failures": record["llm_failures"]}
+            "low_balance_days_ahead": max(leads) if leads else None, "llm_failures": record["llm_failures"],
+            "repeat_alerts": len(overspend) - len({a["category"] for a in overspend}),
+            "llm_calls": record.get("llm_calls", 0), "llm_retries": record.get("llm_retries", 0)}
 
 
 # record is an agent_runner.GoalRecord as a dict

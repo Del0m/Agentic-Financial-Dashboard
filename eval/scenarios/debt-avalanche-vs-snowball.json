@@ -64,6 +64,14 @@
       "plan_debt_payoff",
       "get_accounts",
       "search_kb"
-    ]
+    ],
+    "tool_args": {
+      "plan_debt_payoff": {
+        "extra_monthly": [
+          100,
+          100.0
+        ]
+      }
+    }
   }
 }

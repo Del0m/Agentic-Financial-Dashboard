@@ -242,7 +242,7 @@ class PrivacyGateway:
         if strategy is not None and strategy not in STRATEGIES:
             raise ValueError(f"unknown strategy: {strategy}")
         debts = load_debts(self._session, self._user_id)
-        start = add_months(month_start(_today()), 1)
+        start = add_months(month_start(self.today()), 1)
         plans = compare(debts, extra_monthly_cents, start=start)
         names = {d.key: scrub_account_name(d.name) for d in debts}
         month = lambda d: d.strftime("%Y-%m") if d else None

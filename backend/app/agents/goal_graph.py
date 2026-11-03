@@ -13,6 +13,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 from sqlalchemy import select
 
+from app import config
 from app.agents.budget_graph import _interrupted, _resume_lock
 from app.agents.budget_llm import UNREACHABLE, invoke_structured
 from app.agents.goal_llm import GoalProposal, goal_messages
@@ -199,7 +200,7 @@ def build_goal_graph(session_factory, *, model: Optional[BaseChatModel], gateway
         progress.update(validation_history=history, validation_issues=failures)
         update = {'allocations': allocations, 'plans': [] if issues else plans,
                   'validation_issues': failures, 'validation_history': history}
-        if issues and state['attempts'] >= MAX_GOAL_CALLS:
+        if issues and state['attempts'] >= (MAX_GOAL_CALLS if config.RETRIES_ENABLED else 1):
             update.update(status='error', reason='bad_model_output' if state['proposal'] is None
                           else 'validation_failed')
         return update

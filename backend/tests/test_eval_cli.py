@@ -200,3 +200,27 @@ def test_chat_summary_carries_tags(offline, monkeypatch):
 def test_skip_tag_leaves_out_tagged_scenarios(offline, capsys):
     assert run_eval.parse_args(["--skip-tag", "temporal", "--skip-tag", "x"]).skip_tag == ["temporal", "x"]
     assert run_eval.parse_args([]).skip_tag == []
+
+
+def test_new_flags_parse():
+    args = run_eval.parse_args(["--retrieval", "none", "--kg", "on", "--retries", "off", "--temperature", "0.7",
+                                "--seed", "3", "--today", "2026-11-06", "--label", "chat-none", "--limit", "4"])
+    assert (args.retrieval, args.kg, args.retries, args.temperature, args.seed, args.label, args.limit) == \
+        ("none", "on", "off", 0.7, 3, "chat-none", 4)
+    assert args.today == date(2026, 11, 6)
+
+
+def test_defaults_keep_todays_run():
+    args = run_eval.parse_args([])
+    assert (args.retrieval, args.kg, args.retries, args.temperature, args.seed, args.today, args.label, args.limit) == \
+        (None, None, None, 0.0, None, None, None, None)
+
+
+def test_label_goes_in_the_results_folder(tmp_path):
+    assert run_eval.results_dir(tmp_path, date(2026, 11, 6), "a:b", "chat-none").name == "a_b-chat-none"
+
+
+@pytest.mark.parametrize("mode", ["graph", "hybrid", "hybrid-shuffled"])
+def test_graph_modes_are_refused_until_the_graph_is_built(mode, capsys):
+    assert run_eval.main(["--retrieval", mode]) == 2
+    assert "TPC-39" in capsys.readouterr().out

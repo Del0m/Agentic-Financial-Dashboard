@@ -111,3 +111,28 @@ def test_decide_messages_flag_escalation():
 def test_raise_unreachable():
     with pytest.raises(ConnectionError):
         invoke_structured(model(ConnectionError("down")), Diagnosis, diagnose_messages("{}"), raise_unreachable=True)
+
+
+# tpc-27: the resend can be switched off, and every try is counted
+def _bad_then_good(n_bad=1):
+    from langchain_core.messages import AIMessage as A
+    from tests.fakes import ScriptedChatModel
+    return ScriptedChatModel(replies=[A("not json")] * n_bad + [A('{"action": "alert", "message": "ok"}')])
+
+
+def test_resend_fires_and_is_counted():
+    from collections import Counter
+    from app.agents.budget_llm import Action, invoke_structured
+    stats = Counter()
+    assert invoke_structured(_bad_then_good(), Action, [], stats=stats).action == "alert"
+    assert stats == {"calls": 1, "retries": 1}
+
+
+def test_retries_off_makes_one_call(monkeypatch):
+    from collections import Counter
+    from app import config
+    from app.agents.budget_llm import Action, invoke_structured
+    monkeypatch.setattr(config, "RETRIES_ENABLED", False)
+    stats = Counter()
+    assert invoke_structured(_bad_then_good(), Action, [], stats=stats) is None
+    assert stats == {"calls": 1}

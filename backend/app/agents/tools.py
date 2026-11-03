@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional
 from langchain_core.tools import BaseTool, StructuredTool, ToolException
+from .. import config
 from ..budget_engine.txns import round_cents
 from ..privacy import gateway as gw
 from ..privacy.gateway import PrivacyGateway
@@ -97,7 +98,7 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
         return gateway.build_context("debt_plan", extra_monthly_cents=round_cents(Decimal(str(extra_monthly)) * 100),
                                      strategy=strategy)
 
-    return [
+    tools = [
         StructuredTool.from_function(
             get_accounts, name="get_accounts",
             description="List the user's bank accounts with type and balance in dollars. "
@@ -142,3 +143,7 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
                         "Use for will I run short before payday. Repeat its summary, with every figure and any bill in it.",
         ),
     ]
+    # the retrieval ablation (tpc-27): with no vector guidance, the model mustn't reach it through a tool either
+    if config.KG_CHAT in ("none", "graph"):
+        tools = [t for t in tools if t.name != "search_kb"]
+    return tools

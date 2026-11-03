@@ -183,3 +183,9 @@ Run them from `backend/`:
 **What it does:** An answer without "not financial advice" gets the closing line added once, in the same message. An answer that already has it, in any case, is unchanged, and an empty answer stays empty.
 
 **Why it's there:** The prompt asks for this line, but it was missing from 5 of 22 chat answers in the post-fix baseline. A required line shouldn't depend on the model.
+
+## `test_prompt_follows_the_retrieval_mode`, `test_vector_prompt_is_todays_prompt_byte_for_byte`, `test_retrieval_only_runs_in_vector_modes`
+
+**What they do:** `none` removes the guidance and `search_kb` from the prompt, `graph` removes `search_kb`, and `vector` is unchanged byte for byte. App-side retrieval only runs in the vector modes.
+
+**Why they're there:** Without these, a "no retrieval" condition could still reach retrieval, and the ablation would measure nothing.

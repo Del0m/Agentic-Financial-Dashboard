@@ -336,6 +336,18 @@ SCENARIO_USERS = (
 
 
 # None for an unknown id, so a scenario file naming one fails its load
+# budget improvement over simulated months (tpc-27): history from May, then real runs through Nov 1
+IMPROVE_END = date(2026, 11, 30)
+IMPROVE_USERS = (
+    Profile("improve-steady", "no change in spending", 51, (RENT, GROCER, *BASE), end=IMPROVE_END),
+    Profile("improve-rising", "groceries up 5% a month", 52,
+            (RENT, Weekly("FOOD_AND_DRINK", "Grocer", 11000, growth=0.05), *BASE), end=IMPROVE_END),
+    Profile("improve-new-club", "a $180 monthly club that starts Aug 4 and stays", 53,
+            (RENT, GROCER, *BASE, Monthly("ENTERTAINMENT", "Vine Club", 18000, day=4, first=date(2026, 8, 4))),
+            end=IMPROVE_END),
+)
+
+
 def profile_by_id(pid: str) -> Optional[Profile]:
-    every = (*PROFILES, *PLANTED, *GOAL_USERS, *RECURRING_USERS, *FORECAST_USERS, *SCENARIO_USERS)
+    every = (*PROFILES, *PLANTED, *GOAL_USERS, *RECURRING_USERS, *FORECAST_USERS, *SCENARIO_USERS, *IMPROVE_USERS)
     return next((p for p in every if p.id == pid), None)

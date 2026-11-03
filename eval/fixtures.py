@@ -66,6 +66,7 @@ class Expect:
     allowed_tools: Optional[tuple[str, ...]] = None     # tools beyond these are a tool-choice fail; None = not checked
     tools_none: bool = False    # no tool fits, so any call is a tool-choice fail
     temporal: Optional[TemporalCheck] = None
+    tool_args: Optional[dict[str, dict[str, tuple]]] = None     # tool -> argument -> accepted values; None = may be left out
 
 
 @dataclass(frozen=True)
@@ -273,9 +274,18 @@ def _load_chat(path: Path, d: dict, sid: str, golden: str, tags: tuple[str, ...]
         if not right:
             _fail(path, "expect.temporal.right", "must not be empty")
         temporal = TemporalCheck(right, tuple(_strings(path, raw, "wrong")))
+    tool_args = None
+    if "tool_args" in exp:
+        tool_args = {}
+        for name, args in _require(path, exp, "tool_args", dict, "expect.").items():
+            if name not in TOOL_NAMES:
+                _fail(path, f"expect.tool_args.{name}", "is not a tool")
+            if not isinstance(args, dict) or not all(isinstance(v, list) and v for v in args.values()):
+                _fail(path, f"expect.tool_args.{name}", "must map each argument to a non-empty list of accepted values")
+            tool_args[name] = {arg: tuple(values) for arg, values in args.items()}
     expect = Expect(facts=[_fact(path, i, f) for i, f in enumerate(facts)], forbid=_strings(path, exp, "forbid"),
                     tools=tools, sources=_strings(path, exp, "sources"), abstain=abstain,
-                    allowed_tools=allowed, tools_none=tools_none, temporal=temporal)
+                    allowed_tools=allowed, tools_none=tools_none, temporal=temporal, tool_args=tool_args)
     return Scenario(id=sid, question=question, user=user, golden_answer=golden, expect=expect, path=path, tags=tags,
                     today=_date(path, d, "today") if "today" in d else None,
                     author=_require(path, d, "author", str) if "author" in d else None)

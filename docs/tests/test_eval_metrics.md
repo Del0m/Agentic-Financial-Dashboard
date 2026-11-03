@@ -305,3 +305,15 @@ The same three rules apply to `sources_ok` with `source_url`s.
 **What they do:** Pin the summary fields: pass rates, pass^3, false-alarm rate, each check's rate (`None` when no scenario sets it), time-to-flag, model failures, tags and per-scenario rows.
 
 **Why they're there:** TPC-27 and TPC-28 chart these.
+
+## `test_tool_choice_counts_missing_and_unlisted_tools`, `test_tool_choice_irrelevance_and_unset_counts`, `test_tool_choice_arguments`
+
+**What they do:** Tool choice is scored on names (a required tool missing or an unlisted one called fails), arguments and irrelevance (any call when none fits fails). A count the scenario doesn't set is `None`, not a pass.
+
+**Why they're there:** `tools_ok` only checks required tools are there, so extra calls never counted. Architecture 6b.5 asks for all three.
+
+## `test_temporal_check_uses_whole_words`
+
+**What it does:** The right year must appear and a wrong one mustn't, as whole words, so "May" isn't found in "Maybe".
+
+**Why it's there:** A substring match would score ordinary words as wrong dates.

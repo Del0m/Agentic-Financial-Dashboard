@@ -24,6 +24,8 @@ class BudgetRecord:
     flags: dict[str, str] = field(default_factory=dict)     # category -> the first day it was flagged
     alerts: list[dict] = field(default_factory=list)        # in the order written, each with the day of its run
     llm_failures: int = 0
+    llm_calls: int = 0
+    llm_retries: int = 0
     latency_s: float = 0.0
     error: Optional[str] = None
     kind: str = "budget"
@@ -84,7 +86,10 @@ def run_budget_once(scenario: BudgetScenario, *, model, audit_path: Path, run: i
             with Session() as s:
                 summaries = s.scalars(select(AgentRun.summary_json).where(AgentRun.user_id == user_id,
                                                                           AgentRun.graph == "budget"))
-                rec.llm_failures = sum((summary or {}).get("llm_failures", 0) for summary in summaries)
+                summaries = [summary or {} for summary in summaries]
+                rec.llm_failures = sum(summary.get("llm_failures", 0) for summary in summaries)
+                rec.llm_calls = sum(summary.get("llm_calls", 0) for summary in summaries)
+                rec.llm_retries = sum(summary.get("llm_retries", 0) for summary in summaries)
     except Exception as exc:
         rec.error = f"{type(exc).__name__}: {exc}"
         rec.latency_s = time.perf_counter() - start if start is not None else 0.0

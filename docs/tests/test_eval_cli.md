@@ -121,3 +121,15 @@ The `agents` fixture adds one budget and one goal file to `offline`, and stubs t
 **What it does:** `--skip-tag` can be repeated, and defaults to nothing.
 
 **Why it's there:** TPC-27. Temporal scenarios exist before the graph does, so a baseline before the graph needs to leave them out.
+
+## `test_new_flags_parse`, `test_defaults_keep_todays_run`, `test_label_goes_in_the_results_folder`
+
+**What they do:** The benchmark flags parse, a run with none of them behaves as it did before, and a label goes in the folder's name.
+
+**Why they're there:** TPC-27 runs one condition per folder, and a condition must not look like a repeat run.
+
+## `test_graph_modes_are_refused_until_the_graph_is_built`
+
+**What it does:** `--retrieval graph`, `hybrid` and `hybrid-shuffled` exit with code 2 until TPC-39 lands.
+
+**Why it's there:** They would otherwise run with no graph facts and report a result about nothing.

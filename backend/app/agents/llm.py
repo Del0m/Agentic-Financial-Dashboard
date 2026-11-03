@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_chat_model(temperature: Optional[float] = None, model: Optional[str] = None,
-                   num_ctx: Optional[int] = None) -> BaseChatModel:
+                   num_ctx: Optional[int] = None, seed: Optional[int] = None) -> BaseChatModel:
     # config is read at call time so tests (and later, per-run eval settings) can change it
     return ChatOllama(
         model=model or config.OLLAMA_MODEL,
@@ -22,6 +22,7 @@ def get_chat_model(temperature: Optional[float] = None, model: Optional[str] = N
         temperature=config.LLM_TEMPERATURE if temperature is None else temperature,
         num_ctx=config.LLM_NUM_CTX if num_ctx is None else num_ctx,
         num_predict=config.LLM_NUM_PREDICT,
+        seed=seed,
         client_kwargs={"timeout": config.LLM_TIMEOUT_SECONDS},
     )
 

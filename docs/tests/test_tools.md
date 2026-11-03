@@ -222,3 +222,9 @@ Run them from `backend/`:
 **What they do:** Each debt plan has a code-written summary with the months and total interest, plus what the extra saves when there is an extra.
 
 **Why they're there:** TPC-48. Given only the separate fields, the model left out the total interest on 2 of 3 runs.
+
+## `test_search_kb_follows_the_retrieval_mode`
+
+**What it does:** `search_kb` is left out of the tools in `none` and `graph`.
+
+**Why it's there:** TPC-27. The model mustn't reach vector guidance through a tool in a condition that took it away.

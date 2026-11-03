@@ -4,6 +4,7 @@ import logging
 import sqlite3
 import sys
 import threading
+from collections import Counter
 from dataclasses import asdict
 from datetime import date, timedelta
 from typing import Callable, Optional, TypedDict
@@ -67,6 +68,8 @@ class BudgetState(TypedDict, total=False):
     decisions: dict               # alert id -> accepted | dismissed, from the user
     waiting_for: list[int]
     llm_failures: int
+    llm_calls: int
+    llm_retries: int
     signals: list[dict]
     signal_actions: dict[str, dict]
     signals_error: Optional[str]
@@ -307,7 +310,7 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             return {"signal_actions": actions, "signals_error": type(exc).__name__}
 
     def diagnose(state: BudgetState) -> dict:
-        facts, contexts, diagnoses, failures = {}, {}, {}, state.get("llm_failures", 0)
+        facts, contexts, diagnoses, failures, stats = {}, {}, {}, state.get("llm_failures", 0), Counter()
         with session_factory() as s:
             period, txns = period_txns(s, state)
             history = load_txns(s, state["user_id"], add_months(period.start_date, -HISTORY_MONTHS),
@@ -323,20 +326,22 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             facts[cat] = {**asdict(f), "proposed_limit_cents": proposed_limit_cents(f)}
             contexts[cat] = gateway.build_context("diagnose", facts=f, transactions=txns,
                                                   this_month_alerts=memory[cat][0], past_advice=memory[cat][1])
-            d = invoke_structured(model, Diagnosis, diagnose_messages(contexts[cat]))
+            d = invoke_structured(model, Diagnosis, diagnose_messages(contexts[cat]), stats=stats)
             diagnoses[cat] = d.model_dump() if d else None
             failures += d is None
         return {"facts": facts, "contexts": contexts, "diagnoses": diagnoses, "llm_failures": failures,
+                "llm_calls": state.get("llm_calls", 0) + stats["calls"],
+                "llm_retries": state.get("llm_retries", 0) + stats["retries"],
                 "memory": {cat: alerts for cat, (alerts, _) in memory.items()}}
 
     def decide_action(state: BudgetState) -> dict:
-        actions, failures = {}, state["llm_failures"]
+        actions, failures, stats = {}, state["llm_failures"], Counter()
         for flag in state["flags"]:
             cat = flag["category"]
             d, f = state["diagnoses"][cat], state["facts"][cat]
             a = invoke_structured(model, Action, decide_messages(
                 state["contexts"][cat], Diagnosis(**d) if d else None, f["projected_cents"],
-                f["proposed_limit_cents"], _severity(flag["reason"]), state["memory"][cat]))
+                f["proposed_limit_cents"], _severity(flag["reason"]), state["memory"][cat]), stats=stats)
             fallback = a is None
             if fallback:
                 failures += 1
@@ -358,7 +363,8 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             actions[cat] = {"action": a.action, "message": a.message, "fallback": fallback, "downgraded": downgraded,
                             "escalated": escalated,
                             "proposed_limit_cents": f["proposed_limit_cents"] if a.action == "adjust_next_budget" else None}
-        return {"actions": actions, "llm_failures": failures}
+        return {"actions": actions, "llm_failures": failures, "llm_calls": state.get("llm_calls", 0) + stats["calls"],
+                "llm_retries": state.get("llm_retries", 0) + stats["retries"]}
 
     def log_advice(state: BudgetState) -> dict:
         ids, adjust = [], []
@@ -436,6 +442,8 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             "uncategorized": state.get("uncategorized", 0),
             "sync": state.get("sync"),
             "llm_failures": state.get("llm_failures", 0),
+            "llm_calls": state.get("llm_calls", 0),
+            "llm_retries": state.get("llm_retries", 0),
             "decisions": {str(k): v for k, v in (state.get("decisions") or {}).items()},
             "as_of": state["today"],
             "streams": state.get("streams", {"count": 0, "new": [], "price_up": [], "income_change": []}),
