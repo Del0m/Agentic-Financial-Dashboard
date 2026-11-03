@@ -299,6 +299,7 @@ Budget periods are **calendar months** (decided). `days_in_period` is the length
 elapsed_fraction = days_elapsed / days_in_period
 pace = spent / (limit * elapsed_fraction)
 flag if pace >= 1.10 and days_elapsed >= 5     # flexible categories
+        and spent > usual_by_day                # usual spending by this day of the month (TPC-45)
 flag if spent > limit                          # any category, any day
 ```
 
@@ -310,7 +311,7 @@ This is `budget_engine/pace.py` (`evaluate`). Spending in a category with no bud
 - ENTERTAINMENT at 1.48, because a $15.99 subscription is charged on day 5;
 - TRANSPORTATION at 1.12, because of how many Mondays had passed.
 
-TPC-33 moving subscriptions into the fixed set was expected to fix the first. The TPC-26 baseline still flags it: `control-steady-spender` fails on these flags, and TPC-45 tracks tuning the thresholds against the false-alarm metric.
+TPC-33 moving subscriptions into the fixed set was expected to fix the first. The TPC-26 baseline still flagged it, so TPC-45 added a second test. A pace flag now also needs spending above what's usual by this day of the month: the median of the last 3 months' spending up to the same day, plus one normal purchase if the category has at least 4 purchases a month, for weekly timing. With little history, usual is 0 and pace decides alone. The 1.10 and 5-day thresholds are unchanged, because raising them couldn't fix a monthly charge: $15.99 on day 5 stays above 1.10 pace until day 28.
 
 ### 6.5 Period close and adaptation
 At the end of each calendar month: for each line, compare `limit` vs actual. Apply any `adjust_next_budget` actions the user accepted. For lines without an action, nudge toward actual with smoothing: `new = 0.7 * old + 0.3 * actual`, clamped to ±15% per period. This keeps the budget from chasing one bad month. The "does the budget improve over time" benchmark checks this works.
@@ -988,6 +989,7 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-03 | A pace flag also needs spending above what's usual by this day of the month: the 3-month median up to that day, plus one normal purchase for categories with at least 4 purchases a month. `PACE_FLAG` stays 1.10 and `MIN_DAYS` stays 5 | TPC-45. Raising thresholds can't fix a monthly charge. Medians keep a club that started last month from becoming normal, and the timing allowance applies only to weekly spending, so it can't hide a new monthly charge. This rule was developed against `control-steady-spender` and `budget-recurring-wine-club`, so those two aren't independent evidence that it works |
 | 2026-11-02 | The chat system prompt states today and the calendar bounds of this month and last month, from the gateway's `today()` | Without a date the model searched 2023 for "last month"; with only the date it read "last month" as the last 30 days. A simulated user's chat follows the simulation, like its dashboard; the debt planner stays on the real date, like the dashboard's payoff card |
 | 2026-11-02 | The Docker demo runs on a simulated date, set up by one-off `init` and `models` services | Planted data is dated and pace depends on the day of the month, so a demo tied to today would look different every day; the 9 GB model download mustn't block startup |
 | 2026-10-04 | Python/FastAPI backend, Next.js frontend, SQLite→Postgres | One language for agents + API; React Plaid Link support |

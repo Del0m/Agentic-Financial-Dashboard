@@ -28,7 +28,7 @@ pytestmark = [pytest.mark.cash_forecast, pytest.mark.forecast_surplus]
 
 # scenarios whose golden answer is right and whose agent isn't yet. each stays failing in the results until its ticket is
 # fixed, and a new mismatch fails test_budget_code_decisions_match_the_golden_answer
-KNOWN_FAILURES = {"control-steady-spender": "TPC-45"}
+KNOWN_FAILURES = {}
 
 
 def scenario(sid):

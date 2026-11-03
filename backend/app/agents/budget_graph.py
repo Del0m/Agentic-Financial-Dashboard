@@ -23,7 +23,7 @@ from app import config
 from app.agents.llm import get_chat_model
 from app.budget_engine.diagnose import overspend_facts, proposed_limit_cents
 from app.budget_engine.fit import HISTORY_MONTHS
-from app.budget_engine.pace import BudgetLine as EngineLine, PaceResult, evaluate
+from app.budget_engine.pace import BudgetLine as EngineLine, PaceResult, evaluate, history_start
 from app.budget_engine.recurring import monthly_cents
 from app.budget_engine.signals import (SIGNAL_CAP, PreviousDip, Signal, cancel_limit, choose, fallback_message,
                                        low_balance_key, move_amount, rank_signals, repeat_decision)
@@ -169,7 +169,9 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
         with session_factory() as s:
             period, txns = period_txns(s, state)
             lines = [EngineLine(ln.category, ln.kind, ln.limit_cents, ln.group) for ln in period.lines]
-            results = evaluate(lines, txns, today_of(state))
+            history = load_txns(s, state["user_id"], history_start(period.start_date),
+                                period.start_date - timedelta(days=1))
+            results = evaluate(lines, txns, today_of(state), history)
             by_cat = {r.category: r for r in results}
             for ln in period.lines:
                 ln.spent_cents, ln.last_pace = by_cat[ln.category].spent_cents, by_cat[ln.category].pace

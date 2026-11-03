@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from app.budget_engine.pace import BudgetLine, evaluate
+from app.budget_engine.pace import BudgetLine, evaluate, usual_by_day
 from app.budget_engine.txns import Txn
 
 
@@ -208,3 +208,59 @@ def test_loan_payment_without_the_goal_in_it_is_unchanged():
     r = evaluate(lines, [Txn(date(2026, 12, 3), 21000, "LOAN_PAYMENTS")], date(2026, 12, 20))
     loan = next(x for x in r if x.category == "LOAN_PAYMENTS")
     assert (loan.spent_cents, loan.flagged) == (21000, False)
+
+
+# tpc-45: pace assumes even spending, so what the user normally has spent by now decides
+AUG_5 = date(2026, 8, 5)
+MONTHLY_CHARGE = [t(2026, m, 5, 1599, "ENTERTAINMENT") for m in (5, 6, 7)]
+
+
+def test_usual_monthly_charge_isnt_flagged():
+    r = one([flex("ENTERTAINMENT", 1599)], [t(2026, 8, 5, 1599, "ENTERTAINMENT")], AUG_5)
+    assert r.flagged       # no history: pace alone
+    r = evaluate([flex("ENTERTAINMENT", 1599)], [t(2026, 8, 5, 1599, "ENTERTAINMENT")], AUG_5, MONTHLY_CHARGE)[0]
+    assert not r.flagged and r.pace > 1.10
+
+
+def test_new_charge_with_no_history_in_its_category_is_still_flagged():
+    r = evaluate([flex("PERSONAL_CARE", 1000), flex("ENTERTAINMENT", 1599)],
+                 [t(2026, 8, 5, 900, "PERSONAL_CARE")], AUG_5, MONTHLY_CHARGE)[0]
+    assert r.flagged and r.reason == "pace"
+
+
+def test_spending_well_above_the_usual_is_still_flagged():
+    r = evaluate([flex("ENTERTAINMENT", 5000)], [t(2026, 8, 5, 3000, "ENTERTAINMENT")], AUG_5, MONTHLY_CHARGE)[0]
+    assert r.flagged and r.reason == "pace"
+
+
+def test_over_limit_flags_whatever_the_history():
+    r = evaluate([flex("ENTERTAINMENT", 1000)], [t(2026, 8, 5, 1599, "ENTERTAINMENT")], AUG_5, MONTHLY_CHARGE)[0]
+    assert r.reason == "over_limit"
+
+
+def test_weekly_spending_gets_one_normal_purchase_for_timing():
+    weekly = [t(2026, m, d, 1000) for m in (5, 6, 7) for d in (2, 9, 16, 23)]
+    assert usual_by_day(weekly, "FOOD_AND_DRINK", AUG_5) == 1000 + 1000
+
+
+def test_monthly_charge_gets_no_timing_allowance():
+    assert usual_by_day(MONTHLY_CHARGE, "ENTERTAINMENT", AUG_5) == 1599
+
+
+def test_usual_looks_at_the_same_day_of_each_month():
+    later = [t(2026, m, 20, 5000, "ENTERTAINMENT") for m in (5, 6, 7)]     # after day 5
+    assert usual_by_day(later, "ENTERTAINMENT", AUG_5) == 0
+
+
+def test_one_new_expensive_month_doesnt_become_normal():
+    club = [t(2026, 7, 4, 18000, "ENTERTAINMENT"), *MONTHLY_CHARGE]
+    assert usual_by_day(club, "ENTERTAINMENT", AUG_5) == 1599
+
+
+def test_usual_ignores_months_older_than_its_window():
+    assert usual_by_day([t(2026, 4, 5, 9000, "ENTERTAINMENT")], "ENTERTAINMENT", AUG_5) == 0
+
+
+def test_usual_handles_a_shorter_month():
+    ends = [t(2026, 2, 28, 700, "ENTERTAINMENT"), t(2026, 1, 31, 700, "ENTERTAINMENT"), t(2025, 12, 31, 700, "ENTERTAINMENT")]
+    assert usual_by_day(ends, "ENTERTAINMENT", date(2026, 3, 31)) == 700

@@ -1,7 +1,7 @@
 import calendar
 import logging
 import threading
-from datetime import date as Date
+from datetime import date as Date, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from ..agents.budget_graph import waiting_for
-from ..budget_engine.pace import BudgetLine as EngineLine, evaluate
+from ..budget_engine.pace import BudgetLine as EngineLine, evaluate, history_start
 from ..budget_engine.txns import add_months, month_start
 from ..budget_service.daily import run_daily_locked, sim_today, user_lock
 from ..budget_service.initialize import load_txns
@@ -115,7 +115,9 @@ def get_budget(user: User = Depends(get_current_user)):
             return BudgetOut(period=None, ended_period=ended, days_elapsed=today.day, days_in_period=days, lines=[],
                              unbudgeted=[], style=style)
         results = evaluate([EngineLine(ln.category, ln.kind, ln.limit_cents, ln.group) for ln in period.lines],
-                           load_txns(s, user.id, period.start_date, today), today)
+                           load_txns(s, user.id, period.start_date, today), today,
+                           load_txns(s, user.id, history_start(period.start_date),
+                                     period.start_date - timedelta(days=1)))
         stored = {ln.category: ln for ln in period.lines}
         out = PeriodOut(start=period.start_date, end=period.end_date)
         income, total = period.income_cents, period.total_cents
