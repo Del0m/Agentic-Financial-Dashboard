@@ -106,6 +106,7 @@ class SchemaReplyModel(BaseChatModel):
     seen: list = Field(default_factory=list)
     cause: str = "one_time"
     first_action: str = "alert"
+    signal_action: str = "alert"
 
     @property
     def _llm_type(self) -> str:
@@ -116,6 +117,8 @@ class SchemaReplyModel(BaseChatModel):
         title = (kwargs.get("format") or {}).get("title")
         if title == "Diagnosis":
             body = {"cause": self.cause, "evidence": "One purchase explains it."}
+        elif title == "SignalAction":
+            body = {"action": self.signal_action, "message": "A recurring change needs a look."}
         elif "Earlier alerts for this category this month: none" in str(messages[-1].content):
             body = {"action": self.first_action, "message": "This category is over budget."}
         else:

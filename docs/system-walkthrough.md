@@ -27,7 +27,8 @@ Evidence: [API registration](../backend/app/main.py), [proxy](../frontend/next.c
 | Daily scheduler | Planned TPC-21 | Due-job policy, user timezone, overlap, missed runs and restart recovery |
 | Period close | Pure adjustment function implemented | TPC-22 orchestration: persist close and open next month atomically |
 | Debt simulation, goal agent, Goals page (TPC-23 to TPC-25) | Implemented: goals are proposed, accepted or dismissed per goal, and accepted goals become budget lines at the next close | No contribution tracking; the surplus is measured from history until TPC-31's forecast |
-| Recurring detection, cash forecast | Planned | Implement functions, tables, tools, UI and evaluations |
+| Recurring detection | Implemented: detector, stored streams, keyed signals, API, chat tool and dashboard card | Real Plaid comparison remains unverified |
+| Cash forecast | Planned | Implement forecast, buffer, surplus integration and evaluation |
 | Evaluation | Chat and initial-budget harnesses implemented | Longitudinal budget replay and explicit quality gates |
 
 ## 2. Linking and keeping bank data fresh
@@ -65,7 +66,7 @@ The design's strongest separation is already implemented: code computes limits, 
 Current arithmetic and defaults:
 
 - Fit up to three previous calendar months, excluding transfers, income and credit-card payments. Net refunds inside each category, with a floor of zero.
-- Fixed limits use the lower median of months with a payment. Current default fixed primary categories are `RENT_AND_UTILITIES` and `LOAN_PAYMENTS`; automatically recognizing subscriptions as fixed awaits recurring detection.
+- Fixed limits use the lower median of months with a payment. Current default fixed primary categories are `RENT_AND_UTILITIES` and `LOAN_PAYMENTS`; subscriptions remain inside primary categories; recurring detection does not yet convert them to fixed lines.
 - Flexible limits use the monthly median × 1.05. Zero-median categories are skipped. Outlier evidence explains the fit; it does not remove months and recompute the median.
 - All lines flag when actual spending exceeds the limit. Flexible lines also flag from day five when pace reaches 1.10. Fixed bills are not judged by daily pace.
 - Unbudgeted categories are listed but do not raise overspend alerts. Categorization currently counts missing categories rather than assigning them with an LLM.
@@ -152,3 +153,5 @@ All eight diagrams have editable `.puml` sources beside their `.svg` and `.png` 
 plantuml -tsvg -failfast2 docs/diagrams/*.puml
 plantuml -tpng -failfast2 docs/diagrams/*.puml
 ```
+
+Recurring signals and cancellation close behavior are implemented; see [the verification handoff](handoffs/2026-11-02-tpc-33-manual-verification.md).

@@ -24,3 +24,5 @@ Run it from `backend/`:
 3. Advances one more day. Nov 1's daily run closes October first, and November opens with personal care at exactly the accepted $135 (`source="user"`), other flexible needs/wants lines within ±15% of October's, fixed lines (rent, savings) at October's actuals, and the free line equal to the total minus every other line (here $4,200 − $1,500 − $500 − $135 = $2,065).
 
 **Why it's there:** It's the ticket's acceptance test: detection, diagnosis, the human decision and the adaptation at close, all wired together the way a user would live through them.
+
+The demo selects the overspend alert explicitly by kind, so a recurring signal in the same category cannot be mistaken for the budget proposal.

@@ -159,7 +159,7 @@ alerts           id, user_id, period_id, kind (overspend|new_subscription|price_
                  income_change|low_balance|extra_payment), category, severity,
                  cause (one_time|seasonal|recurring), action (alert|suggest_cuts|
                  adjust_next_budget|suggest_cancel|move_from_savings|delay_spend|extra_payment),
-                 stream_id, message, status (pending_user|accepted|dismissed), created_at
+                 stream_id, signal_key, proposed_limit_cents, message, status (pending_user|accepted|dismissed), created_at
 advice_log       id, user_id, run_id, category, advice_text, created_at, outcome
 goals            id, user_id, run_id, kind (debt_payoff|savings|emergency_fund), priority, monthly_cents,
                  target_cents, target_date (new rows always have one; accept refuses a null),
@@ -168,8 +168,8 @@ goals            id, user_id, run_id, kind (debt_payoff|savings|emergency_fund),
                  rationale, status (proposed|superseded|accepted|dismissed|completed), created_at
 recurring_streams id, user_id, direction (in|out), merchant_key, merchant_name, category,
                  frequency (weekly|biweekly|semi_monthly|monthly|annual), typical_cents,
-                 last_cents, amount_varies, first_date, last_date, next_date,
-                 status (active|stale), first_seen_run_id, updated_at
+                 last_cents, previous_cents, amount_varies, detailed, gap_days, first_date, last_date, next_date,
+                 status (active|stale), first_seen_run_id, first_seen_date, updated_at
 agent_runs       id, user_id, graph, started_at, finished_at, status, summary_json
 category_rules   id, user_id, merchant_name (trimmed, casefolded), category, created_at
                  unique (user_id, merchant_name)
@@ -178,7 +178,7 @@ category_rules   id, user_id, merchant_name (trimmed, casefolded), category, cre
 TPC-19, TPC-20 and TPC-21 additions:
 - `agent_runs.graph` is also `simulate` (an advance job, with its progress in `summary_json`) and `close` (one row per month closed, TPC-22; `ok` or `error`, none when nothing was due).
 - `users.prefs_json["sim"] = {"profile", "date"}` marks a synthetic user living on a simulated date (TPC-21). The date is "today" for that user's dashboard and runs. The scheduler skips them.
-- `alerts.proposed_limit_cents`: set by code for `adjust_next_budget`.
+- `alerts.proposed_limit_cents`: set by code for `adjust_next_budget` and `suggest_cancel`.
 - `advice_log.alert_id` (FK): the alert the advice became, so the user's decision reaches it as `outcome`.
 - `agent_runs.status` adds `awaiting_user`: a run paused on a budget proposal.
 
@@ -194,7 +194,7 @@ Notes:
 - `plaid_txn_id` is unique so re-syncing is idempotent (upsert).
 - `/transactions/sync` returns `added`, `modified`, `removed`; handle all three. Pending transactions get replaced by posted ones with a new id.
 - Plaid amounts are **positive for money leaving the account**.
-- **Budget tables (TPC-18):** `budget_periods.fit_json` holds the months fitted and the categories skipped (`null` for a period opened by period close). `budget_lines.fit_json` holds the monthly totals and the outlier months, with their top transactions, behind each limit. The unique constraints mean a re-run or a race can never create two budgets for one month or two lines for one category. Alert `kind`, `cause`, `action`, `status` and `severity` and `advice_log.outcome` are plain strings, so a new kind needs no migration (the allowed values are `Literal`s in `models.py`). `alerts.stream_id` arrives with `recurring_streams` (TPC-33).
+- **Budget tables (TPC-18):** `budget_periods.fit_json` holds the months fitted and the categories skipped (`null` for a period opened by period close). `budget_lines.fit_json` holds the monthly totals and the outlier months, with their top transactions, behind each limit. The unique constraints mean a re-run or a race can never create two budgets for one month or two lines for one category. Alert `kind`, `cause`, `action`, `status` and `severity` and `advice_log.outcome` are plain strings, so a new kind needs no migration (the allowed values are `Literal`s in `models.py`). `alerts.stream_id` links stored `recurring_streams`; `signal_key` guards recurring alert replays (TPC-33).
 - **Sign convention (decided):** `transactions.amount_cents` keeps Plaid's sign as-is: **positive = money out** (purchases, bills, transfers out), **negative = money in** (paychecks, refunds, transfers in). Store Plaid's amount converted to cents without flipping it. When summing spending for a category, add up the positive amounts, and flip the sign only when displaying.
 
 ---
@@ -352,6 +352,8 @@ Anything that changes the user's money or their budget without being asked goes 
 
 ---
 
+Cancellation suggestions are pending alerts and do not pause; accepted values apply once at close, while unanswered suggestions survive month-end.
+
 ## 6a. Beyond budgeting: recurring charges, cash flow and debt payoff (Milestones 3-4)
 
 Three more jobs the agent does without being asked. They are built like the budget agent: a pure function in `budget_engine/` does the math and is unit-tested, the LLM only explains the result and picks an action, and every action that touches money or the budget becomes a `pending_user` alert (section 6.6). They feed each other:
@@ -364,25 +366,19 @@ recurring streams ──► cash-flow forecast ──► monthly surplus ──�
 
 ### 6a.1 Recurring-charge detection
 
-**Detector** (`budget_engine/recurring.py`), run over our own `transactions` table:
-1. Take posted, non-removed transactions from the last 180 days. Group them by direction (money out or in) and a normalized merchant key: lowercased, with digits and punctuation removed, so `NETFLIX.COM 8443` and `Netflix.com 1123` match.
-2. A group is a stream when it has at least 3 transactions whose gaps cluster around 7, 14, 15 (semi-monthly), 30 or 365 days. The median gap must fall within ±3 days of the target, or ±5 for monthly, because bills shift around weekends and short months.
-3. If every amount is within 10% of the median, the stream is **fixed** and `typical_cents` is that median. Otherwise it's marked `amount_varies` (utilities, for example) and `typical_cents` is the median of the last 3 amounts.
-4. `next_date = last_date + median gap`. A stream that misses two expected dates becomes `stale`.
+**Implemented (TPC-33).** A pure detector reads posted, non-removed transactions over 180 days, grouped by direction and normalized merchant key. Null merchants are ignored except INCOME inflows, keyed by detailed category. Monthly streams need at least three charges; weekly, biweekly and semi-monthly outflows need four fixed charges outside everyday categories, with tight cadence tolerance. Annual detection is deferred. A monthly series may skip one cycle with four charges, while longer breaks restart the series.
 
-**Why our own detector instead of Plaid's `/transactions/recurring/get`:** the synthetic eval users are loaded straight into the DB and never touch Plaid (section 10.1). The detector has to work on our table for the benchmarks to mean anything. A pure function is also easy to unit test, and Plaid's recurring endpoint is a separately priced add-on outside Sandbox. In Sandbox, compare our streams with Plaid's as a sanity check and report the agreement.
+A dominant amount cluster rejects one-off extras. Cadence-aligned rises of 5% to 50% and repeated price steps remain streams. Monthly dates use the median of the last three day anchors on the first anchored date at least 15 days after the last charge, clamped to month end; semi-monthly uses two anchors. A stream becomes stale after its cadence grace period. Rows are updated, never deleted.
 
-**What the daily run does with them:** it upserts streams into `recurring_streams` and compares them with the last run.
+`refresh_streams` compares stored rows with the detector. New outflows alert only when `first_date - gap_days` is after the user's history start. A price rise is at least 5% and $1 above the earlier price, excluding savings, transfers, card payments and metered utilities. INCOME inflows alert on staleness or a repeated 10% reduction. Returning stale streams are silent. Alert keys combine kind, stream id and change token; replays do not create another alert.
 
-| Change | Rule | Alert `kind` |
-|---|---|---|
-| New outflow stream | First detected in this run | `new_subscription` |
-| Price increase | Fixed stream whose `last_cents` is at least 5% and $1 above `typical_cents` | `price_increase` |
-| Income change | An inflow stream (paycheck) that went stale, or whose last amount is 10% or more below typical | `income_change` |
+`decide_signals` is separate from overspend diagnosis. Ranking is low balance, income change, price increase, new subscription, then larger charges first. At most three signals get one model call each; every remaining signal gets code-written copy. Code enforces protected categories and price figures. Signals never pause: only an overspend `adjust_next_budget` can interrupt. Checkpoints save on exit after prompt facts and signals are cleared, with summaries saved in the application database first.
 
-The LLM (inside `decide_action`, section 6a.4) writes the message and picks `alert` or `suggest_cancel`. The app can't cancel a subscription itself. Accepting `suggest_cancel` lowers next period's budget line for that category and stops future alerts on the stream. Recurring streams also help `diagnose`: an overspend that comes from a stream first seen this period has cause `recurring`.
+An accepted `suggest_cancel` subtracts the stream's monthly-normalized typical amount from its category's next line, after accepted adjustments, rounded up to $5 and capped at the current limit. Missing or nonpositive lines record a skipped outcome. Close records outcomes so a stream is reduced once; pending suggestions survive month-end and can be accepted later. Accepted streams stay current but raise no more recurring signals. Nothing cancels a merchant subscription automatically.
 
-**Privacy:** the gateway gets a new purpose, `recurring`, that sends the scrubbed merchant name, category, frequency, amounts and dates. Inflow descriptions often contain an employer's or a person's name, so inflow streams go out as category and amount only (`"INCOME, biweekly, $1,850"`).
+`GET /recurring` reads stored rows, with changed streams first, active by next date, then stale. Change badges last 30 simulated run days. Inflows are labeled Income. The dashboard has an independent Recurring charges card; `get_recurring()` is the sixth chat tool. Gateway outflow fields are scrubbed merchant, category, frequency, typical/last/previous dollars and next date. Inflows expose only INCOME, frequency and typical dollars. Each signal has one audit entry.
+
+The offline gate passed all 12 profiles at precision and recall 1.00 with no false streams or misses, noisy everyday share 1.0, and monthly next-date error at most two days (313/372 within one day). Measurements are synthetic. Real Plaid comparison, metered taxonomy confirmation and Postgres remain unverified. New Items request 180 days; existing Items need relinking. See the [approved departures and decisions](superpowers/specs/2026-11-02-tpc-33-31-recurring-and-forecast-design.md) and [manual verification](handoffs/2026-11-02-tpc-33-manual-verification.md).
 
 ### 6a.2 Cash-flow forecast
 
@@ -424,16 +420,9 @@ The output gives each strategy's months to debt-free, total interest, and payoff
 
 ### 6a.4 Wiring into the daily run
 
-The budget graph (section 6.2) gets two deterministic nodes after `update_totals`:
+The implemented daily route is sync, load_state, categorize, update_totals, detect_recurring, detect_overspend, diagnosis/action when flagged, decide_signals, log_advice, then approval only for budget adjustments and persist_state. With no current budget, load_state goes directly to detect_recurring and decide_signals. Detector and decision errors are recorded by type without stopping overspend alerts. Run summaries add `as_of`, stream count and changed ids, and `signals_error`.
 
-| Node | LLM? | Does |
-|---|---|---|
-| `detect_recurring` | no | Run the detector, upsert `recurring_streams`, emit stream-change flags |
-| `forecast_cash` | no | Run the forecast, emit a `low_balance` flag and store `monthly_surplus_cents` in `agent_runs.summary_json` |
-
-`BudgetState` gains `streams`, `stream_changes`, `forecast` and `low_balance`. `decide_action` handles every flag kind with one structured-output call per flag, so the LLM call count only grows with the number of flags. It still checks `advice_log` so it doesn't repeat itself. `budget-agent-loop.puml` needs both new nodes.
-
-The chat agent gets three tools: `get_recurring`, `get_cash_forecast` and `plan_debt_payoff`, for 7 in total. That's still small enough for `qwen2.5:14b`; the eval checks tool choice for each.
+The cash forecast node and seventh chat tool remain planned. The six current tools include `get_recurring` and `plan_debt_payoff`; live selection with the recurring tool is not yet verified.
 
 ---
 
@@ -717,7 +706,7 @@ POST /goals/{id}/accept         -> the goal; 404 other user's; 409 already decid
                                     expired. Generate goals again."), no start_date or target_date, or a goal of
                                     that kind is accepted
 POST /goals/{id}/dismiss        -> the goal; 404, 409. Works on proposed goals and stops an accepted one
-GET  /recurring                 -> active and stale streams, newest changes first
+GET  /recurring                 -> {as_of, streams: id/direction/label/frequency/amount_kind, typical/last/previous cents, last/next dates, status/change/first_seen}
 GET  /forecast?days=            -> daily expected/low/high balance, scheduled events, buffer, monthly surplus
 POST /debt-plan                 { extra_monthly_cents: 0..100_000_000, include_mortgage? } -> { avalanche, snowball,
                                     baseline: { avalanche, snowball }, excluded, start }; each plan has months,
@@ -1016,7 +1005,7 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 | 2026-10-26 | Frontend unit tests with Vitest + React Testing Library + jsdom (`npm test`), set up per Next 16's bundled guide | The chat page has real logic (stream parsing, event folding, storage fallback); a test runner caught a history race on day one |
 | 2026-10-27 | Add recurring-charge detection, a cash-flow forecast and a debt-payoff planner (section 6a) to the daily agent and the Goal Agent | The project's agentic scope should cover the user's whole financial picture, not just budgets; all three reuse the budget agent's pattern (pure function + LLM explanation + `pending_user` alerts) and give exact or measurable benchmark answers |
 | 2026-10-27 | Recurring streams come from our own detector over `transactions`; Plaid's `/transactions/recurring/get` is only a Sandbox cross-check | Synthetic eval users never touch Plaid; a pure function is unit-testable; Plaid's endpoint is a paid add-on outside Sandbox |
-| 2026-10-27 | `days_requested` raised from 90 to 180 | Monthly streams need several occurrences to be detected reliably |
+| 2026-11-02 | `days_requested` raised from 90 to 180 (implemented) | Monthly streams need several occurrences to be detected reliably |
 | 2026-10-27 | Eval judge is `gemma3:12b` (Ollama, temperature 0) | `qwen2.5:14b` became the chat model, and `llama3.1:8b` and `mistral` are the comparison agents. A fourth family grades all three without grading itself; ~8 GB fits next to qwen in 24 GB and stays local |
 | 2026-10-27 | Golden-answer match is a rule check on listed facts, not an LLM verdict | Deterministic and free; a wrong number fails loudly. The judge covers how the answer reads |
 | 2026-10-27 | The eval harness runs in-process (the same graph and tools as `POST /chat`, one throwaway DB per run), not through the HTTP API | Synthetic users are possible (the API only knows the dev user and `dev.db`), there's no server to manage, and it tests the real agent code |
@@ -1103,6 +1092,20 @@ Implementation used TDD with recorded red/green commands and results, determinis
 See the [design and decision table](superpowers/specs/2026-11-02-tpc-24-goal-validation-design.md) for alternatives, reversibility, defaults, and risks, and the [TDD implementation plan](superpowers/plans/2026-11-02-tpc-24-goal-validation.md) for the test sequence and evidence record. Offline backend regressions: **807 passed, 21 deselected** (pre-change baseline: 773 passed). See the [verification handoff](handoffs/2026-11-02-tpc-24-manual-verification.md) for live results and executable commands.
 
 Docker follow-up also passed: **807 offline tests and five live tight-surplus trials** inside the backend container. All four existing Plaid Sandbox links refreshed successfully on a migrated disposable database copy; the linked history correctly returned `no_surplus` with zero model calls, and both goal/dashboard API handlers returned HTTP 200. The original configured database was unchanged. See the [Docker and linked-data report](handoffs/2026-11-02-tpc-24-docker-linked-verification.md).
+
+## Recurring implementation decisions (2026-11-02)
+
+| Decision | Reason |
+|---|---|
+| Require tight short-gap cadence and exclude everyday outflows; defer annual | Avoid random shopping streams in a 180-day history |
+| Retain one skipped month, restart long breaks, and recognize price steps | Keep stable bills while rejecting isolated purchases |
+| Use calendar anchors for monthly and semi-monthly next dates | Avoid February and weekend drift |
+| Compare price with earlier charges, exclude metered utilities | Catch the planted rise over 10% without treating usage as a rate change |
+| Suppress streams present at history start and returning stale streams | Avoid first-run and return floods |
+| Separate keyed signal decisions, one call each capped at three | Avoid category-key collisions and bound model calls |
+| Keep cancellation as a pending alert; apply once after adjustments and mute from accepted rows | Preserve user control without storing stream facts in a paused checkpoint |
+| Scrub outflows and omit inflow counterparties | Keep identifying payroll text out of model prompts |
+| Keep subscriptions inside existing budget categories | Automatic fixed-line conversion remains a follow-up |
 
 ## References
 - Plaid docs: https://plaid.com/docs/ (Link, Transactions `/transactions/sync`, Liabilities, Sandbox)

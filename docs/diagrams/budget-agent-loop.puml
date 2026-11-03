@@ -5,6 +5,7 @@ skinparam defaultFontName SansSerif
 skinparam defaultFontSize 15
 start
 :Create agent_runs row: running;
+:sync (if sync_fn supplied);
 :load_state -> initialize_budget;
 note right
 First fit: up to 3 prior calendar months.
@@ -15,20 +16,18 @@ Flexible: median x 1.05; skip zero median.
 Persist fit evidence with budget lines.
 end note
 if (No budget / date before start?) then (yes)
+  :detect_recurring -> decide_signals -> log_advice;
   :Finish no_budget;
   stop
 elseif (Date past period end?) then (yes)
+  :detect_recurring -> decide_signals -> log_advice;
   :Finish period_ended;
-  note right: Opening next month needs TPC-22.
+  note right: Period close opens the next month.
   stop
 endif
-:sync (if sync_fn supplied);
-note right
-Initialization runs BEFORE this sync.
-Sync failures keep checking stored data.
-end note
 :categorize: count uncategorized only;
 :update_totals: net category spending;
+:detect_recurring: refresh and diff streams;
 :detect_overspend;
 note right
 All lines: spent > limit.
@@ -37,6 +36,7 @@ pace >= 1.10 also flags.
 Unbudgeted categories: reported, not flagged.
 end note
 if (Any flags?) then (no)
+  :decide_signals -> log_advice;
   :persist_state -> ok;
   stop
 endif
@@ -44,6 +44,7 @@ endif
 :Gateway minimizes and audits each category;
 :diagnose: LLM classifies cause;
 :decide_action: LLM picks action;
+:decide_signals: one call per signal, cap 3;
 note right
 Invalid structured output retries once,
 then falls back to an ordinary alert.
@@ -58,4 +59,10 @@ if (Adjust proposal AND checkpointer?) then (yes)
 endif
 :persist_state -> ok + summary;
 stop
+note right
+Recurring signals: new subscription, price increase, income change.
+Keyed replay guard; errors do not stop overspend checks.
+Cancellation suggestions never pause.
+Clear signal and prompt facts before approval; save on exit.
+end note
 @enduml

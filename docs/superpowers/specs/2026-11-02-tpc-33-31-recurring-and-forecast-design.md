@@ -4,6 +4,8 @@ Date: 2026-11-02. Status: **approved, nothing implemented.** The user approved t
 
 Tickets: [TPC-33](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-33) (recurring streams and alerts) and [TPC-31](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-31) (forecast and surplus), both M3. TPC-31 depends on TPC-33. Two plans, two PRs: [TPC-33](../plans/2026-11-02-tpc-33-recurring-streams.md) on branch `TPC-33` (stacked on `TPC-25`), then [TPC-31](../plans/2026-11-02-tpc-31-cash-flow-forecast.md). Evidence is in the four [investigation handoffs](../../handoffs/2026-11-02-tpc-33-31-investigation-index.md); "h1" to "h4" below mean investigations 1 to 4.
 
+Status: recurring implementation complete through Task 8; forecast implementation pending.
+
 ## Departures from the tickets (approve before anything is built)
 
 | # | Ticket says | We do instead | Evidence | Cost if wrong |
