@@ -96,7 +96,7 @@ POST /goals/{id}/dismiss        -> GoalOut; 404, 409. Works on proposed and acce
 
 | Risk | Handling |
 |---|---|
-| A user accepts between `gather_month` and `persist_month` | The answer stands and the line arrives one month later. Rare, and it self-heals |
+| A user accepts between `gather_month` and `persist_month` | The answer stands, and `persist_month` works out the goal lines again, so the line is in the month being opened |
 | The cap understates after contributions start | Conservative, documented above, replaced by TPC-31 |
 | The debt goal's date assumes the user pays | The line ends on the projected date even if the debt remains. Without contribution tracking, nothing can tell. Documented in the handoff |
 | A run is paused when the user regenerates | `_supersede` marks it `expired` and deletes its checkpoint after the commit |
