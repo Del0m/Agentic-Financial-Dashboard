@@ -10,9 +10,48 @@ from app.budget_engine.diagnose import overspend_facts
 from app.budget_engine.pace import PaceResult
 from app.budget_engine.txns import Txn
 from app.privacy.gateway import ACCOUNT_FIELDS, DEBT_FIELDS, DIAGNOSE_FIELDS, TXN_FIELDS, PrivacyGateway
+from app.budget_engine.signals import Signal
 
 TODAY = date(2026, 10, 21)
 PII = ["Jane", "Doe", "jane.doe@example.com", "4321", "acc-secret-1", "item-secret-1", "u-jane"]
+
+
+def test_inflow_streams_have_no_merchant_field(db, tmp_path):
+    signal = Signal("income_change", "private-key", 1, "INCOME", {
+        "direction": "in", "merchant": "Secret Employer", "frequency": "biweekly",
+        "typical_cents": 185000, "last_cents": 160000, "previous_cents": 185000})
+    uid = seed_pii_user(db)
+    with db() as s:
+        payload = data(PrivacyGateway(s, uid, audit_path=tmp_path / "audit.jsonl").build_context("recurring", signal=signal))
+    assert payload["streams"] == [{"category": "INCOME", "frequency": "biweekly", "typical": 1850.0}]
+    assert "Secret Employer" not in json.dumps(payload) and "private-key" not in json.dumps(payload)
+    assert "merchant" not in payload["streams"][0]
+
+
+def test_a_recurring_merchant_with_five_digits_is_scrubbed(db, tmp_path):
+    signal = Signal("price_increase", "private-key", 1, "PERSONAL_CARE", {
+        "direction": "out", "merchant": "Gym 12345", "frequency": "monthly", "typical_cents": 4000,
+        "last_cents": 4300, "previous_cents": 4000, "next_date": "2026-11-03", "secret": "never forward"})
+    uid = seed_pii_user(db)
+    with db() as s:
+        payload = data(PrivacyGateway(s, uid, audit_path=tmp_path / "audit.jsonl").build_context("recurring", signal=signal))
+    assert payload["streams"] == [{"merchant": "Gym [number]", "category": "PERSONAL_CARE", "frequency": "monthly",
+                                     "typical": 40.0, "last": 43.0, "previous": 40.0, "next_date": "2026-11-03"}]
+    assert "12345" not in json.dumps(payload) and "secret" not in json.dumps(payload)
+
+
+def test_one_audit_line_per_signal(db, tmp_path):
+    uid = seed_pii_user(db)
+    path = tmp_path / "audit.jsonl"
+    with db() as s:
+        gateway = PrivacyGateway(s, uid, audit_path=path)
+        for i in range(3):
+            gateway.build_context("recurring", signal=Signal("new_subscription", str(i), i, "ENTERTAINMENT", {
+                "direction": "out", "merchant": "Streamly", "frequency": "monthly", "typical_cents": 1549,
+                "last_cents": 1549, "next_date": "2026-11-05"}))
+    lines = audit_lines(path)
+    assert len(lines) == 3 and all(line["purpose"] == "recurring" for line in lines)
+    assert uid not in path.read_text()
 
 
 # every test runs on a fixed "today" so the default 30-day spending window is predictable

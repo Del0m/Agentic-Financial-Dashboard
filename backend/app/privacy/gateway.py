@@ -12,6 +12,7 @@ from .. import config
 from ..budget_engine.diagnose import OverspendFacts
 from ..budget_engine.goals import GoalAllocation, GoalFacts, GoalIssue, planned_debts
 from ..budget_engine.payoff import Debt, Plan, compare
+from ..budget_engine.signals import Signal, allowed_actions
 from ..budget_engine.txns import Txn, add_months, month_start, spending
 from ..budget_service.debts import load_debts
 from ..db.models import Account, Liability, Transaction
@@ -22,11 +23,12 @@ from .scrub import scrub_account_name, scrub_merchant, scrub_note
 # rows are built field by field from these allowlists, never by serializing a model object,
 # so a column added later can't leak by accident.
 
-Purpose = Literal["accounts", "debts", "spending", "diagnose", "debt_plan", "goals"]
+Purpose = Literal["accounts", "debts", "spending", "diagnose", "debt_plan", "goals", "recurring"]
 
 ACCOUNT_FIELDS = ("name", "type", "subtype", "balance", "available", "limit")
 DEBT_FIELDS = ("name", "kind", "apr", "balance", "min_payment", "next_due_date")
 TXN_FIELDS = ("date", "amount", "merchant")
+RECURRING_FIELDS = ("merchant", "category", "frequency", "typical", "last", "previous", "next_date")
 TXN_LIMIT = 50
 # the budget graph's diagnose step: one flagged category's facts and its rows (spec: tpc-19)
 DIAGNOSE_FIELDS = ("category", "reason", "kind", "month", "limit", "spent", "pace", "day", "days_in_month",
@@ -93,7 +95,8 @@ class PrivacyGateway:
                       this_month_alerts: Sequence[dict] = (), past_advice: Sequence[dict] = (),
                       extra_monthly_cents: Optional[int] = None, strategy: Optional[str] = None,
                       goal_facts: Optional[GoalFacts] = None,
-                      goal_debts: Optional[Sequence[Debt]] = None) -> str:
+                      goal_debts: Optional[Sequence[Debt]] = None,
+                      signal: Optional[Signal] = None) -> str:
         if purpose == "diagnose":
             data = self._diagnose(facts, transactions or [])
             data["this_month_alerts"] = [{k: a.get(k) for k in ALERT_MEMORY_FIELDS} for a in this_month_alerts]
@@ -109,6 +112,8 @@ class PrivacyGateway:
             data = self._debt_plan(extra_monthly_cents or 0, strategy)
         elif purpose == "goals":
             data = self._goals(goal_facts, goal_debts)
+        elif purpose == "recurring":
+            data = self._recurring(signal)
         else:
             raise ValueError(f"unknown purpose: {purpose}")
 
@@ -123,6 +128,17 @@ class PrivacyGateway:
             self._goal_context = prompt
             self._goal_cap_cents = goal_facts.cap_cents
         return prompt
+
+    def _recurring(self, signal: Signal) -> dict:
+        n = signal.numbers
+        if n.get("direction") == "in":
+            row = {"category": "INCOME", "frequency": n["frequency"], "typical": _dollars(n["typical_cents"])}
+        else:
+            row = {"merchant": scrub_merchant(n.get("merchant")), "category": signal.category,
+                   "frequency": n["frequency"], "typical": _dollars(n["typical_cents"]),
+                   "last": _dollars(n["last_cents"]), "previous": _dollars(n.get("previous_cents")),
+                   "next_date": n.get("next_date")}
+        return {"kind": signal.kind, "streams": [row], "allowed_actions": list(allowed_actions(signal))}
 
     def goal_correction(self, allocations: Sequence[GoalAllocation], issues: Sequence[GoalIssue]) -> str:
         if self._goal_context is None:

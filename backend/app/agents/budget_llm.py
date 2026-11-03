@@ -66,6 +66,25 @@ class Action(BaseModel):
     message: Text
 
 
+class SignalAction(BaseModel):
+    action: Literal["alert", "suggest_cancel", "delay_spend", "move_from_savings"]
+    message: Text
+
+
+SIGNAL_PROMPT = (
+    "Review one change in recurring charges or income for a budgeting app. Choose only from allowed_actions "
+    "in the facts. A suggest_cancel proposes cancelling an optional subscription; it never cancels anything. "
+    "Income changes only alert. Use the supplied figures exactly and name an outflow's merchant and both its "
+    "old and new prices when they are given. Never invent an employer name. Write at most two plain sentences. "
+    "Answer in JSON with action and message."
+)
+
+
+def decide_signal(model: BaseChatModel, context: str) -> Optional[SignalAction]:
+    # one call per signal; unlike diagnosis there is no retry, so the three-call daily cap is real
+    return invoke_structured(model, SignalAction, [SystemMessage(SIGNAL_PROMPT), HumanMessage(context)], retries=0)
+
+
 # ollama's `format` constrains decoding to the schema; pydantic still checks the reply, and a bad reply gets
 # one more try. a model that can't be reached (down, timed out) gives None at once, like a bad reply, so the
 # graph still writes its plain fallback alert: an outage must not hide an overspend. a caller with no fallback

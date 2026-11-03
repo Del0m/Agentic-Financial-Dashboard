@@ -1,6 +1,6 @@
 # Tests: `backend/tests/test_gateway.py`
 
-These tests cover `app/privacy/gateway.py`, the only code path that turns user data into LLM prompt text (architecture section 7). They check the per-purpose field allowlists (`accounts`, `debts`, `spending`, `diagnose`, `debt_plan` for the payoff planner, and `goals` for the goal graph), the per-session pseudonym, scrubbing of free-text fields, spending minimization, and the JSONL audit log. Run them from `backend/`:
+These tests cover `app/privacy/gateway.py`, the only code path that turns user data into LLM prompt text (architecture section 7). They check the per-purpose field allowlists (`accounts`, `debts`, `spending`, `diagnose`, `debt_plan` for the payoff planner, `goals` for the goal graph, and `recurring` for stream signals), the per-session pseudonym, scrubbing of free-text fields, spending minimization, and the JSONL audit log. Run them from `backend/`:
 
 ```bash
 ../venv/bin/python -m pytest tests/test_gateway.py -v
@@ -30,6 +30,24 @@ The `db` fixture from `conftest.py` provides a fresh in-memory database (see [`t
 **Why it's there:** This is the ticket's done-when: "a unit test shows no name/email/account number in a gateway-built prompt." It covers the two ways PII leaks:
 - an allowlist mistake would leak the email, mask, ids or user id;
 - a scrub gap would leak the name in the account label or the Zelle merchant.
+
+## `test_inflow_streams_have_no_merchant_field`
+
+**What it does:** Builds an income-change context containing only category `INCOME`, frequency and typical dollars in its stream row. The employer, signal key and merchant field are absent.
+
+**Why it's there:** Recurring income context must never disclose an employer name or internal identifiers.
+
+## `test_a_recurring_merchant_with_five_digits_is_scrubbed`
+
+**What it does:** Checks the seven allowed outflow fields, dollars conversion, merchant scrubbing and exclusion of an extra secret field.
+
+**Why it's there:** Recurring prompts follow the same field-by-field minimization as other gateway purposes.
+
+## `test_one_audit_line_per_signal`
+
+**What it does:** Builds three recurring contexts and checks exactly three recurring audit entries without the user id.
+
+**Why it's there:** Each signal must have one auditable context, with the pseudonym as its only user identifier.
 
 ## `test_rows_have_only_allowlisted_keys`
 

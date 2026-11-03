@@ -27,7 +27,7 @@ Run them from `backend/`:
 
 ## `test_full_run_one_time`
 
-**What it does:** On the one-time user, a run writes one `overspend` alert (`high`, `pending_user`, cause `one_time`, action `alert`, no proposed limit) and one advice row tied to the run. The `agent_runs` row finishes `ok` with every summary key (including the user's `decisions`), and the general-merchandise line's spent and pace are updated.
+**What it does:** On the one-time user, a run writes one `overspend` alert (`high`, `pending_user`, cause `one_time`, action `alert`, no proposed limit) and one advice row tied to the run. The `agent_runs` row finishes `ok` with every summary key (including the user's `decisions` and TPC-33's `as_of`, `streams` and `signals_error`), and the general-merchandise line's spent and pace are updated.
 
 **Why it's there:** It's the whole graph working end to end on the done-when's user, with a scripted model.
 
