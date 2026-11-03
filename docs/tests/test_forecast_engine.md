@@ -173,3 +173,15 @@ These offline tests use explicit dates and integer cents. Database cases use a f
 **What it does:** Goal cap on the measured path is unchanged, using the explicit fixtures and assertions in the test.
 
 **Why it's there:** Guards this forecast behavior independently of live data and model wording.
+
+## `test_a_crossing_after_a_bill_keeps_the_bill_identity_without_reapplying_it`
+
+**What it does:** Keeps a recently posted bill as the cause of a following-day crossing without applying its charge twice.
+
+**Why it's there:** Covers a failure or calendar seam found in end-to-end review.
+
+## `test_a_goal_does_not_pay_again_after_a_later_paycheck_in_the_month`
+
+**What it does:** Uses the first paycheck in a calendar month, so a biweekly later paycheck cannot schedule the accepted goal twice.
+
+**Why it's there:** Covers a failure or calendar seam found in end-to-end review.

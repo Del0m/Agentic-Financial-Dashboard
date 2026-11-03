@@ -132,7 +132,7 @@ def forecast(inp: ForecastInput) -> ForecastResult:
     month = month_start(today)
     while month <= through:
         # the first paycheck may already have posted this month, so include the stream's calendar before today
-        payday = min((d for s in pay for d in project(replace(s, next_date=s.last_date), add_months(month, 1))
+        payday = min((d for s in pay for d in project(replace(s, next_date=s.first_date), add_months(month, 1))
                       if month_start(d) == month), default=None)
         when = payday + timedelta(days=1) if payday else month
         for goal in goals:
@@ -156,7 +156,16 @@ def forecast(inp: ForecastInput) -> ForecastResult:
     dip = None
     if low_days:
         first = low_days[0]
-        cause = min((e for e in events if e.date == first.date and e.cents < 0), key=lambda e: e.cents, default=None)
+        # the band can cross a day after a bill, or just after it posted. keep that bill's identity without
+        # applying a posted charge twice; a paycheck in between breaks the attribution
+        last_pay = max([s.last_date for s in pay if s.last_date <= first.date] +
+                       [e.date for e in events if e.cents > 0 and e.date <= first.date], default=date.min)
+        candidates = [e for e in events if e.cents < 0 and last_pay < e.date <= first.date
+                      and (first.date - e.date).days <= 5]
+        candidates += [Event(s.last_date, s.merchant_name, -s.typical_cents, "stream", s.merchant_key)
+                       for s in included if s.direction == "out" and last_pay < s.last_date <= today
+                       and (first.date - s.last_date).days <= 5]
+        cause = min(candidates, key=lambda e: e.cents, default=None)
         dip = Dip(first.date, (first.date - today).days, inp.buffer_cents - min(d.low_cents for d in days[:14]), cause)
     surplus = None
     if fallback is None:

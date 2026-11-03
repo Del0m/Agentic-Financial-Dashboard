@@ -5,7 +5,7 @@ skinparam shadowing false
 skinparam componentStyle rectangle
 skinparam defaultFontName SansSerif
 skinparam defaultFontSize 15
-component "Chat scenario JSON\n5 questions + known user facts" as scenarios
+component "Chat scenario JSON\n8 questions + known user facts" as scenarios
 database "Throwaway in-memory DB" as db
 component "Same chat graph + tools\nnot the HTTP / browser path" as graph
 component "Rule scoring\nfacts, forbidden strings,\nexpected tools and sources" as facts
@@ -15,8 +15,8 @@ folder "Committed chat results\nper run + summary + config + audit" as results
 component "Budget synthetic profiles\nMay-July fit -> August actual" as profiles
 component "Real initialize_budget\nmedian vs mean comparison" as fit
 folder "Budget accuracy results\nMAPE + zero-actual + unbudgeted" as accuracy
-component "PLANNED longitudinal replay\ndaily sync -> alert -> user decision\n-> month close -> next month" as replay #FFF0D5
-component "PLANNED measures\ntime-to-flag / false alarms\nadaptation / recurring / forecast / payoff" as measures #FFF0D5
+component "Implemented longitudinal replay\ndaily sync -> alert -> user decision\n-> month close -> next month" as replay #FFF0D5
+component "Implemented offline measures\ntime-to-flag / false alarms\nadaptation / recurring / forecast / payoff" as measures #FFF0D5
 scenarios --> db : seed
 db --> graph
 graph --> facts
@@ -27,14 +27,16 @@ similarity --> results
 judge --> results
 profiles --> fit
 fit --> accuracy
-profiles ..> replay
-replay ..> measures
+profiles --> replay
+replay --> measures
 note bottom of results
 Saved qwen run (2026-10-27, -2):
 facts pass 60%; judge pass 80%;
 all answers clear similarity threshold.
 Similarity alone does not establish correctness.
 end note
+component "Forecast replay: 79 dates\nMAE d7 $7.31 / d14 $10.07\ncoverage 68.4% / 79.7%\nLandlord dip: 14-day lead" as forecast
+replay --> forecast
 note bottom of accuracy
 Five profiles support an initial-fit comparison,
 not proof of multi-month adaptation.

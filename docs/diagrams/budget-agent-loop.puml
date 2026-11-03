@@ -16,11 +16,11 @@ Flexible: median x 1.05; skip zero median.
 Persist fit evidence with budget lines.
 end note
 if (No budget / date before start?) then (yes)
-  :detect_recurring -> decide_signals -> log_advice;
+  :detect_recurring -> forecast_cash -> decide_signals -> log_advice;
   :Finish no_budget;
   stop
 elseif (Date past period end?) then (yes)
-  :detect_recurring -> decide_signals -> log_advice;
+  :detect_recurring -> forecast_cash -> decide_signals -> log_advice;
   :Finish period_ended;
   note right: Period close opens the next month.
   stop
@@ -28,6 +28,7 @@ endif
 :categorize: count uncategorized only;
 :update_totals: net category spending;
 :detect_recurring: refresh and diff streams;
+:forecast_cash: checking range, bill dip and surplus;
 :detect_overspend;
 note right
 All lines: spent > limit.
@@ -61,8 +62,10 @@ endif
 stop
 note right
 Recurring signals: new subscription, price increase, income change.
-Keyed replay guard; errors do not stop overspend checks.
+Keyed recurring replay guard; low-balance repeat policy.
+Forecast errors do not stop overspend checks.
 Cancellation suggestions never pause.
 Clear signal and prompt facts before approval; save on exit.
+Filter every checkpoint write, including failures.
 end note
 @enduml

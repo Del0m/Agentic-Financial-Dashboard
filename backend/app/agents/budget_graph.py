@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.agents.budget_llm import (_RANK, Action, Diagnosis, decide_messages, decide_signal, diagnose_messages,
                                   invoke_structured)
+from app.agents.budget_checkpoints import BudgetCheckpoints
 from app import config
 from app.agents.llm import get_chat_model
 from app.budget_engine.diagnose import overspend_facts, proposed_limit_cents
@@ -486,7 +487,7 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
     graph.add_conditional_edges("log_advice", after_advice, ["await_approval", "persist_state"])
     graph.add_edge("await_approval", "persist_state")
     graph.add_edge("persist_state", END)
-    return graph.compile(checkpointer=checkpointer)
+    return graph.compile(checkpointer=BudgetCheckpoints(checkpointer) if checkpointer is not None else None)
 
 
 # the decided ones among these alerts, from their rows
@@ -566,6 +567,11 @@ def run_budget(session_factory, user_id: str, today: date, *, model: Optional[Ba
             result.update(report)
     except Exception as exc:
         _mark(session_factory, run_id, "error", {"error": type(exc).__name__})
+        if checkpointer is not None:
+            try:
+                checkpointer.delete_thread(thread)
+            except Exception as cleanup:
+                logger.warning("budget checkpoint cleanup failed: %s", type(cleanup).__name__)
         raise
     waiting = _interrupted(result)
     if waiting is None:

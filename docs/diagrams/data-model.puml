@@ -8,7 +8,7 @@ skinparam defaultFontSize 15
 skinparam linetype ortho
 entity users {
   * id
-  email
+  email / forecast buffer prefs
 }
 entity plaid_items {
   * id
@@ -59,6 +59,7 @@ entity alerts {
   cause / action / status
   proposed_limit_cents
   stream_id / signal_key
+  signal_cents / signal_days
 }
 entity recurring_streams {
   * id

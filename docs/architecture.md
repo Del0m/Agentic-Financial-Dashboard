@@ -42,7 +42,7 @@ Start with the [AI agent pipelines](agent-pipelines.md) for the budget decision 
 | [`budget-agent-loop.puml`](diagrams/budget-agent-loop.puml) | Current budget graph, arithmetic, exits, and approval branch |
 | [`approval-lifecycle.puml`](diagrams/approval-lifecycle.puml) | Saved decisions, checkpoint resume, and planned application at close |
 | [`data-model.puml`](diagrams/data-model.puml) | Current application tables and separate checkpoint stores |
-| [`remaining-lifecycle.puml`](diagrams/remaining-lifecycle.puml) | Scheduling, recurring charges, forecast, goals, and rollover; goals and their approval are built (TPC-25), the rest is planned |
+| [`remaining-lifecycle.puml`](diagrams/remaining-lifecycle.puml) | Scheduling, recurring charges, forecast, goals, and rollover; all are implemented; live-data and recovery limits are documented below |
 | [`evaluation-flow.puml`](diagrams/evaluation-flow.puml) | Current evaluations and missing longitudinal validation |
 
 To re-render after editing:
@@ -159,7 +159,7 @@ alerts           id, user_id, period_id, kind (overspend|new_subscription|price_
                  income_change|low_balance|extra_payment), category, severity,
                  cause (one_time|seasonal|recurring), action (alert|suggest_cuts|
                  adjust_next_budget|suggest_cancel|move_from_savings|delay_spend|extra_payment),
-                 stream_id, signal_key, proposed_limit_cents, message, status (pending_user|accepted|dismissed), created_at
+                 stream_id, signal_key, signal_cents, signal_days, proposed_limit_cents, message, status (pending_user|accepted|dismissed), created_at
 advice_log       id, user_id, run_id, category, advice_text, created_at, outcome
 goals            id, user_id, run_id, kind (debt_payoff|savings|emergency_fund), priority, monthly_cents,
                  target_cents, target_date (new rows always have one; accept refuses a null),
@@ -382,20 +382,23 @@ The offline gate passed all 12 profiles at precision and recall 1.00 with no fal
 
 ### 6a.2 Cash-flow forecast
 
-**Forecast** (`budget_engine/forecast.py`), a pure function from a snapshot of the DB to a list of days:
-- **Start:** the summed `available_balance_cents` of depository checking accounts, falling back to `current_balance_cents`.
-- **Scheduled events:** active recurring streams on their `next_date` (repeated across the horizon), plus each credit card's `min_payment_cents` on its `next_due_date` if no outflow stream already covers that card's payment.
-- **Everyday spending:** the daily total of money out that isn't a recurring stream, over the last 90 days. The expected path uses the median day, the low path the 75th-percentile day and the high path the 25th.
-- **Horizon:** through the next paycheck, and at least 30 days.
+**Implemented (TPC-31).** One read-only `forecast_service.snapshot` serves the daily graph, Goal Agent and `GET /forecast`. It uses checking depository accounts (legacy null subtype included), preferring each available balance over current. Posted, non-removed checking transactions form 90 zero-filled daily outflow totals; transfers, card purchases on other accounts, and detected or stored streams are excluded from everyday spending.
 
-**When it acts:** if the *low* path dips below the buffer within 14 days, the run raises a `low_balance` flag with the date, the shortfall and the events on that date. The buffer is `users.prefs_json.low_balance_buffer_cents`, default $100. The LLM names the bill that causes the dip and picks one of these actions:
-- `move_from_savings`: amount = shortfall + buffer, only if a savings account can cover it. It is a proposal only; nothing moves (section 11).
-- `delay_spend`: names flexible categories that are ahead of pace (section 6.4) and how much to hold back.
-- `alert`: warns without suggesting anything.
+The pure engine projects active streams, uncovered credit-card minimums and accepted goals. Calendar anchors prevent month-end drift. Bills overdue by at most five days move to tomorrow; older overdue occurrences roll forward with an assumption. A missing card due date counts in surplus but has no dated event. Card-payment streams cover the corresponding minimum (with the single-card/single-stream fallback). Goal payments use the day after the first paycheck in each active month, or the 1st with no paycheck; later biweekly paychecks do not schedule a second payment. New savings/loan streams that already represent accepted goal payments are excluded to avoid double counting.
 
-**Surplus:** expected balance at the next paycheck, minus the buffer, minus scheduled events before the paycheck after it. Scaled to a month, this is `monthly_surplus_cents`, the figure the Goal Agent and the debt planner use. It replaces M4's separate surplus calculation.
+The horizon is 30 to 45 days, extended through the next paycheck when needed. Under 28 history days gives `no_history`; no usable checking balance gives `no_checking`, both with empty paths. Expected spending is the daily mean, not the median. Range cost is mean times elapsed days plus/minus 1.2816 times the sample deviation of twelve weekly totals, scaled by sqrt(days/7), with nonnegative high-path cost. The UI says typical range rather than claiming a confidence level.
 
-**Limits, stated in the UI:** with irregular income there's no inflow stream, so the forecast assumes no income and says so. The answer is always shown as a range, never a single number.
+A low-path crossing under the buffer in the next 14 days produces the first dip date and deepest shortfall. The largest recent bill within five days remains the cause even if the crossing is a day later or the bill just posted; an intervening paycheck ends that attribution. This preserves bill identity without charging it twice. Keys are `low_balance|bill_key|dip_date`. Against the latest alert for that bill, repeat only if shortfall rises by both 25% and $20, the dip comes within two days after being three or more away, or its date is earlier or more than three days later. Dismissed alerts obey the same rules. A buffer change leaves existing alerts untouched.
+
+The buffer is `prefs_json.forecast.low_balance_buffer_cents`, with legacy flat-key fallback and default $100. It accepts strict integer cents from $0 to $10,000. Severity is high below zero, otherwise medium. Code guards savings coverage and flexible spending at pace 1.0 or more for optional proposals. With no paycheck stream, no income is assumed and only alert is allowed; nothing moves automatically.
+
+Monthly surplus is a balance-independent flow: normalized active inflows minus outflows, accepted goals, uncovered card minimums and mean everyday spending times 30.4375, rounded to $10. Missing checking, absent/stale paycheck patterns or under 65 history days/three inflows use the measured goal fallback. Supported nonpositive forecasts are real no-surplus results. Forecast goal caps reconstruct gross surplus before applying max_share and subtract commitments once. Existing unknown-card-obligation errors remain enforced. Cash above buffer is separate from surplus.
+
+The daily route adds `forecast_cash` after recurring detection on both budget routes. Its safe summary contains status, dip date/shortfall, monthly flow, committed cents and no-income assumption. The signal context minimizes bill, shortfall, rounded starting available dollars and proposal facts; no account names or exact starting balance leave the gateway. Checkpoint filtering applies at every write, including exceptions before log_advice, so cleared facts cannot remain in SQLite freed pages.
+
+`GET /forecast?days=1..90` truncates the computed horizon; `PUT /forecast/buffer` changes only preferences. The dashboard card has independent errors, expected line, typical range, dashed buffer, bill markers, accessible description and daily table. Goals name their source; debt comparison shows a suggested extra without changing its input. `get_cash_forecast` is the seventh chat tool.
+
+Offline replay on 79 forecast-dip dates: d+7 MAE $7.31, d+14 MAE $10.07, coverage 68.4% / 79.7%, mean band width $22.96; the flat-balance d+14 baseline is $587.09. The Landlord dip is named 14 days ahead. These are one synthetic profile's results; real Plaid balances, Postgres, live seven-tool choice and a 375 px browser inspection remain unverified. See the [verification handoff](handoffs/2026-11-02-tpc-31-manual-verification.md).
 
 ### 6a.3 Debt-payoff planner
 
@@ -422,7 +425,7 @@ The output gives each strategy's months to debt-free, total interest, and payoff
 
 The implemented daily route is sync, load_state, categorize, update_totals, detect_recurring, detect_overspend, diagnosis/action when flagged, decide_signals, log_advice, then approval only for budget adjustments and persist_state. With no current budget, load_state goes directly to detect_recurring and decide_signals. Detector and decision errors are recorded by type without stopping overspend alerts. Run summaries add `as_of`, stream count and changed ids, and `signals_error`.
 
-The cash forecast node and seventh chat tool remain planned. The six current tools include `get_recurring` and `plan_debt_payoff`; live selection with the recurring tool is not yet verified.
+The cash forecast node and seventh chat tool are implemented. Seven current tools include recurring, cash forecast and debt planning; live selection with seven tools remains unverified.
 
 ---
 
@@ -430,7 +433,7 @@ The cash forecast node and seventh chat tool remain planned. The six current too
 
 `agents/goal_graph.py`, a LangGraph graph: `load_facts → propose → validate_candidate → persist`, with at most one `correction → propose` loop. With a checkpointer (the app, TPC-25) it continues `→ forget_facts → await_approval` and pauses for the user; without one (the CLI) it ends at `persist`. Run it from the CLI with `python -m app.agents.goal_graph --user <id>`.
 
-**The surplus** (`budget_engine/goals.py`) is measured, not planned: the median over the last 3 complete months of income − spending − transfers to savings, with the same month window as `fit`, minus the minimums on cards with a balance. A card payment isn't spending, because it pays for purchases already counted, so nothing else takes a card's minimum out; a loan's payment is spending, so it's already out. The budget's Free line also has to cover spending with no line, so using it would double-count that money. TPC-31's `monthly_surplus_cents` replaces this figure when it lands. With no surplus, the run stops before calling the model.
+**The surplus** uses the shared forecast when supported, otherwise the measured median of three complete months minus card minimums. Both figures, the selected source, fallback reason and explicit forecast date enter the goal run summary. No card minimum is subtracted twice on the forecast path. The forecast cap uses `max(round(max_share × (net surplus + commitments)) − commitments, 0)`; the measured fallback retains its historical cap. A nonpositive supported forecast stops before any model call.
 
 **Preferences** are in `prefs_json["goals"]`, set with `--prefs` until there's a UI: `skip_kinds`, `max_share` (default 0.8, which sets the cap), `protected_categories` and a free-text `note`. Code enforces the first two. Goals are only funded from the surplus and never cut a line, so "don't touch my gym budget" holds by construction.
 
@@ -465,7 +468,7 @@ A run marks the user's earlier `proposed` goals `superseded` in one commit with 
 **Double counting.** Three places would count one dollar twice. The first two attribute only the amount above the line's old limit to the goal, `net_of_goal(actual, limit, goal) = actual − min(goal, max(actual − limit, 0))`. Subtracting the whole goal would be wrong: avalanche usually sends a debt goal to a card, whose payments aren't in `LOAN_PAYMENTS`, so a $200 goal would turn an unchanged $210 loan payment into a $10 line and raise `over_limit` every month after.
 1. **Saving line.** A fixed line adopts its actual at close, so a goal's transfer would inflate `SAVINGS_TRANSFER` and be budgeted again by the goal line. `gather_month` nets `saved` against the closed month's emergency-fund and savings goal lines.
 2. **Loan spending.** The same for `LOAN_PAYMENTS` and a `debt_payoff` line, in `gather_month` and in `evaluate`.
-3. **Regeneration.** The cap subtracts accepted goals. **Known limit:** once the user's transfers show up in history, the measured surplus has already fallen, so the amount is subtracted twice and the cap is understated until the goal ends, and for a few months after it, because the surplus is a three-month median that still holds the goal's payments. It errs on the safe side, and TPC-31's forecast replaces this figure.
+3. **Regeneration.** Accepted goals are excluded from offered kinds. The forecast surplus is already net of commitments, so the cap reconstructs gross before taking max_share and subtracting those commitments once. This resolves the earlier double-subtraction limit on the forecast path. The measured fallback remains conservative when historical transfers already include goal payments.
 
 **Known limits.** The app doesn't track what the user actually pays toward a goal, so a goal line is a plan. A debt goal's line ends on its projected date even if the debt remains. So that the user isn't left to read Free rising as "debt done", the close that completes a goal writes a `goal_ended` alert ("Your Debt payoff goal reached its planned end date, so its $583.00 budget line has ended. Check that it's done, and generate goals again if there's more to do.") on the new period, badged "Goal ended" on the Alerts page. A goal the user stopped gets none.
 
@@ -707,7 +710,8 @@ POST /goals/{id}/accept         -> the goal; 404 other user's; 409 already decid
                                     that kind is accepted
 POST /goals/{id}/dismiss        -> the goal; 404, 409. Works on proposed goals and stops an accepted one
 GET  /recurring                 -> {as_of, streams: id/direction/label/frequency/amount_kind, typical/last/previous cents, last/next dates, status/change/first_seen}
-GET  /forecast?days=            -> daily expected/low/high balance, scheduled events, buffer, monthly surplus
+GET  /forecast?days=1..90       -> {today, status, start_cents, buffer_cents, horizon_days, income, days, events, dip, monthly_surplus_cents, surplus_source, suggested_extra_cents, notes}
+PUT  /forecast/buffer           { buffer_cents: strict integer 0..1_000_000 } -> {buffer_cents, default_cents: 10000}
 POST /debt-plan                 { extra_monthly_cents: 0..100_000_000, include_mortgage? } -> { avalanche, snowball,
                                     baseline: { avalanche, snowball }, excluded, start }; each plan has months,
                                     debt_free, total_interest_cents, order (payoff month per debt), never (TPC-32)
@@ -754,7 +758,7 @@ Build the harness **early** (alongside Milestone 2), even with only two scenario
 | Budget improvement | MAPE per period over 3+ simulated periods; should trend down | trend |
 | False alarm rate | Alerts on scenarios with no real overspend | low |
 | Recurring detection | Precision and recall of detected streams against the ones planted in each fixture (match on merchant + frequency); in Sandbox, agreement with Plaid's `/transactions/recurring/get` | report both |
-| Forecast error | Replay a fixture: forecast from day *d*, compare with the actual balance on *d*+7 and *d*+14 (MAE) and how often the actual falls inside the low/high band | MAE ↓, band coverage ≈ 50% |
+| Forecast error | Replay a fixture: forecast from day *d*, compare with the actual balance on *d*+7 and *d*+14 (MAE) and how often the actual falls inside the low/high band | report measured MAE and coverage; no fixed coverage claim |
 | Overdraft warning lead time | Days between the `low_balance` alert and the planted dip | ≥ 3 days |
 | Debt-plan exactness | Agent's months-to-debt-free and total interest vs `payoff.py` run directly, by rule (months equal, interest within $1) | 100% |
 | KG ablation: budget decisions | Cause and action accuracy, false alarms and repeat alerts with `KG_MODE` off vs on, on 8 planted users (section 6b.5) | on ≥ off; report the difference |
@@ -1106,6 +1110,21 @@ Docker follow-up also passed: **807 offline tests and five live tight-surplus tr
 | Keep cancellation as a pending alert; apply once after adjustments and mute from accepted rows | Preserve user control without storing stream facts in a paused checkpoint |
 | Scrub outflows and omit inflow counterparties | Keep identifying payroll text out of model prompts |
 | Keep subscriptions inside existing budget categories | Automatic fixed-line conversion remains a follow-up |
+
+## Forecast implementation decisions (2026-11-02)
+
+| Decision | Reason |
+|---|---|
+| Mean daily spending and weekly-total deviation; report measured coverage | Median daily spending was zero on sparse purchase data |
+| Flow surplus, separate from balance and buffer | Cash on hand must not inflate recurring goal affordability |
+| Five-day overdue grace; unknown card due dates count only in surplus | State timing assumptions without inventing payment dates |
+| Goals pay after the first paycheck, or on the 1st | Make accepted plans visible without tracking real contributions |
+| Three-day sliding dip tolerance, +25%/$20 growth and two-day urgency | Avoid daily repeats while retaining meaningful new warnings |
+| Attribute nearby bill crossings across five days until income intervenes | Prevent a one-day range shift from creating an everyday-spending duplicate |
+| Filter all budget checkpoint writes, including errors | Save-on-exit also writes after exceptions before explicit clearing |
+| Use forecast-aware gross cap and retain measured fallback | Allocate accepted commitments once while preserving historical behavior |
+
+Extra-payment proposals remain deferred; the debt planner receives only a suggested-extra hint.
 
 ## References
 - Plaid docs: https://plaid.com/docs/ (Link, Transactions `/transactions/sync`, Liabilities, Sandbox)

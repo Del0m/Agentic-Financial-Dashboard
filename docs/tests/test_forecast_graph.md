@@ -77,3 +77,9 @@ These offline tests use explicit dates and integer cents. Database cases use a f
 **What it does:** A normal day adds no model call, using the explicit fixtures and assertions in the test.
 
 **Why it's there:** Guards this forecast behavior independently of live data and model wording.
+
+## `test_an_errored_run_never_writes_bill_payloads_to_the_checkpoint_file`
+
+**What it does:** Raises during diagnosis after forecasting and inspects the checkpoint file bytes for bill names and exception text.
+
+**Why it's there:** Covers a failure or calendar seam found in end-to-end review.

@@ -37,6 +37,13 @@ def test_the_deepest_low_in_14_days_sets_the_shortfall():
     assert r.dip.date == date(2026, 10, 13) and r.dip.shortfall_cents == 8000
 
 
+def test_a_crossing_after_a_bill_keeps_the_bill_identity_without_reapplying_it():
+    r=forecast(inputs(today=date(2026,10,13),start_balance_cents=10050,
+        streams=[stream(last_date=date(2026,10,13),next_date=date(2026,11,13))],everyday_daily_cents=[100]*90))
+    assert r.days[0].expected_cents==9950 and r.dip.cause.name=='Landlord'
+    assert not any(e.date<=date(2026,10,13) for e in r.events)
+
+
 def test_an_event_dated_today_is_not_applied_twice():
     r = forecast(inputs(streams=[stream(day=10)]))
     assert not any(e.date == TODAY for e in r.events)
@@ -116,6 +123,14 @@ def test_a_past_due_date_rolls_forward_by_months():
 def test_goal_pays_the_day_after_payday():
     r = forecast(inputs(goals=[CommittedGoal(1,"debt_payoff",58300,date(2026,10,1),date(2027,3,1))]))
     assert [(e.date,e.cents) for e in r.events if e.source == "goal"] == [(date(2026,10,16),-58300)]
+
+
+def test_a_goal_does_not_pay_again_after_a_later_paycheck_in_the_month():
+    pay=stream('Employer',185000,15,'in','INCOME',frequency='biweekly',gap_days=14,anchors=(),
+        first_date=date(2026,11,1),last_date=date(2026,11,15),next_date=date(2026,11,29))
+    r=forecast(inputs(today=date(2026,11,15),streams=[pay],
+        goals=[CommittedGoal(1,'savings',10000,date(2026,11,1),date(2027,3,1))]))
+    assert [e.date for e in r.events if e.source=='goal']==[date(2026,12,14)]
 
 
 def test_goal_with_no_paycheck_pays_on_the_first():

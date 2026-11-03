@@ -141,3 +141,18 @@ def test_a_normal_day_adds_no_model_call(db,tmp_path,monkeypatch):
     quiet_pace(monkeypatch)
     m=SchemaReplyModel();run(db,tmp_path,uid,model=m)
     assert m.seen==[] and low_alerts(db)==[]
+
+
+def test_an_errored_run_never_writes_bill_payloads_to_the_checkpoint_file(db,tmp_path,monkeypatch):
+    uid=seed(db)
+    with db() as s:
+        for t in s.query(Transaction).filter_by(user_id=uid,merchant_name='Landlord'):
+            t.merchant_name='ZZ-PRIVATE-RENT'
+        s.commit()
+    def fail(*a,**kw):raise RuntimeError('ZZ-PRIVATE-ERROR')
+    monkeypatch.setattr(budget_graph,'invoke_structured',fail)
+    path=tmp_path/'error-ck.db'
+    with sqlite3.connect(path,check_same_thread=False) as conn, pytest.raises(RuntimeError):
+        run(db,tmp_path,uid,checkpointer=SqliteSaver(conn))
+    raw=b''.join(p.read_bytes() for p in tmp_path.glob('error-ck.db*'))
+    assert b'ZZ-PRIVATE-RENT' not in raw and b'ZZ-PRIVATE-ERROR' not in raw
