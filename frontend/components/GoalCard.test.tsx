@@ -23,7 +23,8 @@ describe("GoalCard", () => {
     expect(screen.getByText("Debt payoff (avalanche)")).toBeTruthy();
     expect(screen.getByText("$583.00/mo")).toBeTruthy();
     expect(screen.getByText(/\$21,600\.00/)).toBeTruthy();
-    expect(screen.getByText(/Dec 1, 2029/)).toBeTruthy();
+    expect(screen.getByText("Target $21,600.00 by December 2029")).toBeTruthy(); // a month: the line runs through it
+    expect(screen.queryByText(/Dec 1/)).toBeNull();
     expect(screen.getByText("The card at 24.99% costs the most, so it goes first.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Accept" }));
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));

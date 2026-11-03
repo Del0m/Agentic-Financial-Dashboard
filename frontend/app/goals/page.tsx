@@ -24,12 +24,21 @@ function resultOf(run: GoalRun): Result {
     case "expired":
       return say("A newer proposal replaced this one.");
     case "error": {
-      const reason = run.reason ?? run.error ?? "unknown error"; // an interrupted run has an error and no reason
+      const code = run.reason ?? run.error ?? "unknown error"; // an interrupted run has an error and no reason
       const issues = run.issues.map((i) => i.message);
-      if (reason === "goals_changed") {
-        return { text: "Your accepted goals changed while this ran, so nothing was written. Your earlier proposal stands. Generate again.", issues };
+      const stands = "Your earlier proposal stands.";
+      switch (code) {
+        case "goals_changed":
+          return { text: "Your accepted goals changed while this ran, so nothing was written. Your earlier proposal stands. Generate again.", issues };
+        case "incomplete_card_obligations": // a credit account with no balance, or a balance and no minimum payment
+          return { text: `A credit card is missing its balance or minimum payment, so goals can't be worked out yet. ${stands}`, issues };
+        case "validation_failed":
+          return { text: `The model's proposal didn't fit after two tries. ${stands}`, issues };
+        case "bad_model_output":
+          return { text: `The model didn't return a usable proposal after two tries. ${stands}`, issues };
+        default: // an exception name, or a run interrupted by a restart
+          return { text: `The run couldn't finish. Check that the model is running, then try again. ${stands} (${code})`, issues };
       }
-      return { text: `The run failed (${reason}). Your earlier proposal stands.`, issues };
     }
     default:
       if (run.goal_ids.length) return say(`${plural(run.goal_ids.length, "goal")} proposed.`);
@@ -160,7 +169,7 @@ export default function GoalsPage() {
       {goals === null && !loadError ? (
         <p className="text-neutral-500">Loading…</p>
       ) : goals && goals.length === 0 ? (
-        <p className="text-sm text-neutral-500">No goals yet. Generate goals to get a proposal.</p>
+        <p className="text-sm text-neutral-500">No goals right now. Generate goals to get a proposal.</p>
       ) : (
         <>
           {proposed.length > 0 && (

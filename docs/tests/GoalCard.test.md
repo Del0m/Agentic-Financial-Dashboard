@@ -10,16 +10,16 @@ npm test -- components/GoalCard.test.tsx
 
 ## Shared setup
 
-- `goal(over)` builds a proposed avalanche debt-payoff goal: $583.00/mo, target $21,600.00 by Dec 1, 2029, starting Dec 1, 2026.
+- `goal(over)` builds a proposed avalanche debt-payoff goal: $583.00/mo, target $21,600.00 by December 2029, starting Dec 1, 2026.
 - `draw(goal, busy)` renders it with mock `onAccept` and `onDismiss` callbacks.
 
 ---
 
 ## `a proposed goal shows its numbers and both decisions`
 
-**What it does:** The card shows "Debt payoff (avalanche)", "$583.00/mo", the target and its date, and the rationale. Accept and Dismiss call back with the goal's id.
+**What it does:** The card shows "Debt payoff (avalanche)", "$583.00/mo", "Target $21,600.00 by December 2029", and the rationale. The target date is a month, with no day, and "Dec 1" doesn't appear. Accept and Dismiss call back with the goal's id.
 
-**Why it's there:** The user is committing money for years, so every figure behind the decision is on the card. The page sends the id to `POST /goals/{id}/accept` or `/dismiss`.
+**Why it's there:** The user is committing money for years, so every figure behind the decision is on the card. The goal's line runs through its target month, so a day would be a false precision. The page sends the id to `POST /goals/{id}/accept` or `/dismiss`.
 
 ## `an accepted goal says when it joins the budget and offers Stop`
 

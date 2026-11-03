@@ -104,19 +104,48 @@ describe("Goals page", () => {
       issues: [{ message: "Goal 1 costs more than the cap.", index: 1, kind: "over_cap" },
                { message: "Goal 2 repeats a kind.", index: 2, kind: "duplicate" }],
     }));
-    expect(await screen.findByText(/validation_failed/)).toBeTruthy();
-    expect(screen.getByText(/earlier proposal stands/)).toBeTruthy();
+    expect(await screen.findByText(
+      "The model's proposal didn't fit after two tries. Your earlier proposal stands.")).toBeTruthy();
+    expect(screen.queryByText(/validation_failed/)).toBeNull();
     expect(screen.getByText("Goal 1 costs more than the cap.")).toBeTruthy();
     expect(screen.getByText("Goal 2 repeats a kind.")).toBeTruthy();
     expect(screen.getByText("Because 1")).toBeTruthy();
   });
 
-  test("an interrupted run falls back to its error", async () => {
+  test("an interrupted run says it couldn't finish and names the error", async () => {
     render(<GoalsPage />);
     await screen.findByText("Because 1");
-    await generateThrough(run({ status: "error", reason: null, error: "ConnectionError" }));
-    expect(await screen.findByText(/ConnectionError/)).toBeTruthy();
-    expect(screen.getByText(/earlier proposal stands/)).toBeTruthy();
+    await generateThrough(run({ status: "error", reason: null, error: "ConnectError" }));
+    expect(await screen.findByText(
+      "The run couldn't finish. Check that the model is running, then try again. Your earlier proposal stands. (ConnectError)"))
+      .toBeTruthy();
+  });
+
+  test("an exception name as the reason gets the same plain message", async () => {
+    render(<GoalsPage />);
+    await screen.findByText("Because 1");
+    await generateThrough(run({ status: "error", reason: "ConnectError" }));
+    expect(await screen.findByText(/The run couldn't finish\. Check that the model is running/)).toBeTruthy();
+    expect(screen.getByText(/\(ConnectError\)/)).toBeTruthy();
+  });
+
+  test("incomplete card obligations explain why goals can't be worked out", async () => {
+    render(<GoalsPage />);
+    await screen.findByText("Because 1");
+    await generateThrough(run({ status: "error", reason: "incomplete_card_obligations" }));
+    expect(await screen.findByText(
+      "A credit card is missing its balance or minimum payment, so goals can't be worked out yet. Your earlier proposal stands."))
+      .toBeTruthy();
+    expect(screen.queryByText(/incomplete_card_obligations/)).toBeNull();
+  });
+
+  test("bad model output says no usable proposal came back", async () => {
+    render(<GoalsPage />);
+    await screen.findByText("Because 1");
+    await generateThrough(run({ status: "error", reason: "bad_model_output" }));
+    expect(await screen.findByText(
+      "The model didn't return a usable proposal after two tries. Your earlier proposal stands.")).toBeTruthy();
+    expect(screen.queryByText(/bad_model_output/)).toBeNull();
   });
 
   test("goals_changed asks the user to generate again", async () => {
@@ -194,7 +223,7 @@ describe("Goals page", () => {
     goalsMock.mockResolvedValue([]);
     fireEvent.click(screen.getByRole("button", { name: "Stop" }));
     await waitFor(() => expect(dismissMock).toHaveBeenCalledWith(1));
-    expect(await screen.findByText(/No goals yet/)).toBeTruthy();
+    expect(await screen.findByText(/No goals right now\. Generate goals to get a proposal/)).toBeTruthy();
   });
 
   test("a 409 on Accept shows the message and reloads, dropping the stale goal", async () => {
@@ -209,10 +238,10 @@ describe("Goals page", () => {
     expect(screen.getByText("This proposal is older. Generate goals again.")).toBeTruthy();
   });
 
-  test("no goals yet shows the empty state", async () => {
+  test("no goals shows the empty state", async () => {
     goalsMock.mockResolvedValue([]);
     render(<GoalsPage />);
-    expect(await screen.findByText(/No goals yet/)).toBeTruthy();
+    expect(await screen.findByText(/No goals right now\. Generate goals to get a proposal/)).toBeTruthy();
   });
 
   test("a failed load says so", async () => {

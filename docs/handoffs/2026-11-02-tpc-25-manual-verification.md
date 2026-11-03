@@ -64,8 +64,8 @@ The model chooses the goals and the monthly amounts, so those can differ from ru
 On http://localhost:3000/goals click **Generate goals**. The button reads "Generating…" for 20 to 60 seconds.
 
 **Expected:** the status line says "2 goals proposed." and two cards appear under **Proposed**:
-- **Debt payoff (avalanche)**: $583.00/mo, "Target $21,600.00 by" February 2029, "Joins your budget in December 2026 if you accept."
-- **Emergency fund**: $194.40/mo, "Target $6,851.78 by" November 2029, with the same "Joins your budget in December 2026" line. (It's sometimes the other order of amounts, or a different split; the two must add up to at most $777.40.)
+- **Debt payoff (avalanche)**: $583.00/mo, "Target $21,600.00 by February 2029", "Joins your budget in December 2026 if you accept."
+- **Emergency fund**: $194.40/mo, "Target $6,851.78 by November 2029", with the same "Joins your budget in December 2026" line. (It's sometimes the other order of amounts, or a different split; the two must add up to at most $777.40.)
 
 Each card has **Accept** and **Dismiss**. The debt goal comes first.
 
@@ -168,7 +168,7 @@ grep -a -c "Platinum" "$BUDGET_CHECKPOINT_PATH" "$BUDGET_CHECKPOINT_PATH-wal"
 - **This profile's history ends on 2026-10-31**, so advancing adds no transactions. Flexible lines shrink month by month as the budget smooths toward $0 of spending, and after December the income estimate falls too (January's total is about $2,905). None of that is the goal feature. Stop at 2026-12-01 for the clean comparison.
 - **"Couldn't start Link"** appears on the dashboard for a simulated user. It's existing behaviour: a synthetic user has no bank to link.
 - **A goal accepted or stopped during a budget close** can take effect one month late (rare, and it corrects itself the month after).
-- **The failure line on /goals can show a raw code** such as `incomplete_card_obligations` instead of a sentence, and a run that finds nothing to propose can't say it withdrew the earlier proposal.
+- **A run that finds nothing to propose can't say it withdrew the earlier proposal.**
 - **Accept and Stop stay clickable while Generate runs.** The server answers 409 if it matters.
 - **If a run fails after saving its goals**, the page can say "failed" while the new proposal is already on the page. Reload and it's there.
 - **Opening the goals list can finish a stuck run**, so a `GET` may write. That's how a click whose resume failed heals.

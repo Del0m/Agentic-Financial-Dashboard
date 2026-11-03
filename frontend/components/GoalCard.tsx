@@ -1,5 +1,5 @@
 import type { Goal } from "@/lib/api";
-import { formatCents, formatDate, formatMonth } from "@/lib/format";
+import { formatCents, formatMonth } from "@/lib/format";
 
 const KINDS: Record<Goal["kind"], string> = { debt_payoff: "Debt payoff", emergency_fund: "Emergency fund", savings: "Savings" };
 
@@ -7,7 +7,7 @@ export function goalTitle(goal: Goal): string {
   return `${KINDS[goal.kind] ?? goal.kind}${goal.strategy ? ` (${goal.strategy})` : ""}`;
 }
 
-// one goal from the goal agent. a proposal gets Accept / Dismiss; an accepted goal gets Stop, which ends its budget
+// one goal from the goal agent. the target is a month, not a day: its line runs through that month. a proposal gets Accept / Dismiss; an accepted goal gets Stop, which ends its budget
 // line at the next close. a proposal with no start date (from before tpc-25) can't be accepted, so it only gets Dismiss
 export default function GoalCard({ goal, busy, onAccept, onDismiss }: {
   goal: Goal;
@@ -23,7 +23,7 @@ export default function GoalCard({ goal, busy, onAccept, onDismiss }: {
         <span className="tabular-nums">{formatCents(goal.monthly_cents)}/mo</span>
       </header>
       <p className="text-sm text-neutral-500">
-        Target {formatCents(goal.target_cents)}{goal.target_date && ` by ${formatDate(goal.target_date)}`}
+        Target {formatCents(goal.target_cents)}{goal.target_date && ` by ${formatMonth(goal.target_date)}`}
       </p>
       <p>{goal.rationale}</p>
       {!proposed && goal.start_date && <p className="text-sm">In your budget from {formatMonth(goal.start_date)}</p>}

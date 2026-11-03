@@ -25,7 +25,7 @@ npm test -- app/dashboard/page.test.tsx
 
 ## `proposed goals aren't listed in the card`
 
-**What it does:** With only a proposed goal, the card says there are no accepted goals.
+**What it does:** With only a proposed goal, the card says "No active goals right now."
 
 **Why it's there:** `GET /goals?status=current` returns proposals too. A proposal isn't part of the budget yet.
 

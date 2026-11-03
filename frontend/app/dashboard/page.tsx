@@ -270,7 +270,7 @@ export default function DashboardPage() {
             ) : !goals ? (
               <p className="text-sm text-neutral-500">Loading…</p>
             ) : acceptedGoals.length === 0 ? (
-              <p className="text-sm text-neutral-500">No accepted goals yet. Generate some from Goals.</p>
+              <p className="text-sm text-neutral-500">No active goals right now. Generate some from Goals.</p>
             ) : (
               <ul className="space-y-2">
                 {acceptedGoals.map((g) => (

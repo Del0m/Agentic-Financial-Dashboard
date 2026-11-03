@@ -76,7 +76,7 @@ describe("Dashboard goals", () => {
     goalsMock.mockResolvedValue([goal(1, { status: "proposed" })]);
     render(<DashboardPage />);
     const card = await goalsCard();
-    expect(await card.findByText(/No accepted goals/)).toBeTruthy();
+    expect(await card.findByText(/No active goals right now/)).toBeTruthy();
     expect(card.queryByText("Debt payoff (avalanche)")).toBeNull();
   });
 

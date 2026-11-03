@@ -46,15 +46,33 @@ npm test -- app/goals/page.test.tsx
 
 ## `a failed run says the earlier proposal stands and lists the reasons`
 
-**What it does:** An `error` run with reason `validation_failed` and two issues shows the reason, "earlier proposal stands", and both issue messages. The existing proposal is still listed.
+**What it does:** An `error` run with reason `validation_failed` and two issues shows "The model's proposal didn't fit after two tries. Your earlier proposal stands." (not the code) and both issue messages. The existing proposal is still listed.
 
 **Why it's there:** A failed run writes nothing, so the user's proposal is untouched. The messages are code-written (never the model's text) and say what was wrong.
 
-## `an interrupted run falls back to its error`
+## `an interrupted run says it couldn't finish and names the error`
 
-**What it does:** An `error` run with no `reason` but `error: "ConnectionError"` shows "ConnectionError".
+**What it does:** An `error` run with no `reason` but `error: "ConnectError"` shows "The run couldn't finish. Check that the model is running, then try again. Your earlier proposal stands. (ConnectError)".
 
-**Why it's there:** A run closed on restart has only an error in its summary.
+**Why it's there:** A run closed on restart has only an error in its summary, and an unreachable model (Ollama down) is the usual cause. The user needs the next step, not just the exception name.
+
+## `an exception name as the reason gets the same plain message`
+
+**What it does:** An `error` run whose `reason` is `ConnectError` shows the same "The run couldn't finish" message with "(ConnectError)".
+
+**Why it's there:** The graph can store an exception name as the reason, and it isn't one of the known codes.
+
+## `incomplete card obligations explain why goals can't be worked out`
+
+**What it does:** An `error` run with reason `incomplete_card_obligations` says "A credit card is missing its balance or minimum payment, so goals can't be worked out yet. Your earlier proposal stands.", without the code.
+
+**Why it's there:** The backend refuses to plan when a credit account has an unknown balance or a balance with no known minimum. Without a sentence, Generate looked broken for no reason.
+
+## `bad model output says no usable proposal came back`
+
+**What it does:** An `error` run with reason `bad_model_output` says "The model didn't return a usable proposal after two tries. Your earlier proposal stands.", without the code.
+
+**Why it's there:** The model's text twice failed to parse as a proposal, which is not the same as a proposal that didn't fit.
 
 ## `goals_changed asks the user to generate again`
 
@@ -104,11 +122,11 @@ npm test -- app/goals/page.test.tsx
 
 **Why it's there:** A proposal can be replaced or its kind already accepted. The reload removes the dead card, and the message has to survive that reload or the user wouldn't know why it vanished.
 
-## `no goals yet shows the empty state`
+## `no goals shows the empty state`
 
-**What it does:** With no goals, the page says "No goals yet.".
+**What it does:** With no goals, the page says "No goals right now. Generate goals to get a proposal.".
 
-**Why it's there:** An empty page with only a button reads as broken.
+**Why it's there:** An empty page with only a button reads as broken. "Yet" was wrong after a goal ends or is stopped.
 
 ## `a failed load says so`
 
