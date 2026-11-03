@@ -114,3 +114,9 @@ Run them from `backend/`:
 **What they do:** A bad reply gets one resend, and calls and resends are counted. With `RETRIES_ENABLED` off, there's one call and a bad reply gives `None`.
 
 **Why they're there:** The retry ablation needs the switch, and the fire rate shows whether the mechanism ran at all.
+
+## `test_looks_one_time`
+
+**What it does:** Code applies the `one_time` rule: most of the spending at a new or occasional merchant, or at least twice what that merchant usually comes to.
+
+**Why it's there:** TPC-46. Given the rule to compare, the model called a 35% purchase `one_time`. A first version left out the merchant's pattern, and that made `budget-recurring-wine-club` and `budget-graph-price-increase` wrong live, so those patterns are cases here.

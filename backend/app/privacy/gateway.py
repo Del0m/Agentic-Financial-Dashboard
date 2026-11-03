@@ -100,6 +100,16 @@ def _cash_summary(result, buffer_cents: int, bill: Optional[str]) -> str:
     return text
 
 
+# the one_time rule, worked out here because the model called a 35% purchase one_time against "above 0.5" (tpc-46):
+# most of the spending at a merchant that's new or occasional, or far above what that merchant usually comes to
+def _looks_one_time(facts: OverspendFacts) -> bool:
+    largest = facts.largest
+    if largest is None:
+        return False
+    pattern = next((m.pattern for m in facts.merchants if m.merchant == largest.merchant), None)
+    return (facts.largest_share > 0.5 and pattern in ("new", "occasional")) or (facts.largest_vs_typical or 0) >= 2
+
+
 def _month_name(d: date) -> str:
     return d.strftime("%B %Y")
 
@@ -409,7 +419,8 @@ class PrivacyGateway:
             "largest": None if largest is None else {
                 "date": largest.date, "amount": _dollars(largest.amount_cents),
                 "merchant": scrub_merchant(largest.merchant), "share_of_spent": round(facts.largest_share, 2),
-                "times_typical": None if facts.largest_vs_typical is None else round(facts.largest_vs_typical, 1)},
+                "times_typical": None if facts.largest_vs_typical is None else round(facts.largest_vs_typical, 1),
+                "looks_one_time": _looks_one_time(facts)},
             "merchants": [{"merchant": scrub_merchant(m.merchant), "this_month": _dollars(m.period_cents),
                            "charges": m.charges, "months_seen_before": m.prior_months, "pattern": m.pattern,
                            "typical": _dollars(m.typical_cents)} for m in facts.merchants],

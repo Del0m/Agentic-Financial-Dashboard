@@ -26,7 +26,7 @@ from app.budget_engine.diagnose import OverspendFacts, overspend_facts, proposed
 from app.budget_engine.fit import HISTORY_MONTHS
 from app import config
 from app.kg import project
-from app.kg.facts import cut_was_dismissed, graph_facts
+from app.kg.facts import cut_was_dismissed, graph_facts, has_content
 from app.budget_engine.pace import BudgetLine as EngineLine, PaceResult, evaluate, history_start
 from app.budget_engine.recurring import monthly_cents
 from app.budget_engine.signals import (SIGNAL_CAP, PreviousDip, Signal, cancel_limit, choose, fallback_message,
@@ -345,11 +345,12 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             cat = flag["category"]
             f = overspend_facts(PaceResult(**flag), fits.get(cat), txns, history, period.start_date, lined=lined)
             if config.KG_MODE == "on":
-                f = replace(f, graph_facts=_graph_facts_for(session_factory, state["user_id"], f, today_of(state)))
+                found = _graph_facts_for(session_factory, state["user_id"], f, today_of(state))
+                f = replace(f, graph_facts=found if has_content(found) else None)
             facts[cat] = {**asdict(f), "proposed_limit_cents": proposed_limit_cents(f)}
             contexts[cat] = gateway.build_context("diagnose", facts=f, transactions=txns,
                                                   this_month_alerts=memory[cat][0], past_advice=memory[cat][1])
-            d = invoke_structured(model, diagnosis_schema(), diagnose_messages(contexts[cat]), stats=stats)
+            d = invoke_structured(model, diagnosis_schema(contexts[cat]), diagnose_messages(contexts[cat]), stats=stats)
             diagnoses[cat] = d.model_dump() if d else None
             failures += d is None
         return {"facts": facts, "contexts": contexts, "diagnoses": diagnoses, "llm_failures": failures,

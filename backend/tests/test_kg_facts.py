@@ -81,14 +81,28 @@ def test_with_the_graph_off_prompts_and_schema_are_unchanged(monkeypatch):
     monkeypatch.setattr(config, "KG_MODE", "off")
     assert diagnose_messages("ctx")[0].content == DIAGNOSE_PROMPT
     assert decide_messages("ctx", None, 100, 100, "medium")[0].content == DECIDE_PROMPT
-    assert diagnosis_schema() is Diagnosis
+    assert diagnosis_schema('{"graph_facts":{}}') is Diagnosis
 
 
 def test_with_the_graph_on_the_prompts_add_to_the_old_ones(monkeypatch):
     monkeypatch.setattr(config, "KG_MODE", "on")
-    assert diagnose_messages("ctx")[0].content.startswith(DIAGNOSE_PROMPT + "\n\nThe facts also have graph_facts")
-    assert decide_messages("ctx", None, 100, 100, "medium")[0].content.startswith(DECIDE_PROMPT)
-    assert diagnosis_schema() is GraphDiagnosis
+    ctx = '{"graph_facts":{}}'
+    assert diagnose_messages(ctx)[0].content.startswith(DIAGNOSE_PROMPT + "\n\nThe facts also have graph_facts")
+    assert decide_messages(ctx, None, 100, 100, "medium")[0].content.startswith(DECIDE_PROMPT + "\n\nThe facts also")
+    assert diagnosis_schema(ctx) is GraphDiagnosis
+
+
+def test_with_nothing_from_the_graph_the_prompts_are_the_plain_ones(monkeypatch):
+    monkeypatch.setattr(config, "KG_MODE", "on")
+    assert diagnose_messages("{}")[0].content == DIAGNOSE_PROMPT
+    assert decide_messages("{}", None, 100, 100, "medium")[0].content == DECIDE_PROMPT
+    assert diagnosis_schema("{}") is Diagnosis
+
+
+def test_has_content():
+    empty = {"merchants": [], "same_month_last_year_cents": None, "rule_moves": [], "price_changes": [], "advice_history": [], "related_guidance": []}
+    assert kg_facts.has_content(empty) is False and kg_facts.has_content(None) is False
+    assert kg_facts.has_content({**empty, "rule_moves": [{"merchant": "x"}]}) is True
 
 
 def _run(pid, until, days, _kg, tmp_model):
@@ -141,3 +155,8 @@ def test_the_four_existing_planted_users_are_unchanged_with_the_graph_off(monkey
     monkeypatch.setattr(config, "KG_MODE", "off")
     assert [p.id for p in PLANTED] == ["overspend-one-time", "overspend-recurring", "overspend-seasonal", "overspend-known-merchant"]
     assert all(not p.rules and not p.dismissed for p in PLANTED)
+
+
+def test_a_merchant_with_no_earlier_months_is_left_out():
+    g = graph_of("overspend-seasonal", date(2026, 12, 5), date(2026, 12, 5), ["Toy Barn"], "GENERAL_MERCHANDISE")
+    assert g["merchants"] == []

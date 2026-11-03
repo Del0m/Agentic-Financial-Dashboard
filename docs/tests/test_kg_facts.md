@@ -25,3 +25,15 @@ Tests for TPC-37: what the temporal graph adds to the budget agent. None needs a
 **What they do:** Code stops a cut or new limit on a moved category, and stops a third proposal of a dismissed cut, even when the model picks one. With the graph off, the second guard doesn't apply.
 
 **Why they're there:** A moved category isn't overspending, and the guard depends on the graph, so the ablation can see its effect.
+
+## `test_a_merchant_with_no_earlier_months_is_left_out`
+
+**What it does:** A merchant the graph has no earlier months for isn't listed.
+
+**Why it's there:** TPC-46. With the graph on, a listed zero made spending spread across new shops read as `one_time`, so the graph made the seasonal scenarios fail where they passed with it off.
+
+## `test_with_nothing_from_the_graph_the_prompts_are_the_plain_ones`, `test_has_content`
+
+**What they do:** With `KG_MODE` on but nothing from the graph, the prompts match the graph-off ones exactly.
+
+**Why they're there:** TPC-46. The graph's instructions alone made the original seasonal scenarios fail, though they pass with the graph off.

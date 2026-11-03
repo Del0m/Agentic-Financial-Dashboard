@@ -103,7 +103,9 @@ def _related(session: Session, user_id: str, category: str, today: date) -> list
 def graph_facts(session: Session, user_id: str, category: str, merchants: Iterable[Optional[str]], period_start: date,
                 today: date) -> dict:
     names = [m for m in merchants if m]
-    seen = [fact for fact in (_merchant(session, user_id, name, period_start) for name in names) if fact]
+    # a merchant with no earlier months says nothing the facts don't already. stated as a zero, it read as evidence of a
+    # new purchase and pushed the model to one_time on spending spread across new shops (tpc-46)
+    seen = [fact for fact in (_merchant(session, user_id, name, period_start) for name in names) if fact and fact["months_active"]]
     last_year = query.same_month_last_year(session, user_id=user_id, category=category, on_date=today)
     return {"merchants": seen,
             "same_month_last_year_cents": sum(e.value_json["cents"] for e in last_year) if last_year else None,
@@ -111,6 +113,11 @@ def graph_facts(session: Session, user_id: str, category: str, merchants: Iterab
             "price_changes": _price_changes(session, user_id, names, period_start),
             "advice_history": _advice(session, user_id, category, period_start, today),
             "related_guidance": _related(session, user_id, category, today)}
+
+
+def has_content(facts: Optional[dict]) -> bool:
+    return bool(facts) and any(facts[k] for k in ("merchants", "same_month_last_year_cents", "rule_moves", "price_changes",
+                                                   "advice_history", "related_guidance"))
 
 
 def cut_was_dismissed(facts: Optional[dict]) -> bool:

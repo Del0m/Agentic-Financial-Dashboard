@@ -21,9 +21,8 @@ DIAGNOSE_PROMPT = (
     "from the user's transactions. Classify the cause as exactly one of these, checking them in this order:\n"
     "1. recurring: a merchant whose pattern is started_recently (it began charging since the budget was set "
     "and now charges every month) explains much of the spending, at about its typical amount.\n"
-    "2. one_time: otherwise, the largest purchase explains most of the spending (share_of_spent above 0.5) "
-    "and its merchant's pattern is new or occasional, or it is far above what that merchant usually comes to (times_typical "
-    "of 2 or more). A big purchase at a regular shop is one_time, not recurring.\n"
+    "2. one_time: otherwise, only if largest.looks_one_time is true. If it is false, the cause is not one_time, even "
+    "at a merchant that's new.\n"
     "3. seasonal: otherwise, spending spread across several purchases with no single one dominating, in a "
     "month with typical seasonal spending (holidays in November and December, back-to-school in August and "
     "September, summer travel). Use the month.\n"
@@ -41,7 +40,9 @@ GRAPH_DIAGNOSE_PROMPT = (
     "c. seasonal: the merchants were active_same_month_last_year, or same_month_last_year_total is near this month's "
     "spending, so this is the time of year, whichever month it is. That comes before one_time and before a new-looking "
     "merchant, because months_active_in_last_13 sees further back than the merchant's pattern.\n"
-    "Otherwise use the causes above."
+    "These only add evidence. If graph_facts shows none of this, or the history doesn't reach last year, that says "
+    "nothing against a cause: use the causes above exactly as they are written. one_time still needs "
+    "largest.looks_one_time to be true."
 )
 GRAPH_DECIDE_PROMPT = (
     "\n\nThe facts also have graph_facts. For a reclassified cause, choose alert and explain that a rule moved the "
@@ -153,15 +154,21 @@ def _earlier(alerts: Sequence[dict], severity: str) -> str:
 
 
 def diagnose_messages(context: str) -> list:
-    prompt = DIAGNOSE_PROMPT + GRAPH_DIAGNOSE_PROMPT if config.KG_MODE == "on" else DIAGNOSE_PROMPT
+    prompt = DIAGNOSE_PROMPT + GRAPH_DIAGNOSE_PROMPT if _has_graph_facts(context) else DIAGNOSE_PROMPT
     return [SystemMessage(prompt), HumanMessage(f"Facts:\n{context}")]
 
 
 _RANK = {"medium": 1, "high": 2}
 
 
-def diagnosis_schema() -> type[BaseModel]:
-    return GraphDiagnosis if config.KG_MODE == "on" else Diagnosis
+# the graph's instructions come with its facts. with nothing to add, the model gets the same prompt as with the graph
+# off: those instructions alone turned spread spending at new shops into one_time or recurring (tpc-46)
+def _has_graph_facts(context: str) -> bool:
+    return config.KG_MODE == "on" and '"graph_facts":' in context
+
+
+def diagnosis_schema(context: str) -> type[BaseModel]:
+    return GraphDiagnosis if _has_graph_facts(context) else Diagnosis
 
 
 def decide_messages(context: str, diagnosis: Optional[BaseModel], projected_cents: int, proposed_cents: int,
@@ -172,7 +179,7 @@ def decide_messages(context: str, diagnosis: Optional[BaseModel], projected_cent
         proposal = f"${proposed_cents / 100:,.2f}"
     else:
         proposal = "none: adjust_next_budget is only for a recurring cause"
-    prompt = DECIDE_PROMPT + GRAPH_DECIDE_PROMPT if config.KG_MODE == "on" else DECIDE_PROMPT
+    prompt = DECIDE_PROMPT + GRAPH_DECIDE_PROMPT if _has_graph_facts(context) else DECIDE_PROMPT
     return [SystemMessage(prompt), HumanMessage(
         f"Facts:\n{context}\n\nDiagnosis: {cause}\nSeverity of this flag: {severity}\n"
         f"Earlier alerts for this category this month: {_earlier(earlier, severity)}\n"
