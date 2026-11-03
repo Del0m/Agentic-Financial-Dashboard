@@ -195,3 +195,8 @@ def test_chat_summary_carries_tags(offline, monkeypatch):
     assert run_eval.main(["--runs", "1", "--model", "m"]) == 0
     [out] = list((offline / "results").glob("*/m"))
     assert json.loads((out / "summary.json").read_text())["by_tag"] == {"debt": {"runs": 1, "fact_pass_rate": 1.0}}
+
+
+def test_skip_tag_leaves_out_tagged_scenarios(offline, capsys):
+    assert run_eval.parse_args(["--skip-tag", "temporal", "--skip-tag", "x"]).skip_tag == ["temporal", "x"]
+    assert run_eval.parse_args([]).skip_tag == []

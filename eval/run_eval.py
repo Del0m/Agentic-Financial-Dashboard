@@ -48,6 +48,8 @@ def parse_args(argv):
     p.add_argument("--runs", type=int, default=3, help="runs per scenario (default: 3)")
     p.add_argument("--only", help="run just this scenario id")
     p.add_argument("--kind", choices=KINDS, help="run just this kind of scenario (default: all)")
+    p.add_argument("--skip-tag", action="append", default=[], metavar="TAG",
+                   help="leave out scenarios with this tag; can be repeated")
     args = p.parse_args(argv)
     if args.runs < 1:
         p.error("--runs must be at least 1")
@@ -140,8 +142,9 @@ def main(argv=None) -> int:
         return 2
     if args.kind:
         scenarios = [s for s in scenarios if s.kind == args.kind]
+    scenarios = [s for s in scenarios if not set(args.skip_tag) & set(s.tags)]
     if not scenarios:
-        print(f"Bad scenario: nothing to run for --kind {args.kind}")
+        print(f"Bad scenario: nothing to run for --kind {args.kind} --skip-tag {args.skip_tag}")
         return 2
     has_chat = any(s.kind == "chat" for s in scenarios)
     kb = KnowledgeBase() if has_chat else None

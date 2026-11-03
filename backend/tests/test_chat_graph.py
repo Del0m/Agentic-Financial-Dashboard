@@ -327,3 +327,15 @@ def test_live_tool_call_round_trip():
                  CONFIG)
 
     assert "24" in final(graph).content
+
+
+# tpc-48: the model asked for the calendar month when the question said the last 30 days
+def test_date_line_spells_out_the_last_30_days():
+    from app.agents.chat_graph import _date_line
+    assert "The last 30 days means 2026-10-07 to 2026-11-06." in _date_line(lambda: date(2026, 11, 6))
+
+
+# tpc-47: with debt guidance in the prompt, the model answered from it and skipped the lookup
+def test_prompt_says_personal_questions_need_the_lookup_despite_guidance():
+    assert "needs the lookup even when the guidance below covers the topic" in SYSTEM_PROMPT
+    assert "name the debt with the highest APR" in SYSTEM_PROMPT and "the user has no debts" in SYSTEM_PROMPT

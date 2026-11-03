@@ -3,7 +3,8 @@
   "author": "claude",
   "today": "2026-11-06",
   "tags": [
-    "temporal"
+    "temporal",
+    "needs_graph"
   ],
   "question": "What was the 401(k) employee contribution limit in 2023?",
   "user": {

@@ -165,3 +165,15 @@ Run them from `backend/`:
 **What it does:** Executes get_recurring through the graph, scrubs a five-digit merchant reference and excludes an employer name.
 
 **Why it's there:** Chat reads stored streams only through the privacy gateway.
+
+## `test_date_line_spells_out_the_last_30_days`
+
+**What it does:** The prompt's date line gives the exact dates of the last 30 days.
+
+**Why it's there:** TPC-48. The model asked for the calendar month when the question said the last 30 days, and reported the wrong income.
+
+## `test_prompt_says_personal_questions_need_the_lookup_despite_guidance`
+
+**What it does:** The prompt says a question about the user's own debts needs a lookup even when guidance covers the topic, and says what to answer when there are no debts.
+
+**Why it's there:** TPC-47. With debt guidance in the prompt, the model answered from it and skipped the lookup. The live proof is the three `debt-*` scenarios.

@@ -115,3 +115,9 @@ The `agents` fixture adds one budget and one goal file to `offline`, and stubs t
 **What it does:** A tagged chat scenario appears under `by_tag`.
 
 **Why it's there:** Per-category rates are what the writeup reports.
+
+## `test_skip_tag_leaves_out_tagged_scenarios`
+
+**What it does:** `--skip-tag` can be repeated, and defaults to nothing.
+
+**Why it's there:** TPC-27. Temporal scenarios exist before the graph does, so a baseline before the graph needs to leave them out.
