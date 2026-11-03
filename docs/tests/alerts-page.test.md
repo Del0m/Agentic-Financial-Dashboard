@@ -129,3 +129,5 @@ npm test -- app/alerts/page.test.tsx
 **What it does:** "To month end" (28 days) whose job runs for about 13 minutes is still followed to the end and shows its result, not "Still running".
 
 **Why it's there:** It was found in the TPC-21 review. A month on the real model can take longer than the run button's 10-minute cap. The simulation allows 2 minutes per day, never under 10.
+
+The shared alert fixture includes nullable `stream_id`, matching the recurring API response. Existing assertions are unchanged.

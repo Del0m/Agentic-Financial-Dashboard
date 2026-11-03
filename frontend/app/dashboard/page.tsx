@@ -10,10 +10,11 @@ import DebtsTable from "@/components/DebtsTable";
 import { goalTitle } from "@/components/GoalCard";
 import NetWorthSummary from "@/components/NetWorthSummary";
 import PlaidLinkButton from "@/components/PlaidLinkButton";
+import RecurringList from "@/components/RecurringList";
 import TransactionsTable from "@/components/TransactionsTable";
 import {
-  correctTransaction, errorMessage, getAlerts, getBudget, getDashboard, getGoals, getTransactions, syncItem, type Budget,
-  type Dashboard, type ExchangeResult, type Goal, type Txn,
+  correctTransaction, errorMessage, getAlerts, getBudget, getDashboard, getGoals, getRecurring, getTransactions, syncItem, type Budget,
+  type Dashboard, type ExchangeResult, type Goal, type RecurringResponse, type Txn,
 } from "@/lib/api";
 import { categoryLabel, formatCents, formatDate, formatMonth } from "@/lib/format";
 
@@ -51,6 +52,8 @@ export default function DashboardPage() {
   // this month's transactions (tpc-22), with the line each counts against and a picker to correct it
   const [txns, setTxns] = useState<Txn[] | null>(null);
   const [txnError, setTxnError] = useState<string | null>(null);
+  const [recurring, setRecurring] = useState<RecurringResponse | null>(null);
+  const [recurringError, setRecurringError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +81,13 @@ export default function DashboardPage() {
         setTxnError(null);
       })
       .catch((err) => !cancelled && setTxnError(errorMessage(err)));
+    getRecurring()
+      .then((r) => {
+        if (cancelled) return;
+        setRecurring(r);
+        setRecurringError(null);
+      })
+      .catch((err) => !cancelled && setRecurringError(errorMessage(err)));
     return () => {
       cancelled = true;
     };
@@ -284,6 +294,13 @@ export default function DashboardPage() {
                 ))}
               </ul>
             )}
+          </Card>
+          <Card title="Recurring charges">
+            {recurringError ? (
+              <p className="text-sm text-red-600 dark:text-red-400">Couldn&apos;t load your recurring charges: {recurringError}</p>
+            ) : !recurring ? (
+              <p className="text-sm text-neutral-500">Loading…</p>
+            ) : <RecurringList data={recurring} />}
           </Card>
           <Card title="Transactions">
             {txnError ? (

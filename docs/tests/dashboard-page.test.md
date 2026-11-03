@@ -46,3 +46,21 @@ npm test -- app/dashboard/page.test.tsx
 **What it does:** With no goals, the link reads "Goals".
 
 **Why it's there:** "Goals (0)" is noise.
+
+## `shows the Recurring charges card`
+
+**What it does:** Renders the independent recurring card.
+
+**Why it's there:** Covers the recurring integration without coupling it to other cards.
+
+## `keeps a recurring failure inside its card`
+
+**What it does:** Retains Goals and Transactions when the recurring request fails.
+
+**Why it's there:** Covers the recurring integration without coupling it to other cards.
+
+## `shows the empty text for a user with no streams`
+
+**What it does:** Shows the recurring empty-state copy.
+
+**Why it's there:** Covers the recurring integration without coupling it to other cards.

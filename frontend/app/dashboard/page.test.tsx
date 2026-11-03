@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import DashboardPage from "@/app/dashboard/page";
 import {
-  ApiError, getAlerts, getBudget, getDashboard, getGoals, getTransactions, type Budget, type Dashboard, type Goal,
+  ApiError, getAlerts, getBudget, getDashboard, getGoals, getRecurring, getTransactions, type Budget, type Dashboard, type Goal,
 } from "@/lib/api";
 
 vi.mock("@/lib/api", async (importOriginal) => ({
@@ -12,6 +12,7 @@ vi.mock("@/lib/api", async (importOriginal) => ({
   getAlerts: vi.fn(),
   getTransactions: vi.fn(),
   getGoals: vi.fn(),
+  getRecurring: vi.fn(),
 }));
 // these draw charts, open Plaid or call the planner; none of it matters here
 vi.mock("@/components/BalanceChart", () => ({ default: () => null }));
@@ -47,6 +48,7 @@ beforeEach(() => {
   vi.mocked(getAlerts).mockResolvedValue([]);
   vi.mocked(getTransactions).mockResolvedValue([]);
   goalsMock.mockResolvedValue([]);
+  vi.mocked(getRecurring).mockResolvedValue({ as_of: null, streams: [] });
 });
 
 afterEach(() => {
@@ -60,6 +62,23 @@ async function goalsCard() {
 }
 
 describe("Dashboard goals", () => {
+  test("shows the Recurring charges card", async () => {
+    render(<DashboardPage />);
+    expect(await screen.findByRole("heading", { name: "Recurring charges" })).toBeTruthy();
+  });
+
+  test("keeps a recurring failure inside its card", async () => {
+    vi.mocked(getRecurring).mockRejectedValue(new Error("offline"));
+    render(<DashboardPage />);
+    expect(await screen.findByText(/Couldn't load your recurring charges: offline/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Goals" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Transactions" })).toBeTruthy();
+  });
+
+  test("shows the empty text for a user with no streams", async () => {
+    render(<DashboardPage />);
+    expect(await screen.findByText("No repeating charges found yet.")).toBeTruthy();
+  });
   test("accepted goals appear in a Goals card with their start month", async () => {
     goalsMock.mockResolvedValue([goal(1), goal(2, { kind: "savings", strategy: null, monthly_cents: 20000, start_date: "2027-01-01" })]);
     render(<DashboardPage />);

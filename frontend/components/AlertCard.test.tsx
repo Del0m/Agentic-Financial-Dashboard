@@ -9,7 +9,7 @@ function alert(over: Partial<Alert> = {}): Alert {
   return { id: 3, kind: "overspend", category: "GENERAL_MERCHANDISE", severity: "high", cause: "one_time",
            action: "alert", message: "A $600 purchase put you over.", proposed_limit_cents: null,
            status: "pending_user", created_at: "2026-10-20T12:00:00Z", period_start: "2026-10-01",
-           awaiting_approval: false, ...over };
+           awaiting_approval: false, stream_id: null, ...over };
 }
 
 function draw(a: Alert, busy = false) {
@@ -19,6 +19,21 @@ function draw(a: Alert, busy = false) {
 }
 
 describe("AlertCard", () => {
+  test("reads Price increase for kind price_increase, not Over limit", () => {
+    draw(alert({ kind: "price_increase" }));
+    expect(screen.getByText("Price increase")).toBeTruthy();
+    expect(screen.queryByText("Over limit")).toBeNull();
+  });
+
+  test("shows the proposed limit for suggest_cancel", () => {
+    draw(alert({ action: "suggest_cancel", proposed_limit_cents: 8500 }));
+    expect(screen.getByText("Proposed limit next month: $85.00")).toBeTruthy();
+  });
+
+  test("shows no proposed limit when there is none", () => {
+    draw(alert({ action: "suggest_cancel" }));
+    expect(screen.queryByText(/Proposed limit/)).toBeNull();
+  });
   test("shows the alert and calls back with its id", () => {
     const { onAccept, onDismiss } = draw(alert());
     expect(screen.getByText("General merchandise")).toBeTruthy();
