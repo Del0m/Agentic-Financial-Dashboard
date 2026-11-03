@@ -30,6 +30,7 @@
 3. **Stream flags beside overspend flags:** same category, same day, two alerts of the right kinds, no `KeyError`. A detector failure never stops overspend alerts. Pinned in Task 4.
 4. **Checkpoint:** a paused run holds no bill name or amount from a signal. Pinned in Task 4.
 5. **`suggest_cancel` at close:** applies after `adjust_next_budget`, never below $0, never on a missing line, and mutes the stream. Pinned in Task 5.
+6. **Streams that change:** a price step and a skipped month keep a stream active with the right amount and next date; a raise on a paycheck, card payment or metered utility never reads as a price increase. Pinned in Tasks 2 and 3.
 
 ---
 
@@ -115,6 +116,7 @@ git commit -m "test(TPC-33): biweekly pay, price steps, noisy purchases and a mo
 ```python
 Frequency = Literal["weekly", "biweekly", "semi_monthly", "monthly"]          # "annual" is never produced
 EVERYDAY_CATEGORIES = frozenset({"FOOD_AND_DRINK", "GENERAL_MERCHANDISE", "TRANSPORTATION", "PERSONAL_CARE", "ENTERTAINMENT", "TRAVEL"})
+METERED_UTILITIES = frozenset({"RENT_AND_UTILITIES_GAS_AND_ELECTRICITY", "RENT_AND_UTILITIES_WATER", "RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT", "RENT_AND_UTILITIES_OTHER_UTILITIES"})   # no price_increase: rent, phone and internet stay in
 @dataclass(frozen=True)
 class RTxn:    date: date; amount_cents: int; merchant: Optional[str]; category: str; detailed: Optional[str]
 @dataclass(frozen=True)
@@ -144,6 +146,11 @@ def test_one_weekday_means_biweekly_and_two_anchors_mean_semi_monthly():   # Fri
 def test_price_rise_of_6_7_percent_keeps_the_stream_fixed():   # 3000 x3 then 3200 -> previous_cents 3000, last_cents 3200, amount_varies False
 def test_price_rise_of_15_percent_keeps_the_stream_fixed():    # 3000 x3 then 3450 on the cadence -> typical 3000, last 3450, previous 3000, amount_varies False
 def test_second_charge_at_the_new_price_is_not_a_rise():       # 3000, 3000, 3450, 3450 -> previous_cents is None
+def test_a_price_step_keeps_the_stream():                      # 3000 x4, 3450 x2 monthly -> monthly, n 6, typical 3450, last 3450, previous None, amount_varies False, next_date on the cadence
+def test_a_small_rise_alerts_only_on_its_first_charge():       # 4000 x3, 4300 -> previous 4000; 4000 x3, 4300 x2 -> previous None
+def test_a_lower_price_that_repeats_keeps_the_stream():        # 3000 x4, 2500 x2 -> typical 2500, last 2500, previous None
+def test_a_rise_over_50_percent_counts_on_its_second_charge(): # 3000 x4, 5000 -> last 3000, previous None; 3000 x4, 5000 x2 -> typical 5000, last 5000, previous 3000
+def test_a_price_that_falls_back_and_rises_again_is_a_rise():  # 3000, 3450, 3000, 3000, 3000, 3450 monthly -> last 3450, previous 3000
 def test_a_one_off_extra_is_dropped():                         # 12000 x4 monthly plus 52000 on Oct 12 -> n 4, typical 12000, last 12000
 def test_a_small_extra_between_bills_is_dropped():             # 1599 monthly plus 500 mid-month -> last_cents 1599, n 3
 def test_one_offs_a_month_apart_are_not_a_stream():            # Airline 20000 (May 12), 120000 (Jun 10), 25000 (Jul 12)
@@ -152,6 +159,11 @@ def test_weekly_food_with_fixed_amounts_is_not_a_stream():     # 13 x FOOD_AND_D
 def test_a_weekly_service_with_fixed_amounts_is_a_stream():    # 6 x GENERAL_SERVICES 6000 -> weekly, n 6
 def test_a_weekly_outflow_with_varying_amounts_is_not():
 def test_a_weekly_gap_that_slips_by_3_days_is_not_a_stream():  # gaps 7, 7, 10, 7
+def test_a_skipped_month_keeps_the_stream():                   # 1599 on Apr 5, May 5, Jul 5, Aug 5; today Aug 10 -> monthly, n 4, next_date Sep 5, active
+def test_a_skip_needs_four_charges():                          # Aug 5, Sep 5, Nov 5 -> []
+def test_two_skipped_months_make_no_stream():                  # Apr 5, May 5, Jul 5, Sep 5, Oct 5 -> []
+def test_a_longer_break_restarts_the_series():                 # Apr 5, May 5, Jul 20, Aug 20, Sep 20; today Sep 25 -> n 3, first_date Jul 20, anchors (20,); without Sep 20 -> []
+def test_a_skipped_week_restarts_a_weekly_service():           # GENERAL_SERVICES 6000, gaps 7, 7, 14, 7, 7, 7 -> weekly, n 4
 def test_a_cafe_visited_at_random_is_not_a_stream():           # gaps 9, 9, 8, 10 in FOOD_AND_DRINK
 def test_charges_after_today_and_before_the_window_are_ignored():
 def test_a_null_merchant_paycheck_is_a_stream():               # 3 INCOME_WAGES credits, merchant None -> key "~INCOME_WAGES"
@@ -189,7 +201,7 @@ Expected: FAIL (module missing).
 
 - [ ] **Step 4: The gate**
 
-Run the tests, then `venv/bin/python eval/recurring_accuracy.py`. Paste the table into the task's commit body. **If a gate test fails, change only the thresholds named in the spec's departure 2 and 4 rules (gap spread, minimum charges, category set), re-run, and if it still fails, stop and report the numbers to the user. Don't start Task 3.** The measured baselines for comparison: ticket rules gave 11 of 17 false streams on a noisy profile and monthly precision 0.73.
+Run the tests, then `venv/bin/python eval/recurring_accuracy.py`. Paste the table into the task's commit body. **If a gate test fails, change only the thresholds named in the spec's departure 2 and 4 rules (gap spread, skip allowance, minimum charges, category set), re-run, and if it still fails, stop and report the numbers to the user. Don't start Task 3.** The measured baselines for comparison: ticket rules gave 11 of 17 false streams on a noisy profile and monthly precision 0.73.
 
 - [ ] **Step 5: Tests docs and commit**
 
@@ -213,7 +225,7 @@ git commit -m "feat(TPC-33): detect repeating charges and paychecks, measured on
   - `history_start(session, user_id) -> Optional[date]`: earliest non-removed transaction date
   - `current_streams(session, user_id, today) -> list[Stream]`: `detect(load_rtxns(...), today)`
   - `@dataclass(frozen=True) StreamChange(kind: Literal["new_subscription","price_increase","income_change"], stream_id: int, previous_cents: Optional[int], token: str)`
-  - `refresh_streams(session, user_id, today, run_id: Optional[int]) -> list[StreamChange]`: reads stored rows, runs `detect`, then updates, inserts and stales rows in one transaction and returns the changes (rules: spec "Design": signals). Commits nothing; the caller does.
+  - `refresh_streams(session, user_id, today, run_id: Optional[int]) -> list[StreamChange]`: reads stored rows, runs `detect`, then updates, inserts and stales rows in one transaction and returns the changes (rules: spec "Design": signals). `price_increase` needs an outflow that passes `spending()`, is not savings and has no `detailed` in `METERED_UTILITIES`. Commits nothing; the caller does.
   - `stored_streams(session, user_id) -> list[RecurringStream]`
 - `days_requested` becomes 180 at both places.
 
@@ -225,15 +237,22 @@ def test_a_second_refresh_the_same_day_changes_nothing():          # same rows, 
 def test_a_subscription_that_starts_inside_the_history_is_new():   # history from Jan 1; NewFlix Mar 10, Apr 10, May 10; refresh May 11 -> one new_subscription
 def test_a_subscription_older_than_the_history_is_not_new():       # first_date - gap_days <= history_start -> none
 def test_a_savings_transfer_is_stored_but_never_new():
-def test_price_increase_fires_once_per_new_price():                # recurring-planted day by day: Oct 3 -> one price_increase (previous 4000, token "4300"); Oct 4..Nov 3 -> none
+def test_price_increase_fires_once_per_new_price():                # recurring-planted day by day: Oct 3 -> one price_increase (previous 4000, token "2026-10-03"); Oct 4..Nov 3 -> none
 def test_a_rise_of_16_percent_also_fires():                        # Clipflix on Oct 20, previous 1549
 def test_a_charge_under_5_percent_or_under_a_dollar_does_not():    # 3000 -> 3100; 500 -> 560
+def test_a_price_step_stays_active_and_alerts_once():              # 3000 x4, then 3450 x2, refreshing on each charge: one price_increase, status active after the second 3450
+def test_a_price_that_falls_back_and_rises_again_alerts_twice():   # 3000, 3000, 3000, 3450, 3000, 3000, 3000, 3450 with refreshes on each charge -> two alerts, different tokens
+def test_a_raise_on_a_paycheck_is_not_a_price_increase():          # INCOME inflow 200000 x3, then 212000 -> no change
+def test_a_growing_card_payment_is_not_a_price_increase():         # excluded by spending()
+def test_a_winter_electric_bill_is_not_a_price_increase():         # detailed RENT_AND_UTILITIES_GAS_AND_ELECTRICITY 9000, 9200, 9100, 11500 -> no change
+def test_a_phone_bill_rise_and_a_rent_rise_still_fire():           # detailed RENT_AND_UTILITIES_TELEPHONE and RENT_AND_UTILITIES_RENT
+def test_a_skipped_paycheck_month_raises_nothing():                # pay Mar 15, Apr 15, May 15, Jul 15, Aug 15: refresh May 15, Jul 15 and Aug 15 -> no income_change, status active
 def test_income_change_when_the_paycheck_goes_stale():             # last May 15: refresh Jul 19 -> none; Jul 20 -> one income_change; Jul 21 -> none
-def test_a_returning_paycheck_is_the_same_row_and_silent():
+def test_a_returning_paycheck_is_the_same_row_and_silent():        # stale from Jul 20; back Aug 1, Sep 1, Oct 1: stale until Oct 1, then active on the same row, no new alert
 def test_a_missing_stream_is_marked_stale_not_deleted():
 def test_a_roommate_transfer_going_stale_raises_no_income_change():
 def test_pending_removed_and_future_rows_are_ignored():            # 3 charges, the third pending -> no stream until it posts
-def test_signal_key_tokens():                                      # new: "first_seen"; price: str(last_cents); income: stale date iso
+def test_signal_key_tokens():                                      # new: "first_seen"; price: last_date iso; income: stale date iso
 def test_plaid_asks_for_180_days():                                # create_link_token and sandbox_public_token both send days_requested == 180
 # test_migrations.py: upgrade creates recurring_streams, alerts.stream_id and alerts.signal_key; downgrade removes them
 ```
@@ -375,7 +394,7 @@ git commit -m "feat(TPC-33): GET /recurring and the get_recurring chat tool"
 
 **Interfaces:**
 - `api.ts`: `RecurringStream`, `RecurringResponse`, `getRecurring(): Promise<RecurringResponse>`; `Alert` gains `stream_id: number | null`.
-- `RecurringList({ data }: { data: RecurringResponse })`: rows of label, frequency ("Monthly"), amount (`typical_cents`, "about" prefix when `amount_kind === "varies"`), next date or "Stopped"; badges "New", "Price up $40.00 to $43.00", "Income down" from `change` and `previous_cents`; stale streams in a muted "No longer seen" group; empty text "No repeating charges found yet."; `as_of === null` text "We need about 3 months of transactions to spot repeating charges." No actions.
+- `RecurringList({ data }: { data: RecurringResponse })`: rows of label, frequency ("Monthly"), amount (`typical_cents`, "about" prefix when `amount_kind === "varies"`), next date or "Stopped"; badges "New", "Price up $40.00 to $43.00" ("Price up" when `previous_cents` is null, as it is after a second charge at the new price), "Income down" from `change` and `previous_cents`; stale streams in a muted "No longer seen" group; empty text "No repeating charges found yet."; `as_of === null` text "We need about 3 months of transactions to spot repeating charges." No actions.
 - `AlertCard`: `KINDS` gains `new_subscription: "New subscription"`, `price_increase: "Price increase"`, `income_change: "Income change"`, `low_balance: "Low balance"`; "Proposed limit" shows for `adjust_next_budget` and `suggest_cancel` when a limit exists.
 - Dashboard: a "Recurring charges" card between Goals and Transactions with its own `recurring` and `recurringError` state and a `cancelled` flag in the existing effect; a failure sets only the card's error ("Couldn't load your recurring charges: ...").
 

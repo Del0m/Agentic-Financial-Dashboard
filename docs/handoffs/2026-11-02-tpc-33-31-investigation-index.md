@@ -6,7 +6,7 @@ Date: 2026-11-02. Four investigations ran on synthetic users only, then fed one 
 
 - **TPC-33 was never built.** The architecture (6a.1) describes a recurring-charge detector, but no code, table or endpoint exists. `Transaction.is_recurring` is a dead column, and `alerts.stream_id` is not there. The docs also say `days_requested` was raised to 180; the code still sends 90 (`backend/app/plaid_service/client.py:50,65`).
 - **Four of the tickets' methods fail on the data.** A price rise over 10% can never alert; the 7/14/15-day classes turn random merchants into streams (11 of 17 on a noisy profile); the median day of everyday spending is $0, so "median x 30" is off by 100%; "balance at the next paycheck" as surplus gives $9,353 to $11,024 against a measured $971.75. The design replaces each, with numbers, in its "Departures from the tickets" table.
-- **Two rules are unmeasured** (short-gap streams and the monthly next date). The TPC-33 plan stops at a gate after Task 2 until they meet stated numbers.
+- **Some rules are unmeasured** (short-gap streams, the monthly next date, and the skip, restart and price-step rules added in review). The TPC-33 plan stops at a gate after Task 2 until they meet stated numbers.
 - **Synthetic users cannot be forecast** (a static $100 balance, no biweekly pay, no price change). Both plans share one seeding change in TPC-33 Task 1.
 
 ## Documents
