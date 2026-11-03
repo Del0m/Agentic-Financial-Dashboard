@@ -1,140 +1,186 @@
-# AI agent pipelines
+# The agentic system
 
-Saved October 29, 2026. These diagrams focus on the project's agent behavior: gathering evidence, reasoning, selecting actions, and retaining outcomes. Solid arrows show implemented flows; dashed arrows show planned scheduling or period-close integration. They describe the implementation reviewed in this chat, not a guarantee that every later change is reflected here.
+Reviewed November 2, 2026 against the current agent code and Jira TPC. Code is the source of truth for behavior; Jira is the source of truth for delivery status. This guide covers agent goals, model decisions, tools, memory, approval, guardrails, and execution. Deterministic services appear only as labeled input/output boundaries. Their arithmetic and storage internals are outside this guide.
 
-## Budget agent: observe, diagnose, decide, act, remember
+## 1. What the agents are for
 
-The budget agent runs through the API or CLI. The main path below assumes a usable budget for the current period. If initialization cannot produce a budget, or the date is past the period's end, the graph records the reason and stops before syncing.
+**Budget agent.** Explain flagged overspending and select a useful response. Given measured evidence and prior outcomes, the LLM diagnoses a cause and chooses an alert, spending suggestion, next-period adjustment proposal, or justified `no_op`. The agent can produce advice without a user prompt, but a budget adjustment requires a human decision.
 
-```mermaid
-flowchart TD
-    Run["Run budget check<br/>API or CLI"] --> Load["Load budget and history"]
-    Load --> Sync["Sync bank transactions"]
-    Sync --> Calculate["Compute spending, pace<br/>and overspend flags"]
+**Chat agent.** Answer a user's question using financial tools and public guidance. The LLM chooses whether to answer or request tools, selects tool arguments, and can use the results to request more tools. The application retrieves initial guidance independently of that choice.
 
-    Calculate --> Flag{"Overspending?"}
-    Flag -->|No| Save["Save run results"]
-    Flag -->|Yes| Evidence["Build evidence:<br/>purchases, merchant patterns,<br/>history and previous advice"]
+**Goal agent.** Propose one to three goals within the user's available monthly allocation. The LLM selects goal kinds, ordering, monthly amounts, rationale, and an optional debt strategy. A validation boundary returns failures for one corrective attempt. Valid proposals await individual human decisions.
 
-    Memory[("Persistent memory<br/>alerts + advice + user decisions")] --> Evidence
-    Evidence --> Privacy["Privacy gateway<br/>minimize and scrub context"]
+The shared pattern is **observe → model decision → code-enforced boundary → output or human approval**. Budget and goal graphs have fixed orchestration with model-selected decisions inside it; chat additionally lets the model choose its tool sequence. These are bounded agents, not unconstrained financial operators. No model transfers money or directly changes the current budget. Accepted proposals can affect a future budget through the deterministic period-close boundary.
 
-    subgraph AI["AI reasoning — once per flagged category"]
-        Privacy --> Diagnose["LLM diagnoses WHY<br/>one-time / seasonal / recurring"]
-        Diagnose --> Decide["LLM decides WHAT TO DO"]
-    end
+## 2. Evidence for the Agent-Track rubric
 
-    Decide -->|No action needed| Save
-    Decide -->|Alert or suggest cuts| Advice["Save alert and advice"]
-    Advice --> Save
-    Decide -->|Propose next month's limit| Guard["Code validates proposal<br/>and computes the amount"]
+| Criterion | Weight | Evidence to present |
+|---|---:|---|
+| Difficulty level | 30% | Two-stage budget reasoning conditioned on memory; multi-round chat tool selection; goal proposal, validation, and correction; persistent approval pauses and recovery. Show a decision trace, including a rejected choice, rather than just an app screen. |
+| Code runnability | 30% | [README quickstart](../README.md#quickstart), seeded demo, local model setup, explicit scheduler defaults, and [evaluation commands](../eval/README.md). The current code documents a Docker startup path; this documentation review does not claim a fresh-machine run passed. |
+| Presentation / Demo / Usable-System | 20% | Demonstrate a budget proposal and accept/dismiss outcome, a chat tool trace, and a goal proposal with its run outcome. Separate model choices from the deterministic facts and checks shown below. |
+| Uses course learning | 20% | Tool-using reasoning loops, structured outputs, retrieval, episodic outcome memory, constrained planning, feedback-driven correction, human approval, and evaluation. These are implemented concepts; map them to the actual lecture terminology in the report. |
 
-    Guard --> Pause["Save proposal<br/>Pause graph with checkpoint"]
-    Pause --> Human{"User decision"}
-    Human -->|Accept or dismiss| Record["Record outcome<br/>Resume graph"]
-    Record --> Save
-    Save --> Memory
+## 3. Agent decision diagrams
 
-    Record -.-> Close["PLANNED: period-close agent<br/>apply accepted changes"]
-    Close -.-> Next["Open next month's budget"]
-    Next -.-> Run
-    Schedule["PLANNED: daily scheduler"] -.-> Run
-```
-
-The LLM supplies the diagnosis and action choice. Code computes financial amounts and enforces constraints, including allowing a proposed budget adjustment only for a recurring cause. With a checkpointer, adjustment proposals pause until all of the run's proposals have decisions. Ordinary alerts and suggestions do not pause the graph. Accepting a proposal does not change the current period's limit.
-
-Memory consists of stored alerts, advice, and user outcomes that inform later prompts; it does not retrain the model. Applying accepted proposals to next month's persisted budget and scheduling daily runs remain planned integrations.
-
-Implementation: [budget graph](../backend/app/agents/budget_graph.py), [LLM diagnosis and decision prompts](../backend/app/agents/budget_llm.py), [decision service](../backend/app/budget_service/alerts.py), [existing pure period-close arithmetic](../backend/app/budget_engine/close.py).
-
-## Chat agent: retrieve, reason, use tools, answer
-
-The chat agent begins with a user question, retrieves public guidance, and can repeatedly request financial facts or more guidance before answering. Financial tools read user-scoped data through the privacy gateway. Retrieved public guidance uses local embeddings and Chroma.
-
-```mermaid
-flowchart LR
-    Q["User question"] --> R["Retrieve public guidance"]
-    R --> L["LLM"]
-    L -->|Requests facts| T["Account / debt / spending tools"]
-    T --> P["Privacy gateway"]
-    P -->|Minimized results| L
-    L -->|Needs more guidance| K["Search knowledge base"]
-    K --> L
-    L -->|Ready to answer| A["Stream answer + sources"]
-```
-
-The loop permits up to six tool rounds, followed by a model call without tools. The application displays retrieved source links; retrieval alone does not establish that every answer claim is supported. Conversation state persists in the chat checkpoint database.
-
-Implementation: [chat graph](../backend/app/agents/chat_graph.py), [tools](../backend/app/agents/tools.py), [privacy gateway](../backend/app/privacy/gateway.py), [streaming API and history](../backend/app/api/chat.py).
-
-## Autonomous budget check: no user responses during the run
-
-Once started, this flow independently checks spending, investigates problems, chooses a response, and stores advice. Today a run starts through the API or CLI; the daily timer and repeated scheduled execution shown with dashed arrows are planned. A proposed budget change reaches an approval boundary and waits without changing the budget.
+### A. Budget: diagnose, decide, remember
 
 ```mermaid
 flowchart TD
-    Timer["Daily timer — PLANNED"] -.-> Load
-
-    subgraph Observe["Observe — application code"]
-        Load["Load or initialize budget"]
-        Load --> Ready{"Budget available<br/>and period current?"}
-        Ready -->|Yes| Sync["Sync bank transactions"]
-        Sync --> Calculate["Calculate spending and budget pace"]
-        Calculate --> Flag{"Any overspending?"}
-    end
-
-    Ready -->|No| Stop["Record reason and stop"]
-    Flag -->|No| Finish["Save run summary"]
-
-    Flag -->|Yes| Evidence["Gather evidence:<br/>large purchases, merchant patterns,<br/>history and earlier alerts"]
-    Memory[("Previous advice<br/>and recorded outcomes")] --> Evidence
-    Evidence --> Privacy["Minimize and scrub financial context"]
-
-    subgraph Reason["AI reasoning — no user prompt needed"]
-        Privacy --> Diagnose["Diagnose the cause:<br/>one-time, seasonal or recurring"]
-        Diagnose --> Decide["Choose an action<br/>using evidence and memory"]
-    end
-
-    Decide -->|Nothing new or significant| Quiet["Take no action"]
-    Decide -->|Warn or suggest cuts| Warn["Write warning or spending suggestion"]
-    Decide -->|Recurring change| Proposal["Validate and save<br/>proposed next-month limit"]
-
-    Quiet --> Finish
-    Warn --> Finish
-    Finish --> Memory
-    Finish -.->|Next scheduled check — PLANNED| Timer
-
-    Proposal --> Wait["Checkpoint and pause<br/>Budget remains unchanged"]
+    Trigger["Trigger: daily scheduler, CLI or API"] --> Observe["Deterministic input boundary<br/>sync FIRST, then load_state and measure pace"]
+    Observe -->|No usable budget or ended period| Early["Output boundary: no_budget or period_ended"]
+    Observe -->|Current budget| Any{"Any category flagged?"}
+    Any -->|No| Done["Output boundary: run ok"]
+    Any -->|Yes: per flagged category| Evidence["Privacy input boundary<br/>minimized facts and memory; audited context"]
+    Memory[("Memory: alerts, advice, user outcomes")] --> Evidence
+    Evidence --> Diagnose["LLM: diagnose<br/>one_time, seasonal or recurring"]
+    Diagnose --> Decide["LLM: choose<br/>alert, suggest_cuts, adjust_next_budget or no_op"]
+    Decide --> Rules{"Deterministic output boundary:<br/>validate choice"}
+    Rules -->|Adjust without recurring cause, or free/saving line| Down["Downgrade to code-written alert"]
+    Rules -->|no_op without prior equal-or-higher severity alert| Down
+    Rules -->|Action invalid after retry, or model unreachable| Fallback["Fallback: code-written alert"]
+    Rules -->|Valid no_op| Done
+    Rules -->|Other valid action| Log["Output boundary: save alert and advice"]
+    Down --> Log
+    Fallback --> Log
+    Log --> Memory
+    Log --> Adjust{"Adjustment and checkpointer?"}
+    Adjust -->|No| Done
+    Adjust -->|Yes, after all flags processed| Pause["interrupt: awaiting_user"]
+    Pause --> Human["Human accepts or dismisses each proposal"]
+    Human -->|All decided: resume without LLM| Done
 ```
 
-The agent can create warnings and spending suggestions without waiting for a user response. They are saved as alerts in the app; this diagram does not imply email or push delivery. Avoiding repeated advice is a model decision informed by memory, rather than a database uniqueness guarantee. Invalid structured replies retry once and then fall back to an ordinary alert; model connection failures mark the run as an error.
+The diagram summarizes per-category reasoning; the graph diagnoses all flags, decides all actions, then saves them before pausing. `sync` precedes `load_state`, including when no budget can be produced. The `categorize` node only counts uncategorized transactions: **LLM categorization is not implemented**. Sync failure can leave the agent checking stored data, so an `ok` result alone does not establish freshness.
 
-Implementation: [budget graph](../backend/app/agents/budget_graph.py), [budget pace calculations](../backend/app/budget_engine/pace.py), [diagnosis evidence](../backend/app/budget_engine/diagnose.py), [structured model calls](../backend/app/agents/budget_llm.py).
+Each diagnosis and action call permits one schema-validation retry. A diagnosis failure leaves an unknown cause and still allows the decision step; an invalid or unreachable action call yields a plain alert. Only the known transport/model exceptions handled by `invoke_structured` take this fallback path; other exceptions can fail the run. Code blocks adjustments without a recurring diagnosis or on free/saving lines, and blocks `no_op` without a prior equal-or-higher severity alert. A valid `no_op` writes no alert or advice. The prompt also discourages repeating dismissed adjustments, but that preference is not a hard code constraint.
 
-## Goal agent: propose, validate, wait for the user, then change the budget
+Evidence: [budget graph](../backend/app/agents/budget_graph.py) (`diagnose`, `decide_action`, `log_advice`, `await_approval`), [structured calls and prompts](../backend/app/agents/budget_llm.py). [PlantUML](diagrams/budget-agent-loop.puml) · [rendered diagram](diagrams/budget-agent-loop.svg).
 
-The goal agent starts from the Goals page (or the CLI). Code measures what the user has left each month, the model chooses 1-3 goals and their monthly amounts, and code computes every target and date. The user then accepts or dismisses each goal on its own. Nothing is applied to the month under way: an accepted goal becomes a budget line when the next month opens.
+### B. Chat: choose tools, observe results, answer
 
 ```mermaid
 flowchart TD
-    Start["Generate goals<br/>Goals page or CLI"] --> Facts["Measure the monthly surplus and the cap<br/>(accepted goals already use part of it)"]
-    Facts --> Propose["Model picks kinds and monthly amounts"]
-    Propose --> Check{"Validate the whole proposal:<br/>within the cap, dated, kinds unique"}
-    Check -->|Rejected, first time| Propose
-    Check -->|Rejected twice| Keep["Keep the earlier proposal<br/>report why"]
-    Check -->|Valid| Save["Save proposed goals<br/>start on the 1st of next month"]
-    Save --> Forget["Clear debt names and balances<br/>from the checkpoint"]
-    Forget --> Wait["Pause for the user<br/>no model call after this point"]
-    Wait -->|Accept or dismiss each goal| Rows[("Goal rows hold the decision")]
-    Rows --> Close["Next period close adds one budget line<br/>per accepted goal"]
-    Rows -->|Stop an accepted goal| End["Its line ends at the next close"]
+    Q["User question"] --> Retrieve["Deterministic input boundary:<br/>retrieve public guidance; reset round count"]
+    History[("Memory: chat checkpoint<br/>messages, tool results, source metadata")] --> LLM
+    Retrieve --> LLM["LLM: answer or request tools"]
+    LLM -->|Tool calls: up to 6 rounds| Tools["Tool boundary: get_accounts, get_debts,<br/>get_spending, search_kb, plan_debt_payoff"]
+    Tools -->|User-data results| Gateway["Privacy input boundary:<br/>minimize, scrub, pseudonymize, audit"]
+    Tools -->|Public guidance or safe tool error| Return["Tool result"]
+    Gateway --> Return
+    Return -->|Rounds remaining| LLM
+    Return -->|Six rounds used| Final["Final model call with no tools bound"]
+    Final --> Answer["Output boundary: stream answer and sources"]
+    LLM -->|No tool calls| Answer
+    Answer --> History
 ```
 
-The decision is committed before the paused run is resumed, so a failed resume or a lost checkpoint never loses a click; the run is finished from the rows. A proposal nobody answered expires when the close that opens its start month happens. Without a checkpointer (the CLI) the run doesn't pause, and its goals can still be accepted in the app.
+The limit is six **rounds**, not six individual calls; a response can request multiple tools. `plan_debt_payoff` lets the model select extra monthly payment and strategy while the tool returns computed results. All four user-data tools use a user-bound privacy gateway; the model does not select a user ID. `search_kb` returns public guidance. Tool argument failures return safe errors the model can react to. Initial retrieval is application-controlled, so it is not evidence of autonomous tool choice. Retrieved source links likewise do not prove every answer claim is grounded.
 
-Implementation: [goal graph](../backend/app/agents/goal_graph.py), [decisions](../backend/app/budget_service/goal_decisions.py), [goal lines at close](../backend/app/budget_service/goal_lines.py), [goal routes](../backend/app/api/goals.py), [the design](superpowers/specs/2026-11-02-tpc-25-goal-approval-design.md).
+Chat history persists across turns. User-written messages and history are not fully scrubbed by the financial-data gateway; its audit covers the context it builds, not the entire conversation prompt.
 
-For the broader system, rendered diagrams, and missing pieces, see the [system walkthrough and gap checklist](system-walkthrough.md) and the [architecture](architecture.md).
+Evidence: [chat graph](../backend/app/agents/chat_graph.py), [five tool definitions](../backend/app/agents/tools.py), [tool error handling](../backend/app/agents/llm.py), [privacy gateway](../backend/app/privacy/gateway.py). [PlantUML](diagrams/chat-flow.puml) · [rendered diagram](diagrams/chat-flow.svg).
+
+### C. Goals: propose, check, correct, then wait
+
+```mermaid
+flowchart TD
+    Start["Goal run: Goals page or CLI"] --> Facts["Deterministic input boundary:<br/>surplus, cap, offered kinds, debts through privacy gateway"]
+    Facts -->|No surplus, nothing offered, or insufficient cap| Stop["Output boundary: no new goals;<br/>supersede older unanswered proposals"]
+    Facts -->|Incomplete obligations| Error["Output boundary: error;<br/>no new goal proposals written"]
+    Facts -->|Eligible| Propose["LLM: propose 1 to 3 goals<br/>kind, order, monthly amount, rationale, strategy"]
+    Propose -->|Model unreachable| Error
+    Propose --> Check{"Deterministic validation boundary:<br/>within cap, offered kinds, no repeats,<br/>valid amounts and completion within 600 months"}
+    Check -->|Failures and a call left| Correct["Privacy feedback boundary:<br/>original facts, normalized rejected allocations,<br/>code-generated failures"]
+    Correct --> Propose
+    Check -->|Failures, no calls left| Error
+    Check -->|Valid| Save["Output boundary: save proposals atomically;<br/>supersede old unanswered proposals"]
+    Save -->|Accepted goals changed during planning| Error
+    Save -->|With checkpointer| Clear["Clear debts, plans, allocations,<br/>proposal and prompt from checkpoint state"]
+    Clear --> Human["interrupt: user accepts or dismisses each goal"]
+    Human -->|All resolved: resume without LLM| Done["Output boundary: run complete"]
+    Save -->|Without checkpointer: CLI| Done
+```
+
+`MAX_GOAL_CALLS = 2` bounds the entire proposal/correction loop; each proposal call disables the structured helper's internal retry. The feedback contains normalized rejected kinds, amounts and strategies plus validation failures, not the raw reply or rejected rationale. Invalid JSON has no parsed allocations to echo. A failed proposal leaves earlier proposals standing, although the run record and error summary are still written. A successful no-goal outcome withdraws older unanswered proposals. Accepted goals are preserved and reduce the available cap.
+
+With checkpointing, `forget_facts` runs before the approval pause and exit checkpoint is saved. This removes the sensitive planning payload, not every aggregate field or durable goal row. Goal CLI runs have no checkpointer and do not pause; their saved goals remain decidable through the app. No model call follows approval.
+
+Evidence: [goal graph](../backend/app/agents/goal_graph.py) (`propose`, `validate_candidate`, `correction`, `forget_facts`, `await_approval`), [proposal schema](../backend/app/agents/goal_llm.py), [feedback gateway](../backend/app/privacy/gateway.py). [Goal PlantUML](diagrams/goal-agent-loop.puml) · [rendered diagram](diagrams/goal-agent-loop.svg).
+
+### D. Budget run states
+
+```mermaid
+stateDiagram-v2
+    [*] --> running
+    running --> ok: no flags, valid no_op, or advice saved without pause
+    running --> no_budget: no usable budget
+    running --> period_ended: date past period end
+    running --> awaiting_user: adjustment saved with checkpointer
+    awaiting_user --> awaiting_user: proposals remain or resume fails while still paused
+    awaiting_user --> ok: every proposal decided and resume completes
+    running --> error: unhandled exception
+    awaiting_user --> error: resume fails after leaving pause
+```
+
+`ok` means execution completed, not that the advice was accepted or correct. A paused budget run reads persisted decisions on resume and waits again if any proposals remain. Budget CLI runs now create a SQLite checkpointer, so they can pause too. A direct caller without a checkpointer saves proposals and completes without waiting.
+
+## 4. Capabilities and evidence
+
+| Capability | Implemented behavior | Evidence |
+|---|---|---|
+| Goal-directed reasoning | Budget diagnosis/action decisions per flag; goal proposal/validation/correction | [budget graph](../backend/app/agents/budget_graph.py), [goal graph](../backend/app/agents/goal_graph.py) |
+| Tool use | Chat chooses among five tools and interprets results over up to six rounds | [chat graph](../backend/app/agents/chat_graph.py), [tools](../backend/app/agents/tools.py) |
+| Structured outputs | Budget retries schema failures once per call, then uses bounded fallback behavior | [invoke_structured](../backend/app/agents/budget_llm.py) |
+| Self-correction | Goal model receives rejected allocations and specific failures; at most two calls total | [correction](../backend/app/agents/goal_graph.py), [goal_correction](../backend/app/privacy/gateway.py) |
+| Memory | Budget reads this period's category alerts and at most five advice/outcome entries spanning this budget month and the preceding three; chat retains conversation state | [`_this_month_alerts`, `_past_advice`](../backend/app/agents/budget_graph.py), [ChatState](../backend/app/agents/chat_graph.py) |
+| Human approval | `interrupt()` waits on budget adjustments and individual goal decisions | [budget approval](../backend/app/agents/budget_graph.py), [goal approval](../backend/app/agents/goal_graph.py) |
+| Persistence and recovery | Per-run checkpoints; decisions survive failed resume; startup closes abandoned running budget/simulation/goal runs when no unexpired ownership claim exists | [`close_interrupted_runs`](../backend/app/agents/budget_graph.py), [startup](../backend/app/main.py) |
+| Guardrails | Enforced action restrictions, user-bound tools, safe errors, goal validation, and bounded loops | [budget rules](../backend/app/agents/budget_graph.py), [tools](../backend/app/agents/tools.py), [goal validation boundary](../backend/app/budget_engine/goals.py) |
+| Autonomy | Built daily schedule and same-day startup catch-up, enabled explicitly | [scheduler](../backend/app/scheduler.py), [configuration](../backend/app/config.py) |
+| Evaluation | Shared production chat graph evaluated on golden scenarios; scripted agent behavior tests and planted budget cases | [eval guide](../eval/README.md), [chat tests](../backend/tests/test_chat_graph.py), [budget tests](../backend/tests/test_budget_graph.py), [goal correction tests](../backend/tests/test_goal_validation_graph.py) |
+
+Memory supplies context for inference; it does not retrain the model. Budget duplicate suppression remains partly a model decision, so repeated alerts are possible.
+
+## 5. Approval, recovery, and autonomous execution
+
+Human decisions are committed before graph resume. Budget decisions update alert status and advice outcome; goals record decisions per goal. Both graphs resume without an LLM and wait until all relevant proposals are resolved. Goal recovery can finish from saved rows when checkpoint recovery fails. Startup cleanup does not discard `awaiting_user` runs as abandoned `running` work. Completed budget runs delete their checkpoints; goal cleanup also removes completed checkpoints.
+
+[Approval lifecycle source](diagrams/approval-lifecycle.puml) · [rendered lifecycle](diagrams/approval-lifecycle.svg). The final **deterministic period-close boundary** consumes accepted decisions and emits the next budget. It is implemented in [close_graph.py](../backend/app/agents/close_graph.py), uses no LLM, and is not an additional agent.
+
+The scheduler is **built, opt-in**: `ENABLE_SCHEDULER` defaults false; `1`, `true`, or `yes` enables it. Defaults are 06:00 for daily budget runs and 05:00 on the first of the month for period close, in `America/New_York`. Startup catch-up covers today's elapsed slots, not a replay of every missed day. Simulated and seed-only users are excluded from automatic runs; the demo advances time manually. This documents configuration defaults, not the setting of an already-running server.
+
+For execution, use the [README quickstart](../README.md#quickstart) and [demo walkthrough](../README.md#demo-walkthrough). For a narrated agent trace:
+
+1. Run the planted recurring-overspend example. Identify the input evidence, model diagnosis, selected action, enforced guardrail, and saved proposal.
+2. Accept or dismiss it. Show that the run resumes without another model call and that today's limit is unchanged. Treat the later period-close result as a deterministic output boundary.
+3. Ask chat a debt-payoff question. Show selected tool arguments, returned facts, and the answer. Distinguish automatic retrieval from model-requested tools.
+4. Generate goals and show per-goal approval. For reliable correction evidence, use the scripted [goal validation tests](../backend/tests/test_goal_validation_graph.py); a live model may return a valid proposal on its first attempt, so a correction is not guaranteed during a demo.
+
+## 6. Delivery status and gaps
+
+Jira snapshot: November 2, 2026. An implemented path does not imply its ticket is Done.
+
+| Work | Jira status | What can be claimed |
+|---|---|---|
+| [TPC-21](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-21) scheduling and simulation | Done | Scheduler and catch-up built; autonomy remains opt-in. |
+| [TPC-22](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-22) period close | Done | Implemented deterministic boundary; no model reasoning. |
+| [TPC-23](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-23), [TPC-24](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-24), [TPC-25](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-25) goals, validation, approval | In Progress | These paths exist in code; delivery status remains In Progress. |
+| [TPC-32](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-32) debt planning | In Progress | `plan_debt_payoff` is registered as the fifth chat tool. |
+| [TPC-16](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-16) initial chat evaluation | Done | Five-scenario initial harness; six scenario files now exist. |
+| [TPC-6](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-6), [TPC-26](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-26), [TPC-27](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-27), [TPC-28](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-28) broader benchmarks | To Do | Existing small runs are preliminary evidence, not the planned full benchmark. |
+| [TPC-34](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-34)–[TPC-39](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-39) temporal graph and GraphRAG | To Do | Not implemented as agent memory/retrieval. The repository's graphify analysis is a development aid, not runtime agent memory. |
+| [TPC-40](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-40) graph ablations | To Do | Planned comparisons; existing expected-tool checks should not be described as future work. |
+
+Additional limits: categorization is a counting stub; model actions are advice and proposals; user approval does not move money; model-selected answers and rationales can still be wrong. Full comparative and longitudinal evidence remains incomplete.
+
+## 7. Evaluation evidence for the writeup
+
+Use [eval/README.md](../eval/README.md) for commands, metrics, and prerequisites. The chat harness runs the same graph and tools as the application. It scores factual checks, answer similarity, judge ratings, expected tool calls, retrieved sources, latency, and errors. There are currently [six scenario definitions](../eval/scenarios), including [debt-plan-extra-200](../eval/scenarios/debt-plan-extra-200.json); older saved runs cover the original five.
+
+A concrete historical example is the [October 27 qwen2.5:14b summary](../eval/results/2026-10-27/qwen2.5_14b/summary.json), with [run configuration](../eval/results/2026-10-27/qwen2.5_14b/config.json): 15 runs, 60% factual pass rate, 80% expected-tool accuracy, 100% judge pass rate, and zero errors. These scores describe that saved run, not today's code or all models. The disagreement between factual checks and judge ratings is a reason to report both.
+
+Budget evidence includes [planted overspend users](../eval/budget_users.py), [agent behavior tests](../backend/tests/test_budget_graph.py), and [approval tests](../backend/tests/test_budget_graph.py). The [initial-budget accuracy harness](../eval/budget_accuracy.py) and its [October 28 results](../eval/results/2026-10-28/budget_accuracy/results.json) make no LLM calls: they evaluate the deterministic input boundary and must not be presented as diagnosis or action-selection accuracy. Goal [validation](../backend/tests/test_goal_validation_graph.py) and [approval](../backend/tests/test_goal_approval_graph.py) tests establish control-flow behavior, not live-model quality. No new model evaluation was run for this documentation update.
 
 ## Recurring signal path (implemented)
 

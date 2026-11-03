@@ -1,54 +1,54 @@
 @startuml
-title An accepted proposal or goal is saved now and applied at period close
+title Agent approval: durable decisions, model-free resume, future output
 skinparam shadowing false
 skinparam defaultFontName SansSerif
-skinparam defaultFontSize 15
-skinparam maxMessageSize 170
-participant "Budget graph" as Graph
-database "App DB" as DB
-database "Budget checkpoint DB" as CP
+skinparam maxMessageSize 110
+participant "Budget agent" as Budget
+participant "Goal agent" as Goals
+participant "Persistence boundary\nrows + checkpoints" as Store
 actor User
-participant "Decision service + API" as Decisions
-participant "Period-close service" as Close
-Graph -> DB : Store pending_user alert\n+ linked advice + proposed cents
-Graph -> CP : interrupt(waiting_for alert IDs)
-Graph -> DB : Run status = awaiting_user
-User -> Decisions : Accept or dismiss alert
-Decisions -> DB : Check ownership + pending status
-Decisions -> DB : Commit alert.status\n+ advice_log.outcome
-note over DB, CP
-Decision and checkpoint are separate writes.
-The saved decision must survive a failed resume.
-end note
-Decisions -> CP : Read waiting IDs
-Decisions -> Graph : resume_budget_run(alert_id, decision)
+participant "Decision boundary" as Decision
+participant "Deterministic period-close\ninput/output boundary (no LLM)" as Close
+== Budget adjustments ==
+Budget -> Store : Save pending alert + advice + proposed limit
+Budget -> Store : interrupt(waiting_for alert IDs)\nrun = awaiting_user
+User -> Decision : Accept or dismiss adjustment
+Decision -> Store : Commit decision + advice outcome
+Decision -> Budget : Resume with alert ID and decision
+Budget -> Store : Read saved decisions
 alt Other proposals remain
-  Graph -> CP : interrupt again
-else All proposals decided
-  Graph -> DB : persist_state -> ok\nrecord decisions
+  Budget -> Store : interrupt again
+else All decided
+  Budget -> Store : run = ok; remove completed checkpoint
 end
-note over Graph, Decisions
-Acceptance does not change today's limit.
-Graph resume records completion;
-the decision service saves alert status.
+note over Budget, Decision
+No model call on resume; today's budget is unchanged.
+A decision survives failed resume.
+Still paused after failure: remain awaiting_user.
+Failure after leaving pause: error.
 end note
-== Goals: the same shape, per goal (TPC-25) ==
-Graph -> DB : Store proposed goals (start_date = next month)\nafter forget_facts clears debts from the state
-Graph -> CP : interrupt(waiting_for goal IDs)
-User -> Decisions : Accept, dismiss, or stop a goal
-Decisions -> DB : Conditional update: proposed -> accepted\n(409 if decided, dated wrongly, or the kind is taken)
-Decisions -> Graph : Resume only if the run is paused
-note over Decisions, Close
-An undecided proposal expires at the close that opens its start month.
-A goal's line starts at that close and ends the month of its target date.
+== Goal proposals ==
+Goals -> Store : Save validated proposals; supersede old unanswered goals
+Goals -> Goals : Clear planning payload from state
+Goals -> Store : Exit checkpoint + interrupt(waiting_for goal IDs)\nrun = awaiting_user
+User -> Decision : Accept or dismiss each goal
+Decision -> Store : Commit goal decision
+Decision -> Goals : Resume paused run without LLM
+Goals -> Store : Read goal row statuses
+alt Proposed goals remain
+  Goals -> Store : interrupt again
+else All resolved
+  Goals -> Store : Finish run; remove completed checkpoint
+end
+note over Goals, Decision
+Saved rows allow recovery when resume/checkpoint fails.
+Goal CLI without a checkpointer saves proposals without pausing.
 end note
-== At period end ==
-Close -> DB : Load final actuals + accepted proposals\n+ accepted goals; expire undecided proposals
-Close -> DB : Add one line per accepted goal (group goal)\nin the next period
-Close -> Close : Existing pure close_period function:\naccepted number wins; otherwise fixed actual\nor 70% old + 30% actual, clamped +/-15%
-Close -> DB : Atomic close old period\n+ create next period and lines
-note over Decisions, Close
-Late decisions get a 409; a failed resume
-is finished from the rows.
+== Future budget boundary ==
+Store -> Close : Accepted adjustments and goals
+Close -> Store : Next-period budget; expire unanswered proposals due at close
+note over Store, Close
+Built and wired to month-end execution.
+No financial transfers or LLM decisions here.
 end note
 @enduml

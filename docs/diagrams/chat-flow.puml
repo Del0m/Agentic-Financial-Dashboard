@@ -1,49 +1,33 @@
 @startuml
-title One chat turn: guidance, private facts, and streamed output
+title Chat agent: bounded tool-selection loop
 skinparam shadowing false
 skinparam defaultFontName SansSerif
-skinparam defaultFontSize 15
 start
-:POST /chat with thread_id + message;
-if (Another reply for this user?) then (yes)
-  :Return 409;
-  stop
-endif
-:Load user-scoped chat checkpoint;
-:Embed the question locally;
-:Retrieve top 4 Chroma passages;
-:Send source metadata to UI;
+:User question + checkpointed chat history;
+:Deterministic input boundary\nRetrieve public guidance; reset round count;
 repeat
-  if (Fewer than 6 tool rounds?) then (yes)
-    :Bind the four tools;
-  else (round cap)
-    :Invoke model without tools;
+  if (Fewer than six tool rounds?) then (yes)
+    :LLM: answer or request tools;
+  else (no)
+    :Final LLM call with no tools bound;
   endif
-  :Ollama gets system rules, retrieved guidance,
-  chat history and tool results;
-  :Stream model chunks and tool_call events;
-  if (Model requests tools?) then (yes)
-    if (Private-data tool?) then (yes)
-      :get_accounts / get_debts / get_spending;
-      :Gateway reads user-scoped DB rows;
-      :Allowlist + scrub + pseudonymize;
-      :Audit the minimized context locally;
+  if (Tool calls requested?) then (yes)
+    :Tool boundary\nget_accounts / get_debts / get_spending\nsearch_kb / plan_debt_payoff;
+    if (User-data tool?) then (yes)
+      :Privacy input boundary\nMinimize, scrub, pseudonymize, audit;
     else (public guidance)
-      :search_kb -> local embeddings + Chroma;
+      :Public guidance result;
     endif
-    :Tool result returns to agent;
-    :Stream tool_result events; increment round count;
+    :Tool results or safe tool errors\nreturned to model; increment round count;
   endif
-repeat while (Model requested tools?) is (yes) not (no)
-:Send done (or error); checkpoints saved during graph;
-:Finish and release user lock;
+repeat while (Tool calls requested?) is (yes) not (no)
+:Output boundary: stream answer and sources\nPersist conversation and tool results;
 stop
 note right
-The app displays retrieved source URLs.
-Retrieval is not proof each claim is supported.
-
-Gateway audit covers financial context,
-not the complete conversation prompt.
-User messages go to the local model directly.
+  Six rounds, possibly multiple calls per round.
+  Initial retrieval is not a model choice.
+  Retrieved links do not prove claim support.
+  Gateway audit covers its financial context,
+  not the complete conversation prompt.
 end note
 @enduml

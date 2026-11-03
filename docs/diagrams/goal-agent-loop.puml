@@ -1,0 +1,42 @@
+@startuml
+title Goal agent: propose, validate, correct, approve
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+start
+:Trigger: Goals page or CLI;
+:Deterministic input boundary\nSurplus, cap, offered kinds, debts via privacy gateway;
+if (Input error?) then (yes)
+  :Output boundary: error; no new goals;
+  stop
+endif
+if (No surplus, nothing offered, or insufficient cap?) then (yes)
+  :Output boundary: no new goals\nSupersede old unanswered proposals;
+  stop
+endif
+:LLM proposes 1 to 3 goals\nKind, order, monthly amount, rationale, strategy;
+:Deterministic validation boundary\nCap, offered kinds, uniqueness, amounts, 600-month horizon;
+if (Invalid?) then (yes)
+  :Privacy feedback boundary\nOriginal facts + normalized rejected allocations\n+ code-generated failures;
+  :LLM corrects proposal\nSecond and final call;
+  :Deterministic validation boundary;
+  if (Still invalid?) then (yes)
+    :Output boundary: error; no new goals\nEarlier proposals remain;
+    stop
+  endif
+endif
+note right
+  Model unreachable: error, no new goals.
+  No hidden schema retry inside either call.
+  Feedback excludes raw reply and rejected rationale.
+end note
+:Output boundary: atomically save new proposals\nSupersede older unanswered proposals;
+note right: If accepted goals changed during planning: error, no new goals.
+if (Checkpointer present?) then (yes)
+  :Clear debts, plans, allocations, proposal and prompt;
+  :interrupt: awaiting_user;
+  :Human accepts or dismisses each goal;
+  :Resume without LLM; wait until all resolved;
+endif
+:Output boundary: run complete;
+stop
+@enduml
