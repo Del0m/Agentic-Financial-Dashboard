@@ -45,6 +45,11 @@ def _inject(session_factory, user_id: str, users, profile, todays: list) -> int:
                               date=when, amount_cents=cents, merchant_name=merchant, pf_category_primary=category,
                               pf_category_detailed=users.detailed_for(category, merchant)))
             added += 1
+            # a profile with an opening balance has one that moves with its transactions (plaid-signed: positive is out)
+            if profile.opening_cents is not None:
+                account = s.get(Account, account_id)
+                account.current_balance_cents -= cents
+                account.available_balance_cents -= cents
         s.commit()
     return added
 
@@ -80,7 +85,8 @@ def advance_days(session_factory, user_id: str, days: int, *, model: Optional[Ba
                  on_day: Optional[Callable[[dict], None]] = None) -> dict:
     sim = _sim(session_factory, user_id)
     users = _profiles()
-    profile = next(p for p in users.PROFILES + users.PLANTED + users.GOAL_USERS if p.id == sim["profile"])
+    every = users.PROFILES + users.PLANTED + users.GOAL_USERS + users.RECURRING_USERS
+    profile = next(p for p in every if p.id == sim["profile"])
     # the whole generated history once, grouped by day, instead of regenerating it for every simulated day
     by_day: dict[date, list] = {}
     for n, row in enumerate(users.transactions(profile)):

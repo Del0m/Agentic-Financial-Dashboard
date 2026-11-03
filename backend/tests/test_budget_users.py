@@ -1,4 +1,8 @@
+from dataclasses import replace
 from datetime import date
+from hashlib import sha256
+
+import pytest
 
 from app.budget_engine.fit import fit_budget
 from app.budget_engine.goals import monthly_surplus
@@ -7,7 +11,8 @@ from app.budget_engine.txns import Txn, month_start
 from app.budget_service.debts import load_debts
 from app.budget_service.initialize import load_txns
 from app.db.models import Account, Transaction, User
-from eval.budget_users import GOAL_USERS, PLANTED, PROFILES, default_start, seed_profile, transactions
+from eval.budget_users import (GOAL_USERS, PLANTED, PROFILES, RECURRING_USERS, Every, Monthly, Scatter, default_start,
+                               seed_profile, transactions)
 
 
 def profile(pid):
@@ -209,3 +214,95 @@ def test_goal_user_pays_its_debts(db):
         payments = {(r.merchant_name, r.amount_cents, r.pf_category_detailed) for r in
                     s.query(Transaction).filter_by(user_id=uid, pf_category_primary="LOAN_PAYMENTS")}
     assert payments == {("Student Loan", 21000, None), ("Platinum Card", 9500, "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT")}
+
+
+# --- biweekly pay, price steps, noisy purchases and a moving balance (TPC-33) ---
+
+HASHES = {"steady": "c46034002c6f", "vacation": "1f32f65b528d", "early-rent": "f54a9cbf30f1", "rising": "dfb7a42a181d",
+          "occasional": "5cffd523cfcd", "overspend-one-time": "50d7cc005186", "overspend-recurring": "7ebed8d37d7c",
+          "overspend-seasonal": "a9e3ec12934c", "overspend-known-merchant": "056ac49b1a45", "goals-card-24": "2bcfb8ca8436"}
+
+
+def test_new_fields_leave_existing_profiles_identical():
+    for p in (*PROFILES, *PLANTED, *GOAL_USERS):
+        assert sha256(repr(transactions(p)).encode()).hexdigest()[:12] == HASHES[p.id]
+
+
+def test_every_generates_biweekly_dates():
+    p = replace(PROFILES[0], patterns=(Every("INCOME", "Employer", -185000, 14, date(2026, 5, 1)),),
+                start=date(2026, 5, 1), end=date(2026, 6, 12))
+    assert [(t[0], t[1]) for t in transactions(p)] == [(date(2026, 5, 1), -185000), (date(2026, 5, 15), -185000),
+                                                       (date(2026, 5, 29), -185000), (date(2026, 6, 12), -185000)]
+
+
+def test_every_honours_last_and_steps():
+    p = replace(PROFILES[0], start=date(2026, 5, 1), end=date(2026, 8, 1), patterns=(
+        Every("GENERAL_SERVICES", "Cleaner", 6000, 7, date(2026, 5, 1), last=date(2026, 5, 22),
+              steps=((date(2026, 5, 15), 6500),)),))
+    assert [(t[0], t[1]) for t in transactions(p)] == [(date(2026, 5, 1), 6000), (date(2026, 5, 8), 6000),
+                                                       (date(2026, 5, 15), 6500), (date(2026, 5, 22), 6500)]
+
+
+def test_monthly_steps_change_the_amount_from_a_date():
+    p = replace(PROFILES[0], start=date(2026, 8, 1), end=date(2026, 10, 31), patterns=(
+        Monthly("PERSONAL_CARE", "FitClub Gym", 4000, day=3, steps=((date(2026, 10, 3), 4300),)),))
+    assert [(t[0], t[1]) for t in transactions(p)] == [(date(2026, 8, 3), 4000), (date(2026, 9, 3), 4000),
+                                                       (date(2026, 10, 3), 4300)]
+
+
+def test_monthly_last_stops_the_pattern():
+    p = replace(PROFILES[0], start=date(2026, 8, 1), end=date(2026, 12, 31), patterns=(
+        Monthly("ENTERTAINMENT", "Streamly", 1549, day=5, last=date(2026, 10, 5)),))
+    assert [t[0] for t in transactions(p)] == [date(2026, 8, 5), date(2026, 9, 5), date(2026, 10, 5)]
+
+
+def test_unknown_pattern_class_raises_type_error():
+    p = replace(PROFILES[0], patterns=(object(),))
+    with pytest.raises(TypeError):
+        transactions(p)
+
+
+def test_scatter_is_repeatable_and_stays_inside_its_ranges():
+    merchants = ("Cafe", "Bakery")
+    p = replace(PROFILES[0], start=date(2026, 1, 1), end=date(2026, 6, 30), patterns=(
+        Scatter("FOOD_AND_DRINK", merchants, 0.2, (1, 3), (300, 4500)),))
+    rows = transactions(p)
+    assert rows == transactions(p)
+    assert rows and all(300 <= t[1] <= 4500 and t[3] in merchants for t in rows)
+    per_day = {}
+    for t in rows:
+        per_day[t[0]] = per_day.get(t[0], 0) + 1
+    assert max(per_day.values()) <= 3
+    assert 0.1 < len(per_day) / 181 < 0.3
+
+
+def test_noisy_user_buys_on_about_half_of_its_days():
+    noisy = next(p for p in RECURRING_USERS if p.id == "recurring-noisy")
+    days = {t[0] for t in transactions(noisy) if t[2] in ("FOOD_AND_DRINK", "GENERAL_MERCHANDISE", "TRANSPORTATION")}
+    assert 0.4 < len(days) / ((noisy.end - noisy.start).days + 1) < 0.6
+
+
+def test_opening_balance_is_applied_up_to_until(db):
+    p = replace(PROFILES[0], opening_cents=190000)
+    until = date(2026, 6, 15)
+    with db() as s:
+        uid = seed_profile(s, p, until=until)
+    with db() as s:
+        acct = s.query(Account).filter_by(user_id=uid, name="Checking").one()
+        assert acct.subtype == "checking"
+        assert acct.current_balance_cents == 190000 - sum(t[1] for t in transactions(p) if t[0] <= until)
+        assert acct.available_balance_cents == acct.current_balance_cents
+
+
+def test_profiles_without_opening_keep_the_old_account(db):
+    with db() as s:
+        uid = seed_profile(s, PROFILES[0], until=date(2026, 6, 15))
+    with db() as s:
+        acct = s.query(Account).filter_by(user_id=uid, name="Checking").one()
+        assert (acct.subtype, acct.current_balance_cents, acct.available_balance_cents) == (None, 10000, None)
+
+
+def test_recurring_users_are_not_in_the_accuracy_tuples():
+    ids = {p.id for p in RECURRING_USERS}
+    assert ids == {"recurring-planted", "recurring-noisy"}
+    assert not ids & {p.id for p in PROFILES + PLANTED}

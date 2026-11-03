@@ -185,3 +185,69 @@ Run them from `backend/`:
 **What it does:** `goals-card-24`'s history has the $210 student loan payment and the $95 card payment, labelled as Plaid labels a card payment.
 
 **Why it's there:** Without them the goal graph measured money the user's debts already spoke for. The first version of this user had no debt payments, which hid that card minimums weren't coming out of the surplus (final review).
+
+## `test_new_fields_leave_existing_profiles_identical`
+
+**What it does:** Hashes the generated transactions of every profile in `PROFILES`, `PLANTED` and `GOAL_USERS`, and compares each with a hash recorded before TPC-33.
+
+**Why it's there:** The new pattern classes and fields must not shift the shared random stream or change an amount. If they did, every number measured on those users would change without any test saying why.
+
+## `test_every_generates_biweekly_dates`
+
+**What it does:** An `Every` pattern of 14 days from May 1 to Jun 12 gives exactly four charges on the right dates.
+
+**Why it's there:** The synthetic users had no biweekly pay, which TPC-33's done-when needs.
+
+## `test_every_honours_last_and_steps`
+
+**What it does:** A weekly `Every` stops at `last`, and its amount changes on the step's date.
+
+**Why it's there:** `Every` shares those two fields with `Monthly`, and a stopped or repriced weekly charge has to be possible to plant.
+
+## `test_monthly_steps_change_the_amount_from_a_date`
+
+**What it does:** A $40 gym with a step on Oct 3 charges $40 in August and September, then $43 in October.
+
+**Why it's there:** The price-increase alert needs a planted price change.
+
+## `test_monthly_last_stops_the_pattern`
+
+**What it does:** A subscription with `last=Oct 5` has no charge after that date.
+
+**Why it's there:** A stream that stops is how a stale stream and an income change get planted.
+
+## `test_unknown_pattern_class_raises_type_error`
+
+**What it does:** `transactions` raises `TypeError` for an object that isn't a known pattern.
+
+**Why it's there:** `Weekly` used to be the fall-through branch, so a new class would have been read as weekly data, or crashed on a missing field.
+
+## `test_scatter_is_repeatable_and_stays_inside_its_ranges`
+
+**What it does:** A `Scatter` gives the same list twice. Every amount, merchant and daily count stays in its range, and about 20% of days have a purchase.
+
+**Why it's there:** The noisy profile has to be reproducible, or the detector's gate would measure something different on each run.
+
+## `test_noisy_user_buys_on_about_half_of_its_days`
+
+**What it does:** `recurring-noisy` has a scattered purchase on 40% to 60% of its days.
+
+**Why it's there:** That density is what made the ticket's loose tolerances report random merchants as streams, so the profile has to keep it.
+
+## `test_opening_balance_is_applied_up_to_until`
+
+**What it does:** A profile with `opening_cents` gets a checking account with subtype `checking`, and its current and available balances are the opening amount minus every amount seeded up to `until`.
+
+**Why it's there:** A forecast has to start from a balance that agrees with the transactions. The old static $100 can't.
+
+## `test_profiles_without_opening_keep_the_old_account`
+
+**What it does:** A profile without `opening_cents` still gets subtype `None`, a $100 balance and no available balance.
+
+**Why it's there:** Existing users, and the tests measured on them, must not change.
+
+## `test_recurring_users_are_not_in_the_accuracy_tuples`
+
+**What it does:** `RECURRING_USERS` holds the two new profiles, and neither is in `PROFILES` or `PLANTED`.
+
+**Why it's there:** Adding them to those tuples would change the accuracy eval's results and the tests that assert its users.

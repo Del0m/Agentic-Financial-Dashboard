@@ -15,14 +15,18 @@ from langgraph.types import Command, interrupt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.agents.budget_llm import _RANK, Action, Diagnosis, decide_messages, diagnose_messages, invoke_structured
+from app.agents.budget_llm import (_RANK, Action, Diagnosis, decide_messages, decide_signal, diagnose_messages,
+                                  invoke_structured)
 from app import config
 from app.agents.llm import get_chat_model
 from app.budget_engine.diagnose import overspend_facts, proposed_limit_cents
 from app.budget_engine.fit import HISTORY_MONTHS
 from app.budget_engine.pace import BudgetLine as EngineLine, PaceResult, evaluate
+from app.budget_engine.recurring import monthly_cents
+from app.budget_engine.signals import SIGNAL_CAP, Signal, cancel_limit, choose, fallback_message, rank_signals
 from app.budget_engine.txns import add_months
 from app.budget_service.initialize import initialize_budget, load_txns
+from app.budget_service.recurring import muted_stream_ids, refresh_streams, stored_streams
 from app.db.models import AdviceLog, AgentRun, Alert, BudgetPeriod, PlaidItem, utcnow
 from app.plaid_service.sync import sync_item
 from app.privacy.gateway import PrivacyGateway
@@ -57,6 +61,10 @@ class BudgetState(TypedDict, total=False):
     decisions: dict               # alert id -> accepted | dismissed, from the user
     waiting_for: list[int]
     llm_failures: int
+    signals: list[dict]
+    signal_actions: dict[str, dict]
+    signals_error: Optional[str]
+    streams: dict               # counts and stream ids only, safe for the run summary and checkpoint
 
 
 # default sync: every active plaid item the user has. one failing item doesn't stop the others
@@ -114,7 +122,8 @@ def _fallback_message(flag: dict) -> str:
 
 
 def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gateway: Optional[PrivacyGateway],
-                       sync_fn: Optional[SyncFn] = None, checkpointer: Optional[BaseCheckpointSaver] = None):
+                       sync_fn: Optional[SyncFn] = None, checkpointer: Optional[BaseCheckpointSaver] = None,
+                       report: Optional[dict] = None):
     def today_of(state) -> date:
         return date.fromisoformat(state["today"])
 
@@ -162,6 +171,86 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
 
     def detect_overspend(state: BudgetState) -> dict:
         return {"flags": [r for r in state["results"] if r["flagged"]]}
+
+    def detect_recurring(state: BudgetState) -> dict:
+        try:
+            with session_factory() as s:
+                changes = refresh_streams(s, state["user_id"], today_of(state), state["run_id"])
+                rows = {r.id: r for r in stored_streams(s, state["user_id"])}
+                existing = set(s.scalars(select(Alert.signal_key).where(Alert.user_id == state["user_id"],
+                                                                           Alert.signal_key.is_not(None))))
+                signals = []
+                summary = {"count": len(rows), "new": [], "price_up": [], "income_change": []}
+                for change in changes:
+                    key = f"{change.kind}|{change.stream_id}|{change.token}"
+                    if key in existing:
+                        continue
+                    row = rows[change.stream_id]
+                    numbers = {"direction": row.direction, "merchant": row.merchant_name,
+                               "frequency": row.frequency, "typical_cents": row.typical_cents,
+                               "last_cents": row.last_cents, "next_date": row.next_date.isoformat(), "status": row.status}
+                    if change.previous_cents is not None:
+                        numbers["previous_cents"] = change.previous_cents
+                    signals.append(asdict(Signal(change.kind, key, row.id, row.category, numbers)))
+                    summary[{"new_subscription": "new", "price_increase": "price_up",
+                             "income_change": "income_change"}[change.kind]].append(row.id)
+                s.commit()
+            return {"signals": signals, "streams": summary}
+        except Exception as exc:
+            return {"signals": [], "signals_error": type(exc).__name__}
+
+    def _decide_signals(state: BudgetState) -> dict:
+        actions, failures, error = {}, state.get("llm_failures", 0), state.get("signals_error")
+        with session_factory() as s:
+            muted = muted_stream_ids(s, state["user_id"])
+        signals = [Signal(**s) for s in state.get("signals", []) if s["stream_id"] not in muted]
+        for i, signal in enumerate(rank_signals(signals)):
+            action, message, proposed = "alert", fallback_message(signal), None
+            fallback = True
+            try:
+                # audit each signal once, including ones past the model-call cap
+                context = gateway.build_context("recurring", signal=signal)
+                decision = decide_signal(model, context) if i < SIGNAL_CAP else None
+                if decision is not None:
+                    fallback = False
+                    action = choose(signal, decision.action)
+                    # a model's text must still name the charge and quote its code-computed prices
+                    required = [str(signal.numbers.get("merchant", "")), f"${signal.numbers['last_cents'] / 100:,.2f}"]
+                    if signal.kind == "price_increase":
+                        required.append(f"${signal.numbers['previous_cents'] / 100:,.2f}")
+                    if action == decision.action and signal.kind != "income_change" and all(t in decision.message for t in required):
+                        message = decision.message
+                elif i < SIGNAL_CAP:
+                    failures += 1
+                if action == "suggest_cancel":
+                    with session_factory() as s:
+                        period = s.get(BudgetPeriod, state["period_id"]) if state.get("period_id") else None
+                        line = next((ln for ln in period.lines if ln.category == signal.category), None) if period else None
+                        if line is not None and state.get("status") not in ("no_budget", "period_ended"):
+                            proposed = cancel_limit(line.limit_cents, monthly_cents(signal.numbers["typical_cents"],
+                                                                                  signal.numbers["frequency"]))
+                    if proposed is None:
+                        action, message = "alert", fallback_message(signal)
+                    else:
+                        message += f" If you cancel it, next month's proposed limit is ${proposed / 100:,.2f}."
+            except Exception as exc:
+                error = type(exc).__name__
+                action, message, proposed = "alert", fallback_message(signal), None
+                fallback = True
+            actions[signal.key] = {"action": action, "message": message, "fallback": fallback,
+                                   "proposed_limit_cents": proposed}
+        return {"signals": [asdict(s) for s in signals], "signal_actions": actions,
+                "signals_error": error, "llm_failures": failures}
+
+    def decide_signals(state: BudgetState) -> dict:
+        try:
+            return _decide_signals(state)
+        except Exception as exc:
+            # ordering or other preparation can fail too; the overspend branch has already decided its alerts
+            actions = {data["key"]: {"action": "alert", "message": fallback_message(Signal(**data)),
+                                      "fallback": True, "proposed_limit_cents": None}
+                       for data in state.get("signals", [])}
+            return {"signal_actions": actions, "signals_error": type(exc).__name__}
 
     def diagnose(state: BudgetState) -> dict:
         facts, contexts, diagnoses, failures = {}, {}, {}, state.get("llm_failures", 0)
@@ -220,7 +309,7 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
     def log_advice(state: BudgetState) -> dict:
         ids, adjust = [], []
         with session_factory() as s:
-            for flag in state["flags"]:
+            for flag in state.get("flags", []):
                 cat, act, d = flag["category"], state["actions"][flag["category"]], state["diagnoses"][flag["category"]]
                 if act["action"] == "no_op":
                     continue
@@ -235,8 +324,34 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
                 ids.append(alert.id)
                 if act["action"] == "adjust_next_budget":
                     adjust.append(alert.id)
+            for data in state.get("signals", []):
+                signal = Signal(**data)
+                # the alert key, not a budget category, identifies a signal. recheck at the write boundary
+                if s.scalar(select(Alert.id).where(Alert.user_id == state["user_id"], Alert.signal_key == signal.key)):
+                    continue
+                act = state["signal_actions"][signal.key]
+                alert = Alert(user_id=state["user_id"], period_id=state.get("period_id"), kind=signal.kind,
+                              stream_id=signal.stream_id, signal_key=signal.key, category=signal.category,
+                              severity="medium", action=act["action"], message=act["message"],
+                              proposed_limit_cents=act["proposed_limit_cents"], status="pending_user")
+                s.add(alert)
+                s.flush()
+                s.add(AdviceLog(user_id=state["user_id"], run_id=state["run_id"], alert_id=alert.id,
+                                category=signal.category, advice_text=act["message"]))
+                ids.append(alert.id)
+            # save the summary before forgetting prompt facts; resume needs only ids and decisions
+            s.get(AgentRun, state["run_id"]).summary_json = summarize({**state, "alert_ids": ids})
             s.commit()
-        return {"alert_ids": ids, "adjust_alert_ids": adjust}
+        cleared = {"signals": [], "signal_actions": {}}
+        if checkpointer is not None:
+            # the cli's report lives in process memory, never in graph state saved by the checkpointer
+            if report is not None:
+                report.update({k: state.get(k, [] if k in ("results", "flags") else {})
+                               for k in ("results", "flags", "facts", "contexts", "memory", "diagnoses", "actions")})
+            cleared.update(results=[], flags=[], facts={}, contexts={}, memory={}, diagnoses={},
+                           actions={c: {k: v for k, v in a.items() if k in ("action", "fallback", "downgraded", "escalated")}
+                                    for c, a in state.get("actions", {}).items()})
+        return {"alert_ids": ids, "adjust_alert_ids": adjust, **cleared}
 
     # architecture 6.6: a proposal that changes the budget waits for the user. the alert rows are the source of
     # truth: a decision recorded while no resume reached the run (the resume failed, or the click landed before
@@ -253,10 +368,9 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             alert_id, decision = interrupt({"waiting_for": pending})
             decisions.setdefault(int(alert_id), decision)
 
-    def persist_state(state: BudgetState) -> dict:
-        status = state["status"] if state.get("status") in ("no_budget", "period_ended") else "ok"
+    def summarize(state: BudgetState) -> dict:
         flags = state.get("flags", [])
-        summary = {
+        return {
             "period_id": state.get("period_id"),
             "flags": [{k: f[k] for k in ("category", "reason", "pace", "spent_cents", "limit_cents")} for f in flags],
             "causes": {c: (d or {}).get("cause") for c, d in state.get("diagnoses", {}).items()},
@@ -267,18 +381,29 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             "sync": state.get("sync"),
             "llm_failures": state.get("llm_failures", 0),
             "decisions": {str(k): v for k, v in (state.get("decisions") or {}).items()},
+            "as_of": state["today"],
+            "streams": state.get("streams", {"count": 0, "new": [], "price_up": [], "income_change": []}),
+            "signals_error": state.get("signals_error"),
         }
+
+    def persist_state(state: BudgetState) -> dict:
+        status = state["status"] if state.get("status") in ("no_budget", "period_ended") else "ok"
         with session_factory() as s:
             run = s.get(AgentRun, state["run_id"])
+            summary = {**(run.summary_json or {}),
+                       "decisions": {str(k): v for k, v in (state.get("decisions") or {}).items()}}
             run.status, run.finished_at, run.summary_json = status, utcnow(), summary
             s.commit()
         return {"status": status}
 
     def after_load(state: BudgetState) -> str:
-        return "persist_state" if state.get("status") in ("no_budget", "period_ended") else "categorize"
+        return "detect_recurring" if state.get("status") in ("no_budget", "period_ended") else "categorize"
+
+    def after_recurring(state: BudgetState) -> str:
+        return "decide_signals" if state.get("status") in ("no_budget", "period_ended") else "detect_overspend"
 
     def after_detect(state: BudgetState) -> str:
-        return "diagnose" if state["flags"] else "persist_state"
+        return "diagnose" if state["flags"] else "decide_signals"
 
     # without a checkpointer there is nowhere to pause (the cli before tpc-20, tests), so nothing waits
     def after_advice(state: BudgetState) -> str:
@@ -287,18 +412,21 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
     graph = StateGraph(BudgetState)
     for name, fn in (("load_state", load_state), ("sync", sync), ("categorize", categorize),
                      ("update_totals", update_totals), ("detect_overspend", detect_overspend),
+                     ("detect_recurring", detect_recurring), ("decide_signals", decide_signals),
                      ("diagnose", diagnose), ("decide_action", decide_action), ("log_advice", log_advice),
                      ("await_approval", await_approval), ("persist_state", persist_state)):
         graph.add_node(name, fn)
     # sync first: a user with no budget yet gets it fit on fresh data, not on whatever was stored before
     graph.add_edge(START, "sync")
     graph.add_edge("sync", "load_state")
-    graph.add_conditional_edges("load_state", after_load, ["categorize", "persist_state"])
+    graph.add_conditional_edges("load_state", after_load, ["categorize", "detect_recurring"])
     graph.add_edge("categorize", "update_totals")
-    graph.add_edge("update_totals", "detect_overspend")
-    graph.add_conditional_edges("detect_overspend", after_detect, ["diagnose", "persist_state"])
+    graph.add_edge("update_totals", "detect_recurring")
+    graph.add_conditional_edges("detect_recurring", after_recurring, ["detect_overspend", "decide_signals"])
+    graph.add_conditional_edges("detect_overspend", after_detect, ["diagnose", "decide_signals"])
     graph.add_edge("diagnose", "decide_action")
-    graph.add_edge("decide_action", "log_advice")
+    graph.add_edge("decide_action", "decide_signals")
+    graph.add_edge("decide_signals", "log_advice")
     graph.add_conditional_edges("log_advice", after_advice, ["await_approval", "persist_state"])
     graph.add_edge("await_approval", "persist_state")
     graph.add_edge("persist_state", END)
@@ -364,6 +492,7 @@ def run_budget(session_factory, user_id: str, today: date, *, model: Optional[Ba
         s.commit()
         run_id = run.id
     thread = _thread(run_id)["configurable"]["thread_id"]
+    report = {}
     try:
         if checkpointer is not None:
             # sqlite reuses the id of a deleted run (seed --replace), and a thread left from that run would hand
@@ -374,10 +503,11 @@ def run_budget(session_factory, user_id: str, today: date, *, model: Optional[Ba
         with session_factory() as gs:
             gateway = PrivacyGateway(gs, user_id, audit_path=audit_path)    # one pseudonym per run
             graph = build_budget_graph(session_factory, model=model, gateway=gateway, sync_fn=sync_fn,
-                                       checkpointer=checkpointer)
+                                       checkpointer=checkpointer, report=report)
             result = graph.invoke({"user_id": user_id, "today": today.isoformat(), "run_id": run_id,
                                    "status": "running", "llm_failures": 0},
-                                  _thread(run_id) if checkpointer is not None else None)
+                                  **({"config": _thread(run_id), "durability": "exit"} if checkpointer is not None else {}))
+            result.update(report)
     except Exception as exc:
         _mark(session_factory, run_id, "error", {"error": type(exc).__name__})
         raise
@@ -413,7 +543,7 @@ def resume_budget_run(session_factory, run_id: int, alert_id: int, decision: str
                     "waiting_for": waiting_for(session_factory, checkpointer, run_id)}
         graph = build_budget_graph(session_factory, model=None, gateway=None, checkpointer=checkpointer)
         try:
-            result = graph.invoke(Command(resume=[alert_id, decision]), _thread(run_id))
+            result = graph.invoke(Command(resume=[alert_id, decision]), _thread(run_id), durability="exit")
         except Exception as exc:
             # still paused means nothing ran: the run keeps waiting (its other proposals too) and can be resumed
             # again. only a run that got past the pause and then failed is an error

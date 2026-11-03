@@ -135,3 +135,23 @@ The decision is committed before the paused run is resumed, so a failed resume o
 Implementation: [goal graph](../backend/app/agents/goal_graph.py), [decisions](../backend/app/budget_service/goal_decisions.py), [goal lines at close](../backend/app/budget_service/goal_lines.py), [goal routes](../backend/app/api/goals.py), [the design](superpowers/specs/2026-11-02-tpc-25-goal-approval-design.md).
 
 For the broader system, rendered diagrams, and missing pieces, see the [system walkthrough and gap checklist](system-walkthrough.md) and the [architecture](architecture.md).
+
+## Recurring signal path (implemented)
+
+Daily runs refresh stored streams on both the current-budget and no-current-budget routes. Overspend diagnosis remains category-based; recurring signals use their own keys and `decide_signals` node. The first three ranked signals each get one model call without a schema retry; the rest get code-written alerts. All signals have one minimized gateway audit entry. Detector or decision failures record only an exception type and leave overspend checks running.
+
+```mermaid
+flowchart LR
+    Load[Sync and load budget] --> Refresh[detect_recurring]
+    Refresh --> Budget{Current budget?}
+    Budget -->|Yes| Pace[Overspend diagnosis and actions]
+    Budget -->|No| Signals[decide_signals]
+    Pace --> Signals
+    Signals --> Log[Store keyed alerts and advice; clear prompt facts]
+    Log --> Wait{Budget adjustment?}
+    Wait -->|Yes| Pause[Approval interrupt]
+    Wait -->|No| Done[Persist run summary]
+    Pause --> Done
+```
+
+Cancellation suggestions are ordinary pending alerts. Accepted suggestions mute future signals and reduce the next category line once at close; pending suggestions do not expire. Budget checkpoints save only on exit after signal payloads and prompt facts are cleared. CLI report details remain in process memory. The recurring API, dashboard and sixth chat tool are implemented; the cash forecast remains the next step.

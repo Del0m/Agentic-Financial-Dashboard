@@ -33,6 +33,8 @@ class Monthly:
     day: int = 1
     moved: dict[date, date] = field(default_factory=dict)    # first of a month -> the day it was actually paid
     first: Optional[date] = None                             # no charge before this date (a new gym)
+    last: Optional[date] = None                              # no charge after this date (a cancelled subscription)
+    steps: tuple[tuple[date, int], ...] = ()                 # from each date, the amount is the step's cents
 
 
 @dataclass(frozen=True)
@@ -43,7 +45,29 @@ class Once:
     day: date
 
 
-Pattern = Union[Weekly, Monthly, Once]
+# a fixed cadence in days, for biweekly pay (tpc-33)
+@dataclass(frozen=True)
+class Every:
+    category: str
+    merchant: str
+    cents: int
+    days: int
+    first: date
+    last: Optional[date] = None
+    steps: tuple[tuple[date, int], ...] = ()
+
+
+# purchases with no pattern at all: on each day, with probability `rate`, some purchases at random merchants (tpc-33)
+@dataclass(frozen=True)
+class Scatter:
+    category: str
+    merchants: tuple[str, ...]
+    rate: float
+    per_day: tuple[int, int]
+    cents: tuple[int, int]
+
+
+Pattern = Union[Weekly, Monthly, Once, Every, Scatter]
 
 
 @dataclass(frozen=True)
@@ -59,6 +83,14 @@ class Profile:
     expected_cause: Optional[str] = None   # planted users: the cause diagnose should find
     # more accounts beside checking: (name, type, subtype, balance_cents, liability or None) (tpc-23)
     accounts: tuple = ()
+    opening_cents: Optional[int] = None    # checking balance on `start`, so the balance moves with the transactions
+
+
+def _stepped(cents: int, steps: tuple[tuple[date, int], ...], day: date) -> int:
+    for since, stepped in sorted(steps):
+        if day >= since:
+            cents = stepped
+    return cents
 
 
 # (day, cents, category, merchant), sorted; the same profile always gives the same list
@@ -72,10 +104,22 @@ def transactions(profile: Profile) -> list[tuple[date, int, str, str]]:
             m = month_start(profile.start)
             while m <= profile.end:
                 day = p.moved.get(m, m.replace(day=p.day))
-                if p.first is None or day >= p.first:
-                    out.append((day, p.cents, p.category, p.merchant))
+                if (p.first is None or day >= p.first) and (p.last is None or day <= p.last):
+                    out.append((day, _stepped(p.cents, p.steps, day), p.category, p.merchant))
                 m = add_months(m, 1)
-        else:
+        elif isinstance(p, Every):
+            d = p.first
+            while d <= profile.end and (p.last is None or d <= p.last):
+                out.append((d, _stepped(p.cents, p.steps, d), p.category, p.merchant))
+                d += timedelta(days=p.days)
+        elif isinstance(p, Scatter):
+            d = profile.start
+            while d <= profile.end:
+                if rng.random() < p.rate:
+                    for _ in range(rng.randint(*p.per_day)):
+                        out.append((d, rng.randint(*p.cents), p.category, rng.choice(p.merchants)))
+                d += timedelta(days=1)
+        elif isinstance(p, Weekly):
             d = profile.start
             while d <= profile.end:
                 if d.weekday() == p.weekday:
@@ -83,6 +127,8 @@ def transactions(profile: Profile) -> list[tuple[date, int, str, str]]:
                     amount = p.cents * (1 + p.growth) ** months * rng.uniform(1 - p.jitter, 1 + p.jitter)
                     out.append((d, round_cents(Decimal(str(amount))), p.category, p.merchant))
                 d += timedelta(days=1)
+        else:
+            raise TypeError(f"unknown pattern {type(p).__name__}")
     return sorted(out)
 
 
@@ -91,13 +137,17 @@ def transactions(profile: Profile) -> list[tuple[date, int, str, str]]:
 def seed_profile(session: Session, profile: Profile, until: Optional[date] = None) -> str:
     user_id = f"budget-{profile.id}"
     item = add_user(session, user_id, f"{profile.id}@eval.local")
-    acct = add_account(session, item, "Checking")
+    acct = add_account(session, item, "Checking", subtype="checking" if profile.opening_cents is not None else None)
     for name, type_, subtype, balance, liability in profile.accounts:
         add_account(session, item, name, type_=type_, subtype=subtype, balance=balance, liability=liability)
+    spent = 0
     for n, (day, cents, category, merchant) in enumerate(transactions(profile)):
         if until is None or day <= until:
             add_txn(session, acct, cents, category, merchant=merchant, day=day, plaid_id=txn_id(profile, n),
                     detailed=detailed_for(category, merchant))
+            spent += cents
+    if profile.opening_cents is not None:
+        acct.current_balance_cents = acct.available_balance_cents = profile.opening_cents - spent
     if until is not None:
         user = session.get(User, user_id)
         user.prefs_json = {**(user.prefs_json or {}), "sim": {"profile": profile.id, "date": until.isoformat()}}
@@ -197,4 +247,30 @@ PLANTED = (
              Once("GENERAL_MERCHANDISE", "MegaMart", 52000, date(2026, 10, 12))),
             today=date(2026, 10, 1), start=date(2026, 7, 1), end=date(2026, 10, 31),
             run_date=date(2026, 10, 20), expected_cause="one_time"),
+)
+
+# planted streams for the recurring detector (tpc-33), kept apart from the accuracy eval and the planted overspends.
+# the gym's +7.5% stays inside the ticket's 10% rule for a fixed amount; clipflix's +16% doesn't
+RECURRING_USERS = (
+    Profile("recurring-planted", "a subscription, a gym that raises its price and biweekly pay", 31,
+            (RENT, Every("INCOME", "Employer", -185000, 14, first=date(2026, 5, 1)),
+             Monthly("ENTERTAINMENT", "Streamly", 1549, day=5),
+             Monthly("PERSONAL_CARE", "FitClub Gym", 4000, day=3, steps=((date(2026, 10, 3), 4300),)),
+             Monthly("ENTERTAINMENT", "Clipflix", 1549, day=20, steps=((date(2026, 10, 20), 1799),)),
+             Monthly("ENTERTAINMENT", "NewFlix", 999, day=12, first=date(2026, 8, 12)),
+             Once("GENERAL_SERVICES", "Pottery Studio", 6500, date(2026, 8, 10)),
+             Once("GENERAL_SERVICES", "Pottery Studio", 6500, date(2026, 9, 9)),
+             GROCER, Weekly("TRANSPORTATION", "Fuel", 4000, weekday=0)),
+            today=date(2026, 10, 25), start=date(2026, 5, 1), end=date(2026, 11, 30), run_date=date(2026, 10, 25)),
+    Profile("recurring-noisy", "a few planted streams among purchases on about half of all days", 33,
+            (RENT, Monthly("RENT_AND_UTILITIES", "Mobile Co", 6500, day=9),
+             Monthly("PERSONAL_CARE", "FitClub Gym", 4000, day=3),
+             Every("INCOME", "Employer", -185000, 14, first=date(2026, 1, 2)),
+             Scatter("FOOD_AND_DRINK", ("Cafe Uno", "Taco Stand", "Noodle Bar", "Bakery", "Juice Bar"),
+                     0.2, (1, 3), (300, 4500)),
+             Scatter("GENERAL_MERCHANDISE", ("Hardware Hut", "Pet Supply", "Paper Mill", "Home Goods", "Shoe Shed"),
+                     0.2, (1, 3), (300, 4500)),
+             Scatter("TRANSPORTATION", ("Transit Pass", "Ride Share", "Parking Lot", "Car Wash", "Gas Stop"),
+                     0.2, (1, 3), (300, 4500))),
+            today=date(2026, 10, 20), start=date(2026, 1, 1), end=date(2026, 10, 31), run_date=date(2026, 10, 20)),
 )

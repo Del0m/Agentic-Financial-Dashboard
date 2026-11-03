@@ -28,3 +28,9 @@ Run them from `backend/`:
 **What it does:** Renders the Postgres SQL for the budget-tables migration's (`9e005ad8cd4c`) downgrade, and checks that it drops the `budget_period_status`, `budget_line_kind` and `budget_line_source` types.
 
 **Why it's there:** On Postgres an `Enum` column creates a native type, and dropping the table leaves the type behind. So downgrading and then upgrading again failed with `type "budget_period_status" already exists`. The decision log plans for Postgres, but the suite only runs SQLite, which has no enum types, so this could only be caught by rendering the Postgres SQL. The review on #11 found it. The downgrade now runs `DROP TYPE IF EXISTS` for each type on Postgres only. A real SQLite upgrade, downgrade and upgrade still succeeds.
+
+## `test_recurring_streams_upgrade_and_downgrade`
+
+**What it does:** Upgrades a SQLite file to `c4e8f2a1b6d3` and checks for `recurring_streams`, `alerts.stream_id`, `alerts.signal_key` and its index. Downgrades, and checks they're gone.
+
+**Why it's there:** `alerts` gains a foreign key, which SQLite can only do in batch mode, and the test suite builds its schema from the models, so it wouldn't catch a broken migration.

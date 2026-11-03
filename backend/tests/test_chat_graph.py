@@ -45,6 +45,40 @@ TOOLS = [get_lucky_number, bad, boom, strict]
 CONFIG = {"configurable": {"thread_id": "t1"}}
 
 
+def test_chat_binds_six_tools_and_the_prompt_names_get_recurring(db, tmp_path):
+    from app.agents.tools import make_tools
+    from app.privacy.gateway import PrivacyGateway
+    from tests.factories import add_user
+    from tests.fakes import FakeKB
+    with db() as s:
+        add_user(s, "u1", "u1@x")
+        s.commit()
+        tools = make_tools(PrivacyGateway(s, "u1", audit_path=tmp_path / "audit.jsonl"), FakeKB())
+        m = ScriptedChatModel(replies=[AIMessage("No subscriptions yet.")])
+        run(m, tools=tools)
+    assert len(m.tools_seen[0]) == 6 and "get_recurring" in m.tools_seen[0]
+    assert "get_recurring" in m.seen[0][0].content
+
+
+def test_get_recurring_returns_scrubbed_rows(db, tmp_path):
+    import json
+    from app.agents.tools import make_tools
+    from app.privacy.gateway import PrivacyGateway
+    from tests.test_recurring_api import seed, stream
+    from tests.fakes import FakeKB
+    seed(db)
+    with db() as s:
+        stream(s, "Gym 12345")
+        stream(s, "Secret Employer", direction="in")
+        s.commit()
+        tools = make_tools(PrivacyGateway(s, "dev", audit_path=tmp_path / "audit.jsonl"), FakeKB())
+        m = ScriptedChatModel(replies=[tool_call("get_recurring"), AIMessage("You have recurring charges.")])
+        run(m, tools=tools)
+    text = m.seen[1][-1].content
+    assert "Gym [number]" in text and "12345" not in text and "Secret Employer" not in text
+    assert json.loads(text)["purpose"] == "recurring"
+
+
 GUIDE = {"title": "How to reduce your debt", "section": "Highest interest rate method",
          "source_url": "https://www.consumerfinance.gov/about-us/blog/how-reduce-your-debt/",
          "text": "Pay the debt with the highest interest rate first."}

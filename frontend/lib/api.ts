@@ -132,18 +132,41 @@ export type Budget = {
 
 export type Alert = {
   id: number;
+  stream_id: number | null;
   kind: string;
   category: string | null;
   severity: string;
   cause: string | null;
   action: string | null;
   message: string;
-  proposed_limit_cents: number | null; // only for adjust_next_budget
+  proposed_limit_cents: number | null; // adjust_next_budget or suggest_cancel
   status: "pending_user" | "accepted" | "dismissed";
   created_at: string;
   period_start: string | null;
   awaiting_approval: boolean; // a paused budget run is waiting on this decision
 };
+
+export type RecurringStream = {
+  id: number;
+  direction: "in" | "out";
+  label: string;
+  frequency: "weekly" | "biweekly" | "semi_monthly" | "monthly";
+  amount_kind: "fixed" | "varies";
+  typical_cents: number;
+  last_cents: number;
+  previous_cents: number | null;
+  last_date: string;
+  next_date: string;
+  status: "active" | "stale";
+  change: "new" | "price_increase" | "income_change" | null;
+  first_seen: string;
+};
+
+export type RecurringResponse = { as_of: string | null; streams: RecurringStream[] };
+
+export function getRecurring(): Promise<RecurringResponse> {
+  return request<RecurringResponse>("/recurring");
+}
 
 export type RunStatus = {
   run_id: number;

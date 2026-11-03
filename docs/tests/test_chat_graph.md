@@ -153,3 +153,15 @@ Run them from `backend/`:
 **What it does:** Asks the real local model "What is Ada's lucky number? Use the tool." through the graph, and checks that the answer contains 24. It's skipped unless Ollama is running with `OLLAMA_MODEL` pulled.
 
 **Why it's there:** It proves the graph works with real tool calling on `llama3.1:8b`, not just with the fake. It replaces the `call_with_tools` live test from TPC-12. It passed on 2026-10-26 on `llama3.1:8b`, and again after the chat model became `qwen2.5:14b`.
+
+## `test_chat_binds_six_tools_and_the_prompt_names_get_recurring`
+
+**What it does:** Builds the real tool set and checks the six bound names and recurring prompt instruction.
+
+**Why it's there:** The model must be able to select the added tool.
+
+## `test_get_recurring_returns_scrubbed_rows`
+
+**What it does:** Executes get_recurring through the graph, scrubs a five-digit merchant reference and excludes an employer name.
+
+**Why it's there:** Chat reads stored streams only through the privacy gateway.

@@ -150,3 +150,5 @@ Run them from `backend/`:
 **What it does:** For every committed scenario, no text fact appears in the scenario's own question.
 
 **Why it's there:** An answer that just repeats the question would pass such a fact. The final review found two ("Roth" and "emergency fund"). They were replaced with facts only a real answer contains: "tax-free", and the user's $900 savings balance.
+
+The committed-scenario count now includes recurring-subscriptions. Its seed refreshes stored streams before chat; live model tool selection remains a separate check.

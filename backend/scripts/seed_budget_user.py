@@ -1,7 +1,7 @@
 """Seed a synthetic budget user into dev.db, for running the budget agent on it.
 
-The profiles live in eval/budget_users.py: the five accuracy-eval users and the three planted
-overspends (one per cause). The user is `budget-<profile>`; the script prints the command that
+The profiles live in eval/budget_users.py: the five accuracy-eval users, the planted overspends
+(one per cause), the goal user and the recurring users. The user is `budget-<profile>`; the script prints the command that
 runs the budget agent on it, on the profile's run date.
 
 Run from backend/:
@@ -29,8 +29,8 @@ from sqlalchemy.orm import Session
 from app.budget_engine.styles import STYLES
 from app.budget_service.settings import set_user_style
 from app.db.models import (Account, AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, CategoryRule, Goal, Liability,
-                           PlaidItem, Transaction, User)
-from eval.budget_users import GOAL_USERS, PLANTED, PROFILES, default_start, seed_profile
+                           PlaidItem, RecurringStream, Transaction, User)
+from eval.budget_users import GOAL_USERS, PLANTED, PROFILES, RECURRING_USERS, default_start, seed_profile
 
 
 # everything the user owns, children before parents so foreign keys hold
@@ -48,6 +48,7 @@ def delete_user(session: Session, user_id: str) -> None:
     session.execute(delete(AdviceLog).where(AdviceLog.user_id == user_id))
     session.execute(delete(Alert).where(Alert.user_id == user_id))
     session.execute(delete(Goal).where(Goal.user_id == user_id))
+    session.execute(delete(RecurringStream).where(RecurringStream.user_id == user_id))
     session.execute(delete(AgentRun).where(AgentRun.user_id == user_id))
     session.execute(delete(BudgetLine).where(BudgetLine.period_id.in_(periods)))
     for model in (BudgetPeriod, Transaction, CategoryRule, Liability, Account, PlaidItem):
@@ -63,7 +64,7 @@ def main(argv=None, session_factory=None) -> int:
     parser.add_argument("--start", help="YYYY-MM-DD or 'default': seed history only up to this day and simulate from it")
     parser.add_argument("--style", choices=STYLES, default="caps", help="the style its first budget is fitted with")
     args = parser.parse_args(argv)
-    profiles = {p.id: p for p in PROFILES + PLANTED + GOAL_USERS}
+    profiles = {p.id: p for p in PROFILES + PLANTED + GOAL_USERS + RECURRING_USERS}
     profile = profiles.get(args.profile)
     if profile is None:
         print(f"unknown profile {args.profile!r}; choose one of: {', '.join(profiles)}")

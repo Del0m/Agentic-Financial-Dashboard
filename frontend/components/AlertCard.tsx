@@ -4,7 +4,8 @@ import { categoryLabel, formatCents } from "@/lib/format";
 const CAUSES: Record<string, string> = { one_time: "One-time", recurring: "Recurring", seasonal: "Seasonal" };
 const OUTCOMES: Record<string, string> = { accepted: "Accepted", dismissed: "Dismissed" };
 // what period close reports about the whole budget (tpc-22, and a goal's end in tpc-25); overspend alerts are badged by severity
-const KINDS: Record<string, string> = { over_income: "Over income", group_over_target: "Over target", goal_ended: "Goal ended" };
+const KINDS: Record<string, string> = { over_income: "Over income", group_over_target: "Over target", goal_ended: "Goal ended",
+  new_subscription: "New subscription", price_increase: "Price increase", income_change: "Income change", low_balance: "Low balance" };
 
 // one alert from the budget agent. pending alerts get Accept / Dismiss; a budget proposal shows the limit the
 // user would be accepting, and says so when a paused run is waiting on the answer
@@ -15,7 +16,7 @@ export default function AlertCard({ alert, onAccept, onDismiss, busy }: {
   busy: boolean;
 }) {
   const pending = alert.status === "pending_user";
-  const adjust = alert.action === "adjust_next_budget";
+  const adjust = alert.action === "adjust_next_budget" || alert.action === "suggest_cancel";
   return (
     <article className={`space-y-2 rounded-lg border border-black/10 p-4 dark:border-white/15 ${pending ? "" : "opacity-60"}`}>
       <header className="flex flex-wrap items-center gap-2">

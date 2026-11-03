@@ -193,6 +193,22 @@ The API has `PUT /budget/style`, `PATCH /budget/lines/{id}` (rename a line, or m
 
 The dashboard's **Paying off your debts** card compares the two usual ways to pay off debt: **avalanche** (highest APR first) and **snowball** (smallest balance first). Type an extra amount per month and it shows each method's months to debt-free, total interest, the month each debt is paid off, and what the extra saves. In chat, ask "How fast am I debt-free if I add $200 a month?" and the answer comes from the same simulation. It charges interest monthly at APR/12 and holds minimum payments at today's amounts, so it's for comparing plans, not predicting a statement. Debts with no APR or minimum on file are listed and left out. The API is `POST /debt-plan`.
 
+## Recurring charges
+
+The dashboard lists stored recurring charges and income between Goals and Transactions. The daily run detects posted transactions over 180 days, raises new-subscription, price-increase and income-change alerts, and keeps stopped streams in a muted group. Chat can answer "What subscriptions do I have?" with `get_recurring`; `GET /recurring` reads the same stored data without running detection.
+
+Accepting an optional `suggest_cancel` lowers the category's next budget line once, after accepted budget adjustments, rounded up to $5. It does not cancel anything with a merchant. Pending suggestions survive month-end, and accepted streams stop raising recurring signals. These alerts do not pause the run.
+
+```bash
+cd backend
+../venv/bin/python scripts/seed_budget_user.py --profile recurring-planted --replace --start 2026-09-30
+DEV_USER_EMAIL=recurring-planted@eval.local ENABLE_ADMIN=1 ../venv/bin/uvicorn app.main:app
+# in another terminal, with the same disposable DATABASE_URL:
+../venv/bin/python scripts/simulate.py --user budget-recurring-planted --days 25
+```
+
+Use a disposable database as described in [the recurring verification handoff](docs/handoffs/2026-11-02-tpc-33-manual-verification.md). New Plaid Items request 180 days; existing Items need relinking. The offline detector gate is `venv/bin/python eval/recurring_accuracy.py` from the repo root.
+
 ## Goals
 
 Open **Goals** from the dashboard header. **Generate goals** asks the goal agent to work out what you have left in a typical month, asks the local model for 1-3 goals (debt payoff, emergency fund, savings) that fit within 80% of it, and computes each goal's target and date. High-interest debt comes first. Accept or dismiss each goal on its own. An accepted goal shows on the dashboard's Goals card and joins the budget as a line (for example "Debt payoff: $583.00/mo") when the next month opens; the month under way never changes. **Stop** ends an accepted goal's line at the next close. A proposal you don't answer expires when that month opens, and you can generate again. The API is `POST /goals/generate`, `GET /goals/runs/{id}`, `POST /goals/{id}/accept` and `/dismiss`.

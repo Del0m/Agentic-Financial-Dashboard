@@ -58,6 +58,15 @@ entity alerts {
   user_id / period_id
   cause / action / status
   proposed_limit_cents
+  stream_id / signal_key
+}
+entity recurring_streams {
+  * id
+  user_id / direction / merchant_key [unique]
+  merchant_name / category / frequency
+  typical / last / previous cents
+  first / last / next / first_seen dates
+  active / stale
 }
 entity advice_log {
   * id
@@ -79,6 +88,8 @@ users ||--o{ budget_periods
 budget_periods ||--o{ budget_lines
 budget_periods |o--o{ alerts : optional period
 users ||--o{ agent_runs
+users ||--o{ recurring_streams
+recurring_streams |o--o{ alerts : optional stream
 users ||--o{ goals
 agent_runs |o--o{ goals : optional run
 agent_runs |o--o{ advice_log : optional run
@@ -88,7 +99,7 @@ Money = integer cents; Plaid sign retained.
 Transactions: positive out, negative in / refund.
 User FKs on other tables omitted for readability.
 Accepted goals become budget_lines (group goal) at the next close.
-recurring_streams is a planned table.
+Recurring streams persist by user + direction + merchant_key.
 Checkpoints are not application-table FKs.
 end note
 @enduml

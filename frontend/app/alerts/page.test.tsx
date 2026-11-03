@@ -36,7 +36,7 @@ const SIMULATED = { simulated: true, profile: "overspend-one-time", date: "2026-
 function alert(id: number, over: Partial<Alert> = {}): Alert {
   return { id, kind: "overspend", category: "GENERAL_MERCHANDISE", severity: "high", cause: "one_time", action: "alert",
            message: `Alert ${id}`, proposed_limit_cents: null, status: "pending_user", created_at: "2026-10-20T12:00:00Z",
-           period_start: "2026-10-01", awaiting_approval: false, ...over };
+           period_start: "2026-10-01", awaiting_approval: false, stream_id: null, ...over };
 }
 
 function run(over: Partial<RunStatus>): RunStatus {

@@ -56,3 +56,21 @@ npm test -- components/AlertCard.test.tsx
 **What it does:** A `goal_ended` alert with no category is badged "Goal ended", not "Ahead of pace".
 
 **Why it's there:** Without a `KINDS` entry the badge falls back to the overspend wording, which would call a finished goal "ahead of pace".
+
+## `reads Price increase for kind price_increase, not Over limit`
+
+**What it does:** Uses the signal kind rather than overspend severity for the badge.
+
+**Why it's there:** Covers the recurring integration without coupling it to other cards.
+
+## `shows the proposed limit for suggest_cancel`
+
+**What it does:** Displays the code-computed $85 next-month limit.
+
+**Why it's there:** Covers the recurring integration without coupling it to other cards.
+
+## `shows no proposed limit when there is none`
+
+**What it does:** Omits unavailable cancellation amounts.
+
+**Why it's there:** Covers the recurring integration without coupling it to other cards.

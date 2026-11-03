@@ -48,7 +48,7 @@ def test_m3_demo(db):
     run_day = {d["run_id"]: date.fromisoformat(d["date"]) for d in days}
 
     with db() as s:
-        alert = s.query(Alert).filter_by(user_id=uid, category=GYM).order_by(Alert.id).first()
+        alert = s.query(Alert).filter_by(user_id=uid, category=GYM, kind="overspend").order_by(Alert.id).first()
         advice = s.query(AdviceLog).filter_by(alert_id=alert.id).one()
         october = {ln.category: ln for ln in period(s, uid, OCT).lines}
         oct_actuals = {ln.category: ln.spent_cents for ln in october.values()}

@@ -18,6 +18,7 @@ router = APIRouter(tags=["alerts"])
 
 class AlertOut(BaseModel):
     id: int
+    stream_id: Optional[int]
     kind: str
     category: Optional[str]
     severity: str
@@ -32,7 +33,7 @@ class AlertOut(BaseModel):
 
 
 def _out(alert: Alert, period_start: Optional[Date], waiting: set[int]) -> AlertOut:
-    return AlertOut(id=alert.id, kind=alert.kind, category=alert.category, severity=alert.severity, cause=alert.cause,
+    return AlertOut(id=alert.id, stream_id=alert.stream_id, kind=alert.kind, category=alert.category, severity=alert.severity, cause=alert.cause,
                     action=alert.action, message=alert.message, proposed_limit_cents=alert.proposed_limit_cents,
                     status=alert.status, created_at=alert.created_at, period_start=period_start,
                     awaiting_approval=alert.id in waiting)

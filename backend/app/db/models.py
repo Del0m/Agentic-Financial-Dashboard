@@ -1,6 +1,6 @@
 from datetime import date as Date, datetime, timezone
 from typing import Literal, Optional
-from sqlalchemy import DateTime, JSON, Double, Enum, Float, ForeignKey, UniqueConstraint
+from sqlalchemy import DateTime, JSON, Double, Enum, Float, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
@@ -164,9 +164,39 @@ AlertStatus = Literal["pending_user", "accepted", "dismissed"]
 AlertSeverity = Literal["medium", "high"]            # pace flag, over its limit
 AdviceOutcome = Literal["accepted", "dismissed", "ignored"]
 
-# something the agent wants the user to see or approve; stream_id arrives with recurring_streams (TPC-33)
+# a repeating charge or paycheck found by the daily run (tpc-33). rows are never deleted, so alert links hold; a stream
+# that stops goes stale and the same row comes back if it resumes
+class RecurringStream(Base):
+    __tablename__ = "recurring_streams"
+    __table_args__ = (UniqueConstraint("user_id", "direction", "merchant_key", name="uq_recurring_streams_user_key"),
+                      Index("ix_recurring_streams_user_status", "user_id", "status"))
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    direction: Mapped[str]
+    merchant_key: Mapped[str]
+    merchant_name: Mapped[str]
+    category: Mapped[str]
+    detailed: Mapped[Optional[str]]
+    frequency: Mapped[str]
+    typical_cents: Mapped[int]
+    last_cents: Mapped[int]
+    previous_cents: Mapped[Optional[int]]
+    amount_varies: Mapped[bool]
+    first_date: Mapped[Date]
+    last_date: Mapped[Date]
+    next_date: Mapped[Date]
+    gap_days: Mapped[int]
+    status: Mapped[str]
+    first_seen_run_id: Mapped[Optional[int]] = mapped_column(ForeignKey("agent_runs.id"))
+    first_seen_date: Mapped[Date]
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+
+# something the agent wants the user to see or approve
 class Alert(Base):
     __tablename__ = "alerts"
+    __table_args__ = (Index("ix_alerts_user_signal_key", "user_id", "signal_key"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
@@ -180,6 +210,9 @@ class Alert(Base):
     message: Mapped[str]
     status: Mapped[str] = mapped_column(default="pending_user")
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    stream_id: Mapped[Optional[int]] = mapped_column(ForeignKey("recurring_streams.id",
+                                                                name="fk_alerts_stream_id_recurring_streams"))
+    signal_key: Mapped[Optional[str]]                      # one alert per signal, across replays (tpc-33)
 
 # what the agent told the user, read back so it doesn't repeat or contradict itself
 class AdviceLog(Base):
