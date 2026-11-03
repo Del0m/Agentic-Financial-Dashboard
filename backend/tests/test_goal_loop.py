@@ -87,7 +87,7 @@ def test_accepting_a_goal_reaches_the_dashboard_and_next_months_budget(api):
     [goal_id] = run["waiting_for"]
     assert accept(api, goal_id)["status"] == "accepted"
 
-    dashboard = api.client.get("/goals?status=accepted").json()       # the dashboard's call
+    dashboard = api.client.get("/goals?status=accepted").json()       # what the dashboard's card shows: it asks for `current` and keeps the accepted ones
     assert [(x["id"], x["kind"], x["monthly_cents"], x["start_date"]) for x in dashboard] == [
         (goal_id, "debt_payoff", 58300, "2026-12-01")]
     now = api.client.get("/budget").json()

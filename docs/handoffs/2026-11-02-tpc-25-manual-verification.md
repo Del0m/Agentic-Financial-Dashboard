@@ -141,6 +141,16 @@ These use the same setup. To start over, stop the API, delete the temp folder as
 - **Expected:** `200` and `"status":"dismissed"`. The December budget still shows the line (a month under way never changes). Stopping it again says `409`.
 - Advance to the next month with `../venv/bin/python scripts/simulate.py --user budget-goals-card-24 --days 31`. **Expected:** January has no `Debt payoff` line. Ignore the rest of January (see the limits: this profile has no income after October, so January's total is about $2,905 and Free is $0).
 
+**A goal's end raises an alert.** This needs a goal that ends soon, and the model proposes ones that run for years, so shorten one by hand. Do it on a fresh setup, or with a goal you haven't stopped. After check 5 (December is the open budget, the debt goal accepted), in terminal 3:
+
+```bash
+sqlite3 "${TPC25_CHECK_DIR}/goals.db" "UPDATE goals SET target_date = '2026-12-01' WHERE id = 1 AND status = 'accepted';"
+../venv/bin/python scripts/simulate.py --user budget-goals-card-24 --days 31
+```
+
+- **Expected:** December keeps its **Debt payoff** line (its target month is still a payment). When December closes, January has no debt line and Free rises by the goal's amount. The Alerts page has a new card badged **Goal ended**, headed **Budget**, saying: "Your Debt payoff goal reached its planned end date, so its $583.00 budget line has ended. Check that it's done, and generate goals again if there's more to do." (the amount is the goal's own, $583.00 or whatever the model proposed). On /goals the debt goal is gone and the page says "No goals right now. Generate goals to get a proposal." (if nothing else is proposed or accepted). A stopped goal raises no such alert.
+- The automated test `test_finished_goal_raises_a_goal_ended_alert` covers this. These `sqlite3` steps weren't run by hand.
+
 **Generate again after accepting.** Accept a goal, then click **Generate goals** again.
 - **Expected:** only kinds you haven't accepted are offered, and their amounts together are at most the cap minus what you accepted: $777.40 − $583.00 = **$194.40**. The earlier run's remaining proposal is replaced. `GET /goals/runs/<the first run>` says `"status":"expired"`.
 
@@ -150,21 +160,21 @@ These use the same setup. To start over, stop the API, delete the temp folder as
 - A goal id that doesn't exist, or belongs to another user, gives 404.
 - `POST /goals/generate` while a run is going gives 409. The page's button is disabled while its own run goes.
 
-**A proposal left over a month end.** Generate on 2026-11-02, answer neither card, advance to 2026-12-01 (check 5's command). **Expected:** both proposals are gone, the paused run's status is `expired`, and accepting either gives 409. This is the check 5 expiry, with both goals undecided.
+**A proposal left over a month end.** Generate on 2026-11-02, answer neither card, advance to 2026-12-01 (check 5's command). **Expected:** both proposals are gone, the paused run's status is `expired`, and accepting either gives 409 ("This proposal expired. Generate goals again."). This is the check 5 expiry, with both goals undecided.
 
 **Nothing in the checkpoint file names your debts.** With a run paused (after check 1), in terminal 3:
 
 ```bash
-grep -a -c "Platinum" "$BUDGET_CHECKPOINT_PATH" "$BUDGET_CHECKPOINT_PATH-wal"
+grep -a -c "Platinum" "$BUDGET_CHECKPOINT_PATH"*
 ```
 
-**Expected:** `0` for both files. (`$PROMPT_AUDIT_PATH` does contain the card's name, as it always has: it logs the prompts sent to your local model.)
+**Expected:** `0` for every file the glob matches (the checkpoint file, plus its `-wal` and `-shm` files if SQLite has made them). (`$PROMPT_AUDIT_PATH` does contain the card's name, as it always has: it logs the prompts sent to your local model.)
 
 ## Known limits that can look like bugs
 
 - **No contribution tracking.** The app doesn't know what you actually pay toward a goal, so a goal line is a plan: no spent figure, no pace bar, never flagged. "$0 of $583" would be wrong, because card payments aren't spending and a transfer can't be tied to a goal.
-- **The cap can be understated.** Once your payments toward a goal show up in your history, the measured surplus has already shrunk, and the accepted amount is then subtracted a second time. So a second proposal can be smaller than it needs to be until the goal ends. It errs on the safe side. TPC-31's forecast replaces this figure.
-- **A debt goal's line ends on its projected date** (the month of its target date), even if the debt isn't paid off by then. Nothing tracks whether you paid.
+- **The cap can be understated.** Once your payments toward a goal show up in your history, the measured surplus has already shrunk, and the accepted amount is then subtracted a second time. So a second proposal can be smaller than it needs to be, and for a few months after the goal ends too, because the surplus is a three-month median that still holds the goal's payments. It errs on the safe side. TPC-31's forecast replaces this figure.
+- **A debt goal's line ends on its projected date** (the month of its target date), even if the debt isn't paid off by then. Nothing tracks whether you paid, so the app raises a "Goal ended" alert when the line ends and leaves it to you to check the debt is actually gone.
 - **This profile's history ends on 2026-10-31**, so advancing adds no transactions. Flexible lines shrink month by month as the budget smooths toward $0 of spending, and after December the income estimate falls too (January's total is about $2,905). None of that is the goal feature. Stop at 2026-12-01 for the clean comparison.
 - **"Couldn't start Link"** appears on the dashboard for a simulated user. It's existing behaviour: a synthetic user has no bank to link.
 - **A goal accepted or stopped during a budget close** can take effect one month late (rare, and it corrects itself the month after).
@@ -189,8 +199,8 @@ grep -a -c "Platinum" "$BUDGET_CHECKPOINT_PATH" "$BUDGET_CHECKPOINT_PATH-wal"
 - Docker, a real linked bank account, and Postgres. Goals are only checked on SQLite and on synthetic data.
 
 **Automated checks, 2026-11-02:**
-- Backend: `../venv/bin/python -m pytest -q -k 'not live and not sandbox'` from `backend/`: **997 passed, 22 deselected**. That includes `tests/test_goal_loop.py` (the done-when end to end, 4 tests).
-- Frontend, from `frontend/`: `npm test` **105 passed** (11 files), `npm run lint` clean, `npm run build` succeeded (routes `/`, `/alerts`, `/chat`, `/dashboard`, `/goals`).
+- Backend: `../venv/bin/python -m pytest -q -k 'not live and not sandbox'` from `backend/`: **1008 passed, 22 deselected**. That includes `tests/test_goal_loop.py` (the done-when end to end, 4 tests).
+- Frontend, from `frontend/`: `npm test` **109 passed** (11 files), `npm run lint` clean, `npm run build` succeeded (routes `/`, `/alerts`, `/chat`, `/dashboard`, `/goals`).
 
 **Diagrams:** `docs/diagrams/approval-lifecycle`, `data-model` and `remaining-lifecycle` were updated, and their `.png` and `.svg` files were regenerated with `plantuml` (installed here).
 

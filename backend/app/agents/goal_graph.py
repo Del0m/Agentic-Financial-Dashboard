@@ -198,6 +198,8 @@ def build_goal_graph(session_factory, *, model: Optional[BaseChatModel], gateway
     # one commit: the user only ever sees one current proposal, and a failed run leaves the last one standing
     def persist(state: GoalState) -> dict:
         with session_factory() as s:
+            # assert_owned's UPDATE takes sqlite's write lock first, so the goals_changed check below can't be
+            # overtaken by a decide_goal commit before this commits
             if claim is not None:
                 claim.assert_owned(s)
             # the user accepted or changed a goal while this ran: the cap it planned within is stale, so write nothing
@@ -211,6 +213,8 @@ def build_goal_graph(session_factory, *, model: Optional[BaseChatModel], gateway
             s.add_all(rows)
             s.commit()
             goal_ids = [r.id for r in rows]
+        # written already: a failure from here on mustn't report a run that proposed nothing while the proposal is live
+        progress["goal_ids"] = goal_ids
         _delete_threads(checkpointer, expired)
         return {"status": "ok", "goal_ids": goal_ids}
 

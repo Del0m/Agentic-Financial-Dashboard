@@ -177,6 +177,12 @@ Run them from `backend/`:
 
 **Why it's there:** Setup that fails before the graph starts mustn't leave a run `running`.
 
+## `test_failure_after_persist_still_reports_the_goal_ids`
+
+**What it does:** A saver whose `put` raises, so the run fails when it writes its checkpoint, after `persist` committed. The run ends `error` with reason `OSError`, yet its result and its summary list the stored goal's id.
+
+**Why it's there:** The proposal is live once `persist` commits. Reporting `goal_ids: []` would tell the page the run proposed nothing while the new card is on screen.
+
 ## `test_finish_paused_run_from_rows`
 
 **What it does:** With one goal still `proposed`, nothing changes. Once both are decided, the run is `ok` and finished, with outcome `ok`, decisions from the rows, and the rest of the summary kept.

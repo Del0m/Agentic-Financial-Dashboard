@@ -18,7 +18,7 @@ Run them from `backend/`:
 
 ## `test_accepting_a_goal_reaches_the_dashboard_and_next_months_budget`
 
-**What it does:** Builds November's budget, generates a $583.00 debt goal and accepts it. The dashboard's call (`GET /goals?status=accepted`) lists it with its December start, and November's budget has no goal line and the same Free limit as before. Then December 1 closes November: the new budget has a `Debt payoff` line of 58300 cents in the `goal` group, unflagged, with nothing spent and no pace, and the lines still add up to the total with Free smaller than November's.
+**What it does:** Builds November's budget, generates a $583.00 debt goal and accepts it. `GET /goals?status=accepted` lists it with its December start, which is what the dashboard's card shows after it asks for `current` and keeps the accepted goals, and November's budget has no goal line and the same Free limit as before. Then December 1 closes November: the new budget has a `Debt payoff` line of 58300 cents in the `goal` group, unflagged, with nothing spent and no pace, and the lines still add up to the total with Free smaller than November's.
 
 **Why it's there:** This is the ticket's done-when. It fails if accepting changes the month under way, if close drops the goal, or if the goal is added on top of the total instead of out of Free.
 

@@ -38,7 +38,7 @@ Rows marked **confirm** are the design's own defaults, not something the user ha
 | Paused checkpoints hold no debt names, balances or model text, only the aggregate figures the run summary already stores: a `forget_facts` node clears the rest, and `durability="exit"` stops earlier steps being written | Debt names and balances would otherwise sit in the checkpoint file. Tested on langgraph 1.2.18: with `sync` the secret reached disk, with `exit` it didn't, and resuming twice still worked | The default durability, which writes every step |
 | Add `goals.start_date` (nullable) | `created_at` is the wall clock, which is wrong for a simulated user. Close needs the plan's real first month | Deriving it from `created_at` |
 | A row with no `start_date` can't be accepted (409) | Rows from before this ticket may be over the cap or undated, and TPC-24 says they aren't certified | Accepting them |
-| Close completes an accepted goal once its `target_date` month has passed: status `completed`, no more line | Free comes back and the kind can be offered again. Status is a plain string, so no migration | Lines that run forever |
+| Close completes an accepted goal once its `target_date` month has passed: status `completed`, no more line, and one `goal_ended` alert on the new period (medium, no category): "Your {name} goal reached its planned end date, so its {amount} budget line has ended. Check that it's done, and generate goals again if there's more to do." A goal the user stopped gets none | Free comes back and the kind can be offered again. Status is a plain string, so no migration. Nothing tracks contributions, so without the alert Free rising could be read as "debt done" | Lines that run forever |
 
 ## Double counting
 
@@ -50,7 +50,7 @@ Subtracting the whole goal would be wrong. Avalanche usually sends a debt goal t
 
 1. **Saving line.** A fixed line adopts its actual at close, so a goal's transfer would inflate `SAVINGS_TRANSFER` and be budgeted again by the goal line. `gather_month` nets `saved` against the closed month's `emergency_fund` and `savings` goal lines.
 2. **Loan spending.** The same applies to `LOAN_PAYMENTS` and a `debt_payoff` line, in both `gather_month` and `evaluate`. Otherwise paying the goal to a loan looks like overspending, or lands on Free when the user has no loan line. It could also lead the model to propose a limit that includes the goal.
-3. **Regeneration.** The cap subtracts accepted goals. **Known limit:** once the user's transfers show up in history, the measured surplus has already fallen, so the amount is subtracted twice and the cap is understated until the goal ends. This errs on the safe side, and TPC-31's forecast replaces this figure.
+3. **Regeneration.** The cap subtracts accepted goals. **Known limit:** once the user's transfers show up in history, the measured surplus has already fallen, so the amount is subtracted twice and the cap is understated until the goal ends, and for a few months after it, because the surplus is a three-month median that still holds the goal's payments. This errs on the safe side, and TPC-31's forecast replaces this figure.
 
 ## Lifecycle
 
@@ -79,7 +79,7 @@ An `AgentRun` is `running`, then `awaiting_user` while paused (no lock held, and
 GET  /goals?status=proposed|accepted|current  default proposed, so TPC-23's contract holds. current = proposed + accepted
 POST /goals/generate { date? }  -> 202 { run_id }; 409 if a run is going for this user
 GET  /goals/runs/{id}           -> { run_id, status, outcome, reason, goal_ids, waiting_for, attempts, issues, error }
-POST /goals/{id}/accept         -> GoalOut; 404 other user's; 409 already decided, superseded, no start_date or target_date, or a goal of that kind is accepted
+POST /goals/{id}/accept         -> GoalOut; 404 other user's; 409 already decided, superseded ("This proposal expired. Generate goals again.", `GoalExpired`), no start_date or target_date, or a goal of that kind is accepted
 POST /goals/{id}/dismiss        -> GoalOut; 404, 409. Works on proposed and accepted
 ```
 

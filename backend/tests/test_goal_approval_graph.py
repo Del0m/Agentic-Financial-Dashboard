@@ -470,6 +470,19 @@ def test_checkpointer_failure_marks_error(user):
     assert run_row(user, r["run_id"]).status == "error"
 
 
+# the proposal is already committed when the checkpoint write fails, so the run must not report that it proposed nothing
+def test_failure_after_persist_still_reports_the_goal_ids(user):
+    class WontSave(InMemorySaver):
+        def put(self, *args, **kwargs):
+            raise OSError("disk full")
+
+    r = run_goals(user, UID, TODAY, model=model(g("debt_payoff", 58300, "avalanche")), checkpointer=WontSave())
+    [live] = stored(user)
+    assert (r["status"], r["reason"]) == ("error", "OSError")
+    assert r["goal_ids"] == [live.id]
+    assert run_row(user, r["run_id"]).summary_json["goal_ids"] == [live.id]
+
+
 def test_finish_paused_run_from_rows(user, ck):
     r = run_goals(user, UID, TODAY, model=model(g("debt_payoff", 58300, "avalanche"), g("savings", 10000)), checkpointer=ck)
     first, second = r["goal_ids"]
