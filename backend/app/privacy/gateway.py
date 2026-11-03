@@ -228,10 +228,21 @@ class PrivacyGateway:
         # an unpaid debt's interest summed over 600 months runs to billions: there's no total to quote
         interest = lambda p: _dollars(p.total_interest_cents) if p.months is not None else None
 
+        # written by code: given the bare fields, a small model left out the total interest on 2 runs of 3 (tpc-48)
+        def summary(p: Plan, base: Plan, ends: bool) -> str:
+            if p.months is None:
+                return "This plan doesn't finish paying off every debt."
+            text = f"{p.months} months to debt-free, ${_dollars(p.total_interest_cents):,.2f} total interest."
+            if ends and extra_monthly_cents:
+                text += (f" The extra saves {base.months - p.months} months and "
+                         f"${_dollars(base.total_interest_cents - p.total_interest_cents):,.2f} in interest.")
+            return text
+
         def plan(p: Plan, base: Plan) -> dict:
             ends = p.months is not None and base.months is not None
             return {
-                "strategy": p.strategy, "months": p.months, "debt_free": month(p.debt_free),
+                "strategy": p.strategy, "summary": summary(p, base, ends), "months": p.months,
+                "debt_free": month(p.debt_free),
                 "total_interest": interest(p),
                 "order": [{"name": names[o.key], "paid_off": month(o.date), "interest": _dollars(o.interest_cents)}
                           for o in p.order],

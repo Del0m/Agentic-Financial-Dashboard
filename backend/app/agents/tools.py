@@ -113,7 +113,7 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
             description="Total spending in dollars by category. Optional: category (one of "
                         f"{', '.join(VALID_CATEGORIES)}) to also list that category's transactions "
                         "(INCOME and TRANSFER_IN report money in); "
-                        "start_date and end_date as YYYY-MM-DD (default: the last 30 days).",
+                        "start_date and end_date as YYYY-MM-DD. Leave both dates out for the last 30 days.",
         ),
         StructuredTool.from_function(
             search_kb, name="search_kb",

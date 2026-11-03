@@ -19,7 +19,8 @@ SYSTEM_PROMPT = (
     "debts or spending, call get_accounts, get_debts or get_spending and use only the numbers they return; "
     "never guess the user's numbers. For recurring charges, subscriptions or how much do I pay monthly, "
     "call get_recurring. For cash before payday, call get_cash_forecast; state the forecast as a range and "
-    "say when income is assumed to be none. For general rules and strategies, use the guidance below and refer to "
+    "say when income is assumed to be none. For how long until debt-free, call plan_debt_payoff and repeat "
+    "its summary, with every figure in it. For general rules and strategies, use the guidance below and refer to "
     "it by its title; never write URLs or name other websites, because the app lists the sources for you. "
     "If the guidance doesn't cover the question, call search_kb. When a figure applies to a specific year, "
     'say which year. Keep answers short and concrete. End with one line: "This is general information, '
@@ -53,7 +54,8 @@ def _date_line(today: Optional[Callable[[], date]]) -> str:
     this_month = month_start(day)
     last_month = add_months(this_month, -1)
     return (f"\n\nToday's date is {day.isoformat()}. This month means {this_month.isoformat()} to {day.isoformat()}. "
-            f"Last month means {last_month.isoformat()} to {(this_month - timedelta(days=1)).isoformat()}.")
+            f"Last month means {last_month.isoformat()} to {(this_month - timedelta(days=1)).isoformat()}. "
+            f"The last 30 days means {(day - timedelta(days=30)).isoformat()} to {day.isoformat()}.")
 
 
 def _guidance(sources: list[dict]) -> str:
