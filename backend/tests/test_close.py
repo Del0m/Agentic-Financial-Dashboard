@@ -1,7 +1,7 @@
 from datetime import date
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import event, select
 
 from app.budget_engine.groups import default_group, default_name
 from app.budget_service import close as close_mod
@@ -669,10 +669,7 @@ def test_answer_during_close_stands(db, monkeypatch):
     assert goal_status(db, goal_id) == "accepted" and summary["expired_goal_ids"] == []
     with db() as s:
         assert s.get(AgentRun, run_id).status == "awaiting_user"
-    assert "GOAL_DEBT_PAYOFF" not in lines_of(period_at(db, DEC1))
-    monkeypatch.setattr(close_mod, "gather_month", gather)
-    close_due(db, "u1", JAN1)
-    assert lines_of(period_at(db, JAN1))["GOAL_DEBT_PAYOFF"].limit_cents == 58300
+    assert lines_of(period_at(db, DEC1))["GOAL_DEBT_PAYOFF"].limit_cents == 58300
 
 
 # runs `act` once, just before the first write to goals: the user's click landing between persist's read of a row
@@ -773,3 +770,53 @@ def test_expire_goal_proposals_rechecks_and_leaves_the_commit_to_the_caller(db):
     assert (goal_status(db, proposed), goal_status(db, accepted)) == ("superseded", "accepted")
     with db() as s:
         assert (s.get(AgentRun, run_id).status, s.get(AgentRun, ok_run).status) == ("expired", "ok")
+
+
+def _goal_row(s, status, monthly=30000):
+    goal = Goal(user_id="u1", kind="savings", status=status, priority=1, monthly_cents=monthly,
+                target_cents=monthly * 12, start_date=NOV1, target_date=date(2027, 10, 1), rationale="r")
+    s.add(goal)
+    s.flush()
+    return goal.id
+
+
+# a click that lands after gather_month has read the goals, before persist_month writes the month
+def _decide_during_close(db, monkeypatch, goal_id, status):
+    gather = close_mod.gather_month
+
+    def gather_then_decide(session, period_id):
+        gathered = gather(session, period_id)
+        with db() as other:
+            other.get(Goal, goal_id).status = status
+            other.commit()
+        return gathered
+    monkeypatch.setattr(close_mod, "gather_month", gather_then_decide)
+
+
+def test_goal_accepted_during_close_gets_its_line(db, monkeypatch):
+    setup(db)
+    with db() as s:
+        goal_id = _goal_row(s, "proposed")
+        s.commit()
+    _decide_during_close(db, monkeypatch, goal_id, "accepted")
+    close_due(db, "u1", date(2026, 11, 2))
+    with db() as s:
+        period = s.scalar(select(BudgetPeriod).where(BudgetPeriod.start_date == NOV1))
+        lines = {ln.category: ln.limit_cents for ln in period.lines}
+        assert s.get(Goal, goal_id).status == "accepted"
+        assert lines["GOAL_SAVINGS"] == 30000
+        assert sum(lines.values()) == period.total_cents
+
+
+def test_goal_dismissed_during_close_reserves_nothing(db, monkeypatch):
+    setup(db)
+    with db() as s:
+        goal_id = _goal_row(s, "accepted")
+        s.commit()
+    _decide_during_close(db, monkeypatch, goal_id, "dismissed")
+    close_due(db, "u1", date(2026, 11, 2))
+    with db() as s:
+        period = s.scalar(select(BudgetPeriod).where(BudgetPeriod.start_date == NOV1))
+        lines = {ln.category: ln.limit_cents for ln in period.lines}
+        assert "GOAL_SAVINGS" not in lines and s.get(Goal, goal_id).status == "dismissed"
+        assert sum(lines.values()) == period.total_cents
