@@ -1,7 +1,7 @@
 import json
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Union, get_args
 
@@ -14,7 +14,8 @@ from app.agents.tools import PFC_CATEGORIES, VALID_CATEGORIES
 from app.budget_engine.goals import GOAL_KINDS
 from app.budget_engine.signals import RANK
 from app.db.base import Base
-from app.db.models import Liability, User
+from app.budget_engine.txns import month_end, month_start
+from app.db.models import AdviceLog, Alert, BudgetLine, BudgetPeriod, Liability, User
 from eval.budget_users import profile_by_id
 from tests.factories import add_account, add_txn, add_user
 
@@ -217,6 +218,22 @@ def _check_user(path: Path, user: dict) -> None:
         if _require(path, t, "days_ago", int, where) < 0:
             _fail(path, where + "days_ago", "must be 0 or more")
         _require(path, t, "amount", (int, float), where)
+    # history the graph projects: past budget limits and what the user decided about past advice (tpc-27)
+    for i, b in enumerate(user.get("budget", [])):
+        where = f"user.budget[{i}]."
+        if _date(path, b, "start", where).day != 1:
+            _fail(path, where + "start", "must be the first of a month")
+        if _require(path, b, "category", str, where) not in VALID_CATEGORIES:
+            _fail(path, where + "category", f"{b['category']!r} is not a budget category")
+        _require(path, b, "limit", (int, float), where)
+    for i, a in enumerate(user.get("advice", [])):
+        where = f"user.advice[{i}]."
+        _date(path, a, "day", where)
+        _require(path, a, "category", str, where)
+        _require(path, a, "message", str, where)
+        _choices(path, where + "action", [_require(path, a, "action", str, where)], OVERSPEND_ACTIONS)
+        if _require(path, a, "decision", str, where) not in ("accepted", "dismissed"):
+            _fail(path, where + "decision", "must be accepted or dismissed")
 
 
 def _date(path: Path, d: dict, key: str, where: str = "") -> date:
@@ -401,6 +418,33 @@ def _cents(dollars: float) -> int:
     return round(dollars * 100)
 
 
+def _seed_history(session: Session, user_id: str, user: dict, today: date) -> None:
+    periods: dict[date, BudgetPeriod] = {}
+
+    def period_of(start: date) -> BudgetPeriod:
+        if start not in periods:
+            end = month_end(start)
+            periods[start] = BudgetPeriod(user_id=user_id, start_date=start, end_date=end,
+                                          status="closed" if end < today else "open")
+            session.add(periods[start])
+        return periods[start]
+
+    for b in user.get("budget", []):
+        period_of(date.fromisoformat(b["start"])).lines.append(BudgetLine(
+            category=b["category"], name=b["category"], group="wants", kind="flexible", limit_cents=_cents(b["limit"]),
+            source="init"))
+    session.flush()
+    for a in user.get("advice", []):
+        day = date.fromisoformat(a["day"])
+        when = datetime(day.year, day.month, day.day, tzinfo=timezone.utc)
+        alert = Alert(user_id=user_id, period_id=period_of(month_start(day)).id, kind="overspend", category=a["category"],
+                      severity="medium", action=a["action"], message=a["message"], status=a["decision"], created_at=when)
+        session.add(alert)
+        session.flush()
+        session.add(AdviceLog(user_id=user_id, alert_id=alert.id, category=a["category"], advice_text=a["message"],
+                              created_at=when, outcome=a["decision"]))
+
+
 def seed(session: Session, scenario: Scenario, today: date) -> str:
     user_id = f"eval-{scenario.id}"
     item = add_user(session, user_id, f"{scenario.id}@eval.local")
@@ -423,6 +467,7 @@ def seed(session: Session, scenario: Scenario, today: date) -> str:
     for t in scenario.user.get("transactions", []):
         add_txn(session, accounts[t["account"]], _cents(t["amount"]), t["category"],
                 merchant=t.get("merchant", "Shop"), day=today - timedelta(days=t["days_ago"]))
+    _seed_history(session, user_id, scenario.user, today)
     session.commit()
     if "get_recurring" in scenario.expect.tools:
         from app.budget_service.recurring import refresh_streams

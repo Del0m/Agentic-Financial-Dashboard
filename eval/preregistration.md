@@ -61,7 +61,7 @@ The groups for the existing 22 chat scenarios were set from this rule, before th
 | `graph_suited` | `abstain-roth-2030`, `kb-emergency-fund`, `kb-roth-vs-401k`, `recurring-subscriptions`, `subs-several-listed`, `subs-unused-cancel-savings` |
 | `graph_unsuited` | `abstain-credit-score`, `cash-before-payday`, `cash-no-income`, `debt-avalanche-vs-snowball`, `debt-higher-apr-smaller-balance`, `debt-highest-apr`, `debt-none`, `debt-plan-extra-200`, `income-last-30-days`, `mixed-card-vs-emergency`, `savings-balance`, `spending-food-30d`, `spending-refund-excluded` |
 
-All new `temporal-*` scenarios are in the `temporal` group. Each records its author in an `author` field.
+All new `temporal-*` scenarios are in the `temporal` group. There are 12, and each records its author in an `author` field. Claude wrote all 12 from the design and the guidance files, before any TPC-36 to TPC-39 code existed. Claude is also building the graph, so the set isn't independent of the builder, and the paper says so.
 
 ## Tool choice
 

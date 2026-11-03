@@ -224,3 +224,8 @@ def test_label_goes_in_the_results_folder(tmp_path):
 def test_graph_modes_are_refused_until_the_graph_is_built(mode, capsys):
     assert run_eval.main(["--retrieval", mode]) == 2
     assert "TPC-39" in capsys.readouterr().out
+
+
+def test_limit_spreads_across_the_list():
+    assert run_eval.spread(list(range(10)), 4) == [0, 2, 5, 7]
+    assert run_eval.spread([1, 2], 4) == [1, 2]

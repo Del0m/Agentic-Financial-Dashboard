@@ -205,7 +205,7 @@ The committed count includes cash-before-payday, which checks get_cash_forecast 
 
 ## `test_committed_scenarios_cover_the_ticket`
 
-**What it does:** Checks that there are 30-50 scenarios, each with a golden answer and a tag, that every ticket category has one, that the mix is 28 chat, 12 budget and 6 goal, and that 4 are abstain scenarios.
+**What it does:** Checks that there are 30-50 scenarios before the 12 temporal ones, each with a golden answer and a tag, that every ticket category has one, that the mix is 34 chat, 12 budget and 6 goal, and that 4 are abstain scenarios.
 
 **Why it's there:** This is the ticket's done-when, as a test.
 
@@ -238,3 +238,9 @@ The committed count includes cash-before-payday, which checks get_cash_forecast 
 **What it does:** `expect.tool_args` loads as accepted values per tool argument. An unknown tool or an empty list fails the load.
 
 **Why it's there:** An empty list could never be met, which would look like the agent choosing badly.
+
+## `test_budget_and_advice_history_seed`, `test_bad_history_rejected`
+
+**What they do:** A scenario can seed past budget limits and decided advice. The periods, lines, alerts and advice rows match, past months are closed, and bad dates, categories, actions or decisions fail the load.
+
+**Why they're there:** Temporal questions about past budgets and decisions need this history for the graph to project (TPC-36).

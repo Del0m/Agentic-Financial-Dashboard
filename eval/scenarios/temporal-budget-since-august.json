@@ -1,0 +1,78 @@
+{
+  "id": "temporal-budget-since-august",
+  "author": "claude",
+  "today": "2026-11-06",
+  "tags": [
+    "temporal",
+    "needs_graph"
+  ],
+  "question": "How has my food and drink budget changed since August?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2400.0
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 3,
+        "amount": 42.1,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Chipotle"
+      }
+    ],
+    "budget": [
+      {
+        "start": "2026-08-01",
+        "category": "FOOD_AND_DRINK",
+        "limit": 300.0
+      },
+      {
+        "start": "2026-09-01",
+        "category": "FOOD_AND_DRINK",
+        "limit": 320.0
+      },
+      {
+        "start": "2026-10-01",
+        "category": "FOOD_AND_DRINK",
+        "limit": 350.0
+      },
+      {
+        "start": "2026-11-01",
+        "category": "FOOD_AND_DRINK",
+        "limit": 350.0
+      }
+    ]
+  },
+  "golden_answer": "Your food and drink budget went from $300 in August to $320 in September and $350 in October, and it's still $350 in November. This is general information, not financial advice.",
+  "expect": {
+    "facts": [
+      {
+        "number": 300,
+        "tol": 0
+      },
+      {
+        "number": 350,
+        "tol": 0
+      }
+    ],
+    "forbid": [
+      "http"
+    ],
+    "tools": [],
+    "allowed_tools": [
+      "get_history"
+    ],
+    "sources": [],
+    "temporal": {
+      "right": [
+        "August"
+      ],
+      "wrong": []
+    }
+  }
+}

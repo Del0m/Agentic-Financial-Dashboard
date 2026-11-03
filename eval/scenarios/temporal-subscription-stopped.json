@@ -1,0 +1,83 @@
+{
+  "id": "temporal-subscription-stopped",
+  "author": "claude",
+  "today": "2026-11-06",
+  "tags": [
+    "temporal",
+    "needs_graph"
+  ],
+  "question": "When did my Clipflix charges stop?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2400.0
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 242,
+        "amount": 15.49,
+        "category": "ENTERTAINMENT",
+        "merchant": "Clipflix"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 211,
+        "amount": 15.49,
+        "category": "ENTERTAINMENT",
+        "merchant": "Clipflix"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 181,
+        "amount": 15.49,
+        "category": "ENTERTAINMENT",
+        "merchant": "Clipflix"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 150,
+        "amount": 15.49,
+        "category": "ENTERTAINMENT",
+        "merchant": "Clipflix"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 120,
+        "amount": 15.49,
+        "category": "ENTERTAINMENT",
+        "merchant": "Clipflix"
+      }
+    ]
+  },
+  "golden_answer": "Your last Clipflix charge was in July 2026, so the charges stopped after July. This is general information, not financial advice.",
+  "expect": {
+    "facts": [
+      {
+        "text": "July"
+      }
+    ],
+    "forbid": [
+      "http"
+    ],
+    "tools": [],
+    "allowed_tools": [
+      "get_recurring",
+      "get_spending",
+      "get_history"
+    ],
+    "sources": [],
+    "temporal": {
+      "right": [
+        "July"
+      ],
+      "wrong": [
+        "November"
+      ]
+    }
+  }
+}

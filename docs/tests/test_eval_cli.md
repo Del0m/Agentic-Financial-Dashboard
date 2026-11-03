@@ -133,3 +133,9 @@ The `agents` fixture adds one budget and one goal file to `offline`, and stubs t
 **What it does:** `--retrieval graph`, `hybrid` and `hybrid-shuffled` exit with code 2 until TPC-39 lands.
 
 **Why it's there:** They would otherwise run with no graph facts and report a result about nothing.
+
+## `test_limit_spreads_across_the_list`
+
+**What it does:** `--limit` picks evenly across the sorted scenarios.
+
+**Why it's there:** The first pilot took the first four, which were all abstain questions, so it couldn't show whether a model calls tools.

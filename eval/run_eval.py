@@ -46,6 +46,11 @@ SCENARIOS_DIR = REPO / "eval" / "scenarios"
 RESULTS_DIR = REPO / "eval" / "results"
 
 
+# evenly across the sorted list: the first few alone would be one topic, since ids start with their topic
+def spread(items: list, limit: int) -> list:
+    return items if len(items) <= limit else [items[i * len(items) // limit] for i in range(limit)]
+
+
 def parse_args(argv):
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--model", default=config.OLLAMA_MODEL, help="agent model (default: OLLAMA_MODEL)")
@@ -182,7 +187,7 @@ def main(argv=None) -> int:
         scenarios = [s for s in scenarios if s.kind == args.kind]
     scenarios = [s for s in scenarios if not set(args.skip_tag) & set(s.tags)]
     if args.limit:
-        scenarios = [s for kind in KINDS for s in [x for x in scenarios if x.kind == kind][:args.limit]]
+        scenarios = [s for kind in KINDS for s in spread([x for x in scenarios if x.kind == kind], args.limit)]
     if not scenarios:
         print(f"Bad scenario: nothing to run for --kind {args.kind} --skip-tag {args.skip_tag}")
         return 2

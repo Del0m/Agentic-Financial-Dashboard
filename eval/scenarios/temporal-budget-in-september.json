@@ -1,0 +1,76 @@
+{
+  "id": "temporal-budget-in-september",
+  "author": "claude",
+  "today": "2026-11-06",
+  "tags": [
+    "temporal",
+    "needs_graph"
+  ],
+  "question": "What was my food and drink budget limit in September?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2400.0
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 3,
+        "amount": 42.1,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Chipotle"
+      }
+    ],
+    "budget": [
+      {
+        "start": "2026-08-01",
+        "category": "FOOD_AND_DRINK",
+        "limit": 300.0
+      },
+      {
+        "start": "2026-09-01",
+        "category": "FOOD_AND_DRINK",
+        "limit": 320.0
+      },
+      {
+        "start": "2026-10-01",
+        "category": "FOOD_AND_DRINK",
+        "limit": 350.0
+      },
+      {
+        "start": "2026-11-01",
+        "category": "FOOD_AND_DRINK",
+        "limit": 350.0
+      }
+    ]
+  },
+  "golden_answer": "Your food and drink limit was $320 in September. This is general information, not financial advice.",
+  "expect": {
+    "facts": [
+      {
+        "number": 320,
+        "tol": 0
+      }
+    ],
+    "forbid": [
+      "http"
+    ],
+    "tools": [],
+    "allowed_tools": [
+      "get_history"
+    ],
+    "sources": [],
+    "temporal": {
+      "right": [
+        "September"
+      ],
+      "wrong": [
+        "$350"
+      ]
+    }
+  }
+}
