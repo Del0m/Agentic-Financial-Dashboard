@@ -196,9 +196,45 @@ These use `november` and `add_goal`. The netting tests put the goal's line strai
 
 ## `test_stop_during_close_stands`
 
-**What it does:** A finished goal is dismissed after `gather_month` listed it as finished. After the close it's still `dismissed`, and `finished_goal_ids` is empty.
+**What it does:** A finished goal is dismissed after `gather_month` listed it as finished. After the close it's still `dismissed`, `finished_goal_ids` is empty, and no alert is written.
 
-**Why it's there:** `persist_month` rechecks `accepted` in its own transaction, as it does for proposals, so a click during close isn't overwritten.
+**Why it's there:** `persist_month` rechecks `accepted` in the same write that completes the goal, as it does for proposals, so a click during close isn't overwritten.
+
+## `test_finished_goal_raises_a_goal_ended_alert`
+
+**What it does:** A goal with target date Dec 1 2026. Closing December writes one alert on January's period: kind `goal_ended`, no category, severity `medium`, no cause, action `alert`, status `pending_user`, with the message "Your Debt payoff goal reached its planned end date, so its $583.00 budget line has ended. Check that it's done, and generate goals again if there's more to do." Its id is in the summary's `alert_ids`, and closing November wrote none.
+
+**Why it's there:** Nothing tracks contributions, so Free rising when a line ends could be read as "debt done". The user has to be told the plan ended, not that the debt did.
+
+## `test_goal_ended_alert_uses_the_renamed_line`
+
+**What it does:** The goal's December line is renamed "Card payoff" before the close. The alert says "Your Card payoff goal".
+
+**Why it's there:** The message uses the name the user sees in the budget.
+
+## `test_no_goal_ended_alert_while_a_goal_runs`
+
+**What it does:** A goal that runs past January. Closing November and December writes no alert.
+
+**Why it's there:** The alert is for an ending, not for every close with a goal.
+
+## `test_stopped_goal_raises_no_goal_ended_alert`
+
+**What it does:** A goal dismissed during December. January's close writes no alert and reports no `alert_ids`.
+
+**Why it's there:** The user stopped it themselves, so telling them it ended would be noise.
+
+## `test_accept_just_before_expiry_is_not_overwritten`
+
+**What it does:** The user accepts a stale proposal in the instant before `expire_goal_proposals` writes (the test fires the accept just before the first `UPDATE goals`). The goal ends `accepted`, `expired_goal_ids` is empty, and its run stays `awaiting_user`.
+
+**Why it's there:** The old code read the row, then wrote `superseded` unconditionally, so a click between the two was overwritten. The write is now one conditional update on `status = 'proposed'`.
+
+## `test_stop_just_before_completion_is_not_overwritten_or_announced`
+
+**What it does:** The user stops a finished goal in the instant before the completion write. The goal ends `dismissed`, `finished_goal_ids` is empty, and no alert is written.
+
+**Why it's there:** The completion step has the same read-then-write shape; it is now one conditional update on `status = 'accepted'`, and the alerts come from the ids it returns.
 
 ## `test_saving_line_ignores_goal_transfers`
 
@@ -276,7 +312,7 @@ These use `november` and `add_goal`. The netting tests put the goal's line strai
 
 **What it does:** The user accepts after `gather_month` read the rows. The goal stays `accepted`, the summary's `expired_goal_ids` is empty, and the run stays `awaiting_user`. December has no line, and January does.
 
-**Why it's there:** `expire_goal_proposals` rechecks the status inside the commit. The spec accepts that such a line arrives a month late, and this shows it does arrive.
+**Why it's there:** `expire_goal_proposals` rechecks the status in the same write. The spec accepts that such a line arrives a month late, and this shows it does arrive.
 
 ## `test_lost_race_leaves_goals_alone`
 

@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
 
 from app.budget_engine.goals import CommittedGoal
@@ -38,14 +38,14 @@ def expire_paused_runs(session: Session, goals: list[Goal], *, keep: Optional[in
     return sorted(run.id for run in runs)
 
 
-# marks the goals superseded and the goal runs paused on them expired; the caller commits. the status is checked
-# again here, in the caller's own transaction: a user who answered in the meantime keeps their answer. returns the
-# ids actually expired
+# marks the goals superseded and the goal runs paused on them expired; the caller commits. one conditional write, so
+# a user who answered in the meantime keeps their answer even if they clicked after the caller listed the ids.
+# returns the ids actually expired
 def expire_goal_proposals(session: Session, goal_ids: list[int]) -> list[int]:
     if not goal_ids:
         return []
-    goals = session.scalars(select(Goal).where(Goal.id.in_(goal_ids), Goal.status == "proposed")).all()
-    for goal in goals:
-        goal.status = "superseded"
-    expire_paused_runs(session, goals)
-    return sorted(g.id for g in goals)
+    expired = sorted(session.scalars(update(Goal).where(Goal.id.in_(goal_ids), Goal.status == "proposed")
+                                     .values(status="superseded").returning(Goal.id)))
+    if expired:
+        expire_paused_runs(session, list(session.scalars(select(Goal).where(Goal.id.in_(expired)))))
+    return expired

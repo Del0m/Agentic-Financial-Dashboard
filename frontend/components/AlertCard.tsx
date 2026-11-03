@@ -3,8 +3,8 @@ import { categoryLabel, formatCents } from "@/lib/format";
 
 const CAUSES: Record<string, string> = { one_time: "One-time", recurring: "Recurring", seasonal: "Seasonal" };
 const OUTCOMES: Record<string, string> = { accepted: "Accepted", dismissed: "Dismissed" };
-// what period close reports about the whole budget (tpc-22); overspend alerts are badged by severity
-const KINDS: Record<string, string> = { over_income: "Over income", group_over_target: "Over target" };
+// what period close reports about the whole budget (tpc-22, and a goal's end in tpc-25); overspend alerts are badged by severity
+const KINDS: Record<string, string> = { over_income: "Over income", group_over_target: "Over target", goal_ended: "Goal ended" };
 
 // one alert from the budget agent. pending alerts get Accept / Dismiss; a budget proposal shows the limit the
 // user would be accepting, and says so when a paused run is waiting on the answer

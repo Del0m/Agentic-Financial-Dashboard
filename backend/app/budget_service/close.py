@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -127,6 +127,11 @@ def gather_month(session: Session, period_id: int) -> dict:
     }
 
 
+def goal_ended_message(name: str, cents: int) -> str:
+    return (f"Your {name} goal reached its planned end date, so its ${cents / 100:,.2f} budget line has ended. "
+            f"Check that it's done, and generate goals again if there's more to do.")
+
+
 def _saving_line(actual_cents: int, new_cents: int, rule: str) -> dict:
     return {"category": SAVINGS, "name": default_name(SAVINGS), "group": "saving", "kind": "fixed", "limit_cents": 0,
             "actual_cents": actual_cents, "old_cents": 0, "new_cents": new_cents, "rule": rule}
@@ -181,11 +186,10 @@ def persist_month(session_factory, period_id: int, gathered: dict, adapted: dict
             return None
         expired = expire_proposals(s, expired)
         expired_goals = expire_goal_proposals(s, gathered["expired_goal_ids"])
-        # rechecked like the proposals: a goal the user stopped while close was running stays stopped
-        finished = s.scalars(select(Goal).where(Goal.id.in_(gathered["finished_goal_ids"]),
-                                                Goal.status == "accepted")).all()
-        for goal in finished:
-            goal.status = "completed"
+        # rechecked like the proposals, in the same write: a goal the user stopped while close was running stays
+        # stopped, and gets no alert
+        finished = s.execute(update(Goal).where(Goal.id.in_(gathered["finished_goal_ids"]), Goal.status == "accepted")
+                             .values(status="completed").returning(Goal.id, Goal.kind, Goal.monthly_cents)).all()
         old.status = "closed"
         new_start = gathered["new_start"]
         period = BudgetPeriod(user_id=old.user_id, start_date=new_start, end_date=month_end(new_start),
@@ -203,9 +207,15 @@ def persist_month(session_factory, period_id: int, gathered: dict, adapted: dict
         except IntegrityError:
             s.rollback()
             return None
-        alerts = [Alert(user_id=old.user_id, period_id=period.id, kind=f.kind, category=None, severity="medium",
-                        cause=None, action="alert", message=fact_message(f), status="pending_user")
-                  for f in adapted["facts"]]
+        messages = [(f.kind, fact_message(f)) for f in adapted["facts"]]
+        # nothing tracks contributions, so a line ending says only that the plan did, not that the debt is paid
+        names = {ln.category: ln.name for ln in old.lines}
+        for _, kind, cents in sorted(finished):
+            category = GOAL_CATEGORIES[kind]
+            messages.append(("goal_ended", goal_ended_message(names.get(category, default_name(category)), cents)))
+        alerts = [Alert(user_id=old.user_id, period_id=period.id, kind=kind, category=None, severity="medium",
+                        cause=None, action="alert", message=message, status="pending_user")
+                  for kind, message in messages]
         s.add_all(alerts)
         s.flush()
         summary = {

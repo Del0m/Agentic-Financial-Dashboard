@@ -1,6 +1,7 @@
 from datetime import date
 
 import pytest
+from sqlalchemy import event
 
 from app.budget_engine.groups import default_group, default_name
 from app.budget_service import close as close_mod
@@ -492,6 +493,56 @@ def test_stop_during_close_stands(db, monkeypatch):
     monkeypatch.setattr(close_mod, "gather_month", user_clicks)
     [summary] = close_due(db, "u1", JAN1)
     assert goal_status(db, goal_id) == "dismissed" and summary["finished_goal_ids"] == []
+    with db() as s:
+        assert s.query(Alert).count() == 0 and summary["alert_ids"] == []
+
+
+# the user is told when a goal's line ends: nothing tracks contributions, so Free rising doesn't mean it's done
+def test_finished_goal_raises_a_goal_ended_alert(db):
+    november(db)
+    goal_id, _ = add_goal(db, target=DEC1)
+    first, second = close_due(db, "u1", JAN1)
+    assert first["alert_ids"] == []
+    with db() as s:
+        [alert] = s.query(Alert).all()
+    assert second["alert_ids"] == [alert.id]
+    assert (alert.kind, alert.period_id, alert.category, alert.severity, alert.cause, alert.action, alert.status) == (
+        "goal_ended", period_at(db, JAN1).id, None, "medium", None, "alert", "pending_user")
+    assert alert.message == ("Your Debt payoff goal reached its planned end date, so its $583.00 budget line has "
+                             "ended. Check that it's done, and generate goals again if there's more to do.")
+
+
+def test_goal_ended_alert_uses_the_renamed_line(db):
+    november(db)
+    add_goal(db, target=DEC1)
+    close_due(db, "u1", DEC1)
+    with db() as s:
+        p = s.query(BudgetPeriod).filter_by(start_date=DEC1).one()
+        s.query(BudgetLine).filter_by(period_id=p.id, category="GOAL_DEBT_PAYOFF").one().name = "Card payoff"
+        s.commit()
+    close_due(db, "u1", JAN1)
+    with db() as s:
+        [alert] = s.query(Alert).all()
+    assert alert.message.startswith("Your Card payoff goal reached its planned end date, so its $583.00 budget line")
+
+
+def test_no_goal_ended_alert_while_a_goal_runs(db):
+    november(db)
+    add_goal(db)
+    close_due(db, "u1", JAN1)
+    with db() as s:
+        assert s.query(Alert).count() == 0
+
+
+def test_stopped_goal_raises_no_goal_ended_alert(db):
+    november(db)
+    goal_id, _ = add_goal(db, target=DEC1)
+    close_due(db, "u1", DEC1)
+    set_goal_status(db, goal_id, "dismissed")
+    [summary] = close_due(db, "u1", JAN1)
+    with db() as s:
+        assert s.query(Alert).count() == 0
+    assert summary["alert_ids"] == []
 
 
 def test_saving_line_ignores_goal_transfers(db):
@@ -622,6 +673,43 @@ def test_answer_during_close_stands(db, monkeypatch):
     monkeypatch.setattr(close_mod, "gather_month", gather)
     close_due(db, "u1", JAN1)
     assert lines_of(period_at(db, JAN1))["GOAL_DEBT_PAYOFF"].limit_cents == 58300
+
+
+# runs `act` once, just before the first write to goals: the user's click landing between persist's read of a row
+# and its write. the old read-then-write code overwrote the click; a conditional update can't
+def click_before_goal_write(db, act):
+    engine, fired = db.kw["bind"], []
+
+    def hook(conn, cursor, statement, parameters, context, executemany):
+        if statement.startswith("UPDATE goals") and not fired:
+            fired.append(1)
+            act()
+
+    event.listen(engine, "before_cursor_execute", hook)
+    return lambda: event.remove(engine, "before_cursor_execute", hook)
+
+
+def test_accept_just_before_expiry_is_not_overwritten(db):
+    november(db)
+    goal_id, run_id = add_goal(db, status="proposed", run_status="awaiting_user")
+    off = click_before_goal_write(db, lambda: set_goal_status(db, goal_id, "accepted"))
+    [summary] = close_due(db, "u1", DEC1)
+    off()
+    assert goal_status(db, goal_id) == "accepted" and summary["expired_goal_ids"] == []
+    with db() as s:
+        assert s.get(AgentRun, run_id).status == "awaiting_user"
+
+
+def test_stop_just_before_completion_is_not_overwritten_or_announced(db):
+    november(db)
+    goal_id, _ = add_goal(db, target=DEC1)
+    close_due(db, "u1", DEC1)
+    off = click_before_goal_write(db, lambda: set_goal_status(db, goal_id, "dismissed"))
+    [summary] = close_due(db, "u1", JAN1)
+    off()
+    assert goal_status(db, goal_id) == "dismissed" and summary["finished_goal_ids"] == []
+    with db() as s:
+        assert s.query(Alert).count() == 0 and summary["alert_ids"] == []
 
 
 # one commit: another close winning the race leaves every goal and its run as they were

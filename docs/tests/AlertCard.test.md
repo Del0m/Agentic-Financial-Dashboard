@@ -50,3 +50,9 @@ npm test -- components/AlertCard.test.tsx
 **What it does:** An `over_income` alert with no category is headed "Budget", badged "Over income" (not "Ahead of pace"), and shows its message; a `group_over_target` alert is badged "Over target".
 
 **Why it's there:** Period close (TPC-22) writes medium alerts about the whole budget. The severity badge was written for overspend alerts and would call these "Ahead of pace".
+
+## `badges close's goal_ended alert`
+
+**What it does:** A `goal_ended` alert with no category is badged "Goal ended", not "Ahead of pace".
+
+**Why it's there:** Without a `KINDS` entry the badge falls back to the overspend wording, which would call a finished goal "ahead of pace".
