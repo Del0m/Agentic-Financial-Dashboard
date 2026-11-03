@@ -66,6 +66,24 @@ def _dollars(cents: Optional[int]) -> Optional[float]:
     return None if cents is None else round(cents / 100, 2)
 
 
+# written by code: given the bare days, a small model left out the bill or said "you won't run short" (tpc-27)
+def _cash_summary(result, buffer_cents: int, bill: Optional[str]) -> str:
+    if not result.days:
+        return "No forecast is available."
+    money = lambda cents: f"${cents / 100:,.2f}"
+    low, high = min(d.low_cents for d in result.days), max(d.high_cents for d in result.days)
+    text = f"Your checking balance ranges from {money(low)} to {money(high)} over the forecast."
+    if result.dip is not None:
+        at_dip = next((d.low_cents for d in result.days if d.date == result.dip.date), low)
+        text += (f" You could run short: it reaches {money(at_dip)} on {result.dip.date}, below your "
+                 f"{money(buffer_cents)} buffer. The dip comes from {bill}.")
+    else:
+        text += f" It stays above your {money(buffer_cents)} buffer."
+    if result.income == "none":
+        text += " This assumes no income, because none was found."
+    return text
+
+
 def _month_name(d: date) -> str:
     return d.strftime("%B %Y")
 
@@ -138,13 +156,16 @@ class PrivacyGateway:
             from ..budget_service.forecast_service import snapshot
             snap = snapshot(self._session, self._user_id, self.today())
             r = snap.result
+            bill = None if r.dip is None else ("credit card minimum" if r.dip.cause and r.dip.cause.source == "card_min"
+                                               else scrub_merchant(r.dip.cause.name) if r.dip.cause
+                                               else "Everyday spending")
             return {"status": r.status, "income": r.income, "buffer": _dollars(snap.buffer_cents),
+                    "summary": _cash_summary(r, snap.buffer_cents, bill),
                     "monthly_surplus": _dollars(r.monthly_surplus_cents), "assumed_no_income": r.income == "none",
                     "days": [{"date": d.date, "low": _dollars(d.low_cents), "expected": _dollars(d.expected_cents),
                               "high": _dollars(d.high_cents)} for d in r.days],
                     "dip": None if r.dip is None else {"date": r.dip.date, "shortfall": _dollars(r.dip.shortfall_cents),
-                        "bill": "credit card minimum" if r.dip.cause and r.dip.cause.source == "card_min" else
-                                scrub_merchant(r.dip.cause.name) if r.dip.cause else "Everyday spending"}}
+                                                       "bill": bill}}
         n = signal.numbers
         return {"date": n["date"], "days_ahead": n["days_ahead"], "shortfall": _dollars(n["shortfall_cents"]),
                 "buffer": _dollars(n["buffer_cents"]), "bill": scrub_merchant(n["bill"]),

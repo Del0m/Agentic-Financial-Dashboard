@@ -672,3 +672,30 @@ def test_cash_flow_context_has_no_account_names_or_balances(db, tmp_path):
     d = data(text)
     assert set(d) == set(CASH_FIELDS) and d["bill"] == "Landlord [number]" and d["starting_available"] == 4242
     assert "Secret Account" not in text and "424242" not in text and "12345" not in text
+
+
+# tpc-27: given the bare days, the model left out the bill and once said "you won't run short" above a real dip
+def _forecast(dip=None, income="paycheck"):
+    from types import SimpleNamespace as NS
+    days = [NS(date="2026-11-05", low_cents=155000, high_cents=155000), NS(date="2026-11-06", low_cents=5000, high_cents=9000)]
+    return NS(days=days, dip=dip, income=income)
+
+
+def test_cash_summary_names_a_dip_and_its_bill():
+    from types import SimpleNamespace as NS
+    from app.privacy.gateway import _cash_summary
+    text = _cash_summary(_forecast(NS(date="2026-11-06")), 10000, "Landlord")
+    assert "$50.00 to $1,550.00" in text and "You could run short" in text
+    assert "$50.00 on 2026-11-06, below your $100.00 buffer" in text and "Landlord" in text
+
+
+def test_cash_summary_with_no_dip_and_no_income():
+    from app.privacy.gateway import _cash_summary
+    text = _cash_summary(_forecast(income="none"), 1000, None)
+    assert "run short" not in text and "stays above your $10.00 buffer" in text and "assumes no income" in text
+
+
+def test_cash_summary_with_no_days():
+    from types import SimpleNamespace as NS
+    from app.privacy.gateway import _cash_summary
+    assert _cash_summary(NS(days=[], dip=None, income="none"), 0, None) == "No forecast is available."

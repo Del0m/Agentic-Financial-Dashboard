@@ -1,0 +1,57 @@
+{
+  "record": {
+    "scenario_id": "signal-price-increase",
+    "run": 1,
+    "flags": {
+      "PERSONAL_CARE": "2026-10-03"
+    },
+    "alerts": [
+      {
+        "day": "2026-10-02",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "Low balance warning: FitClub Gym bill of $394.1 on 2026-10-03 will cause a shortfall of $394.1, below the buffer of $100.0.",
+        "signal_days": 1
+      },
+      {
+        "day": "2026-10-03",
+        "kind": "overspend",
+        "category": "PERSONAL_CARE",
+        "cause": "recurring",
+        "action": "adjust_next_budget",
+        "severity": "high",
+        "message": "Your spending on FitClub Gym has caused you to exceed your Personal Care limit. For next month, consider setting your Personal Care limit to $445.00 to accommodate this regular expense.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-10-03",
+        "kind": "price_increase",
+        "category": "PERSONAL_CARE",
+        "cause": null,
+        "action": "alert",
+        "severity": "medium",
+        "message": "FitClub Gym has increased your monthly charge from $40.00 to $43.00 starting from 2026-11-03.",
+        "signal_days": null
+      }
+    ],
+    "llm_failures": 0,
+    "latency_s": 14.844040124909952,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "alert_kinds": true,
+      "message": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "flag_to_alert_days": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0
+  }
+}

@@ -139,6 +139,6 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
         StructuredTool.from_function(
             get_cash_forecast, name="get_cash_forecast",
             description="Forecast checking cash as a range and identify upcoming low-balance dips. "
-                        "Use for will I run short before payday. State a range and say when no income is assumed.",
+                        "Use for will I run short before payday. Repeat its summary, with every figure and any bill in it.",
         ),
     ]
