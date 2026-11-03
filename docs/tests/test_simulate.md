@@ -90,3 +90,15 @@ Run them from `backend/`:
 **What it does:** Counts calls to `budget_users.transactions` during a 5-day advance, and expects 1.
 
 **Why it's there:** `_inject` regenerated and sorted the profile's whole multi-month history for every simulated day, just to keep that day's rows. A 31-day advance did that 31 times. `advance_days` now generates it once and groups it by day. The review on #14 found it.
+
+## `test_inject_moves_the_checking_balance`
+
+**What it does:** On a user with `opening_cents`, injecting $45 out and $4,200 in raises the current and available balances by $4,155. Injecting the same day again moves nothing. On a user without `opening_cents`, the balance stays $100 with no available balance.
+
+**Why it's there:** A simulated user's balance has to follow its transactions for a forecast to mean anything, and a retried day must not count twice.
+
+## `test_a_recurring_user_can_be_advanced`
+
+**What it does:** Seeds `recurring-planted` up to Oct 2 and advances one day. The date moves to Oct 3 and the gym's $43 charge is injected.
+
+**Why it's there:** `advance_days` finds a profile through its own list of tuples, so a user missing from it could be seeded but never advanced.

@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import date, timedelta
 
 import pytest
@@ -5,8 +6,8 @@ import pytest
 from app import config
 from app.budget_service import simulate
 from app.budget_service.simulate import NotSimulated, advance_days
-from app.db.models import AgentRun, BudgetPeriod, Transaction, User
-from eval.budget_users import PLANTED, seed_profile, transactions
+from app.db.models import Account, AgentRun, BudgetPeriod, Transaction, User
+from eval.budget_users import PLANTED, RECURRING_USERS, seed_profile, transactions
 from tests.fakes import SchemaReplyModel
 
 
@@ -173,3 +174,40 @@ def test_profile_transactions_generated_once(db, monkeypatch):
     monkeypatch.setattr(budget_users, "transactions", lambda p: calls.append(1) or real(p))
     advance(db, uid, 5)
     assert len(calls) == 1
+
+
+def test_inject_moves_the_checking_balance(db):
+    from eval import budget_users
+    todays = [(9001, (date(2026, 10, 12), 4500, "FOOD_AND_DRINK", "Cafe")),
+              (9002, (date(2026, 10, 12), -420000, "INCOME", "Employer"))]
+
+    def balance(uid):
+        with db() as s:
+            acct = s.query(Account).filter_by(user_id=uid, name="Checking").one()
+            return acct.current_balance_cents, acct.available_balance_cents
+
+    p = replace(profile("overspend-one-time"), opening_cents=500000)
+    with db() as s:
+        uid = seed_profile(s, p, until=date(2026, 9, 30))
+    before, _ = balance(uid)
+    assert simulate._inject(db, uid, budget_users, p, todays) == 2
+    assert balance(uid) == (before + 415500, before + 415500)
+    # a retried day adds no rows, so it moves nothing either
+    assert simulate._inject(db, uid, budget_users, p, todays) == 0
+    assert balance(uid) == (before + 415500, before + 415500)
+
+    plain = profile("overspend-recurring")
+    with db() as s:
+        uid = seed_profile(s, plain, until=date(2026, 9, 30))
+    assert simulate._inject(db, uid, budget_users, plain, todays) == 2
+    assert balance(uid) == (10000, None)
+
+
+def test_a_recurring_user_can_be_advanced(db):
+    with db() as s:
+        uid = seed_profile(s, RECURRING_USERS[0], until=date(2026, 10, 2))
+    advance(db, uid, 1)
+    assert sim_date(db, uid) == "2026-10-03"
+    with db() as s:
+        assert s.query(Transaction).filter_by(user_id=uid, merchant_name="FitClub Gym", date=date(2026, 10, 3),
+                                              amount_cents=4300).count() == 1
