@@ -1,0 +1,69 @@
+{
+  "id": "spending-refund-excluded",
+  "tags": [
+    "spending"
+  ],
+  "question": "How much did I spend on food in the last 30 days?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2150
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 3,
+        "amount": 60,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Grocer"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 9,
+        "amount": 45.5,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Diner"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 14,
+        "amount": 120,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Grocer"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 6,
+        "amount": -25,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Grocer"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 45,
+        "amount": 300,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Grocer"
+      }
+    ]
+  },
+  "golden_answer": "You spent $225.50 on food and drink in the last 30 days. This is general information, not financial advice.",
+  "expect": {
+    "forbid": [
+      "http"
+    ],
+    "facts": [
+      {
+        "number": 225.5,
+        "tol": 0.01
+      }
+    ],
+    "tools": [
+      "get_spending"
+    ]
+  }
+}

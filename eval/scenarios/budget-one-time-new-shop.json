@@ -1,0 +1,41 @@
+{
+  "id": "budget-one-time-new-shop",
+  "kind": "budget",
+  "tags": [
+    "one_time"
+  ],
+  "profile": "overspend-one-time",
+  "start": "2026-10-11",
+  "end": "2026-10-13",
+  "golden_answer": "General merchandise goes over its limit on Oct 12 because of one $600 purchase at ElectroMart, a shop the user hasn't been to before. The cause is one_time: tell the user, and don't raise next month's budget.",
+  "expect": {
+    "flags": [
+      "GENERAL_MERCHANDISE"
+    ],
+    "causes": {
+      "GENERAL_MERCHANDISE": "one_time"
+    },
+    "actions": {
+      "GENERAL_MERCHANDISE": {
+        "accept": [
+          "alert",
+          "suggest_cuts"
+        ],
+        "ban": [
+          "adjust_next_budget"
+        ]
+      }
+    },
+    "flag_by": {
+      "GENERAL_MERCHANDISE": "2026-10-12"
+    },
+    "crossed_on": {
+      "GENERAL_MERCHANDISE": "2026-10-12"
+    },
+    "message_facts": [
+      {
+        "text": "ElectroMart"
+      }
+    ]
+  }
+}

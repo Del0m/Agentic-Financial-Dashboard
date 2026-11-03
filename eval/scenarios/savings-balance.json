@@ -1,5 +1,5 @@
 {
-  "id": "savings-balance",
+  "id": "savings-balance", "tags": ["spending"],
   "question": "How much is in my savings account?",
   "user": {
     "accounts": [

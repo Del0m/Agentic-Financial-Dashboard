@@ -1,0 +1,16 @@
+{
+  "id": "goal-cap-too-small",
+  "kind": "goal",
+  "tags": [
+    "goal_affordability"
+  ],
+  "profile": "goals-thin-surplus",
+  "today": "2026-11-02",
+  "golden_answer": "The user has $10 left each month and lets goals use 5% of it, which is $0.50. That's below the $1 minimum, so no goals are proposed and the model isn't asked.",
+  "expect": {
+    "status": "no_affordable_goals"
+  },
+  "prefs": {
+    "max_share": 0.05
+  }
+}

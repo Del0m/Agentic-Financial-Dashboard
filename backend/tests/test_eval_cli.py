@@ -4,6 +4,7 @@ from datetime import date
 import pytest
 
 from eval import run_eval
+from eval.agent_runner import BudgetRecord, GoalRecord
 from eval.runner import RunRecord
 from tests.fakes import FakeKB
 from tests.test_eval_fixtures import write
@@ -103,3 +104,94 @@ def test_run_written_before_next_starts(offline, monkeypatch):
         run_eval.main(["--runs", "2"])
     [out] = list((offline / "results").glob("*/*"))
     assert (out / "debt-highest-apr.run1.json").exists()
+
+
+# --- budget and goal scenarios (tpc-26) ---
+
+def budget_file(directory, sid="b1"):
+    (directory / f"{sid}.json").write_text(json.dumps({
+        "id": sid, "kind": "budget", "tags": ["control"], "profile": "control-minimal", "start": "2026-10-01",
+        "end": "2026-10-03", "golden_answer": "Nothing is overspent.", "expect": {"flags": []}}))
+
+
+def goal_file(directory, sid="g1"):
+    (directory / f"{sid}.json").write_text(json.dumps({
+        "id": sid, "kind": "goal", "profile": "goals-no-surplus", "today": "2026-11-02",
+        "golden_answer": "Nothing is affordable.", "expect": {"status": "no_surplus"}}))
+
+
+def fake_budget(scenario, *, run, **kw):
+    return BudgetRecord(scenario_id=scenario.id, run=run, latency_s=1.0)
+
+
+def fake_goal(scenario, *, run, **kw):
+    return GoalRecord(scenario_id=scenario.id, run=run, status="no_surplus", latency_s=1.0)
+
+
+@pytest.fixture
+def agents(offline, monkeypatch):
+    budget_file(run_eval.SCENARIOS_DIR)
+    goal_file(run_eval.SCENARIOS_DIR)
+    monkeypatch.setattr(run_eval, "run_once", fake_run)
+    monkeypatch.setattr(run_eval, "run_budget_once", fake_budget)
+    monkeypatch.setattr(run_eval, "run_goal_once", fake_goal)
+    return offline
+
+
+def test_kind_defaults_to_every_kind(agents):
+    assert run_eval.parse_args([]).kind is None
+    assert run_eval.main(["--runs", "1", "--model", "m"]) == 0
+    [out] = list((agents / "results").glob("*/m"))
+    summary = json.loads((out / "summary.json").read_text())
+    assert summary["overall"]["runs"] == 2 and summary["budget"]["runs"] == 1 and summary["goal"]["runs"] == 1
+    assert summary["budget"]["false_alarm_rate"] == 0.0 and summary["budget"]["by_tag"]["control"]["runs"] == 1
+    assert json.loads((out / "b1.run1.json").read_text())["scores"]["checks"] == {"flags": True}
+    assert json.loads((out / "g1.run1.json").read_text())["scores"]["checks"]["model_not_called"] is True
+
+
+def test_kind_rejects_an_unknown_value():
+    with pytest.raises(SystemExit):
+        run_eval.parse_args(["--kind", "close"])
+
+
+# only chat uses the knowledge base, the judge and the embeddings, so a budget run needs none of them
+def test_kind_budget_builds_nothing_only_chat_needs(agents, monkeypatch, capsys):
+    built = []
+    monkeypatch.setattr(run_eval, "KnowledgeBase", lambda: pytest.fail("built the knowledge base"))
+    monkeypatch.setattr(run_eval, "get_embeddings", lambda: pytest.fail("built the embeddings"))
+    monkeypatch.setattr(run_eval, "get_chat_model", lambda **kw: built.append(kw["model"]) or object())
+    monkeypatch.setattr(run_eval, "run_once", lambda *a, **k: pytest.fail("ran a chat scenario"))
+
+    assert run_eval.main(["--runs", "1", "--model", "m", "--kind", "budget"]) == 0
+    assert built == ["m"]
+    [out] = list((agents / "results").glob("*/m"))
+    summary = json.loads((out / "summary.json").read_text())
+    assert summary["overall"] == {"runs": 0} and summary["budget"]["runs"] == 1 and "goal" not in summary
+    assert json.loads((out / "config.json").read_text())["scenarios"] == ["b1"]
+    printed = capsys.readouterr().out
+    assert "budget scenario" in printed and "false alarms on controls: 0%" in printed
+
+
+def test_only_a_budget_scenario_also_skips_chats_needs(agents, monkeypatch):
+    monkeypatch.setattr(run_eval, "KnowledgeBase", lambda: pytest.fail("built the knowledge base"))
+    assert run_eval.main(["--runs", "1", "--model", "m", "--only", "b1"]) == 0
+
+
+def test_kind_with_nothing_to_run_returns_2(offline, capsys):
+    assert run_eval.main(["--kind", "goal"]) == 2
+    assert "nothing to run" in capsys.readouterr().out
+
+
+def test_preflight_without_chat_needs_only_the_agent_model(monkeypatch):
+    asked = []
+    monkeypatch.setattr(run_eval, "missing_models", lambda models: asked.extend(models) or [])
+    assert run_eval.preflight("qwen2.5:14b", "gemma3:12b", None) == []
+    assert asked == ["qwen2.5:14b"]
+
+
+def test_chat_summary_carries_tags(offline, monkeypatch):
+    write(run_eval.SCENARIOS_DIR, lambda d: d.update(id="tagged", tags=["debt"]))
+    monkeypatch.setattr(run_eval, "run_once", fake_run)
+    assert run_eval.main(["--runs", "1", "--model", "m"]) == 0
+    [out] = list((offline / "results").glob("*/m"))
+    assert json.loads((out / "summary.json").read_text())["by_tag"] == {"debt": {"runs": 1, "fact_pass_rate": 1.0}}

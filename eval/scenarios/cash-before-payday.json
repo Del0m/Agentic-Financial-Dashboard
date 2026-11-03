@@ -1,5 +1,5 @@
 {
-  "id": "cash-before-payday",
+  "id": "cash-before-payday", "tags": ["cash_flow"],
   "question": "Will I run short before payday?",
   "user": {
     "accounts": [{"name": "Everyday Checking", "type": "depository", "subtype": "checking", "balance": 1550}],

@@ -1,6 +1,6 @@
 # How the system works, and what is still missing
 
-For diagrams focused on AI reasoning, tool use, and autonomous behavior, see the [AI agent pipelines](agent-pipelines.md).
+For the current agent behavior, Jira status, and Agent-Track grading evidence, use [the agentic system guide](agent-pipelines.md), reviewed November 2 and updated November 3, 2026. This broader walkthrough retains historical system-design discussion; its other diagrams are not the current agent specification.
 
 Review date: October 28, 2026. This walkthrough compares the architecture, milestone specs/plans, test documentation, and saved evaluation results with the implementation. It does not verify current external financial rules or re-run live Plaid/Ollama tests.
 
@@ -21,15 +21,15 @@ Evidence: [API registration](../backend/app/main.py), [proxy](../frontend/next.c
 | Capability | Reviewed state | Remaining work |
 |---|---|---|
 | Plaid link, sync, dashboard | Implemented | Freshness visibility, webhook verification and concurrency handling |
-| Chat, four tools, local RAG, SSE, persisted conversations | Implemented | Spending consistency, factual reliability, context growth policy |
-| Initial budget, pace, diagnosis, proposed limits | Implemented | Fresh-data bootstrap ordering; uncategorized and unbudgeted policy |
-| Advice memory, graph pause/resume, decision service, Budget/Alerts APIs | Backend implemented; TPC-20 in progress | Frontend integration and recovery contract |
-| Daily scheduler | Planned TPC-21 | Due-job policy, user timezone, overlap, missed runs and restart recovery |
-| Period close | Pure adjustment function implemented | TPC-22 orchestration: persist close and open next month atomically |
+| Chat, seven tools, local RAG, SSE, persisted conversations | Implemented | Spending consistency, factual reliability, context growth policy |
+| Initial budget, pace, diagnosis, proposed limits | Implemented | Uncategorized and unbudgeted policy |
+| Advice memory, graph pause/resume, decision service, Budget/Alerts APIs | Implemented; TPC-20 Done | Broader recovery and repeat-alert evaluation |
+| Daily scheduler | Built, opt-in; TPC-21 Done | Disabled by default; demo dates advance manually |
+| Period close | Deterministic close graph implemented; TPC-22 Done | Not an LLM agent |
 | Debt simulation, goal agent, Goals page (TPC-23 to TPC-25) | Implemented: goals are proposed, accepted or dismissed per goal, and accepted goals become budget lines at the next close | No contribution tracking; the surplus uses the forecast with a measured-history fallback |
 | Recurring detection | Implemented: detector, stored streams, keyed signals, API, chat tool and dashboard card | Real Plaid comparison remains unverified |
 | Cash forecast | Implemented: live snapshot, buffer, keyed bill warnings, chart/table, chat and goal surplus | Real balances, live tool choice and viewport review remain unverified |
-| Evaluation | Chat and initial-budget harnesses implemented | Longitudinal budget replay and explicit quality gates |
+| Evaluation | 40 golden scenarios across chat, budget and goal, plus offline budget, recurring and forecast harnesses; one baseline pass | Model comparison, longitudinal budget replay and explicit quality gates; five agent problems open (TPC-45 to TPC-49) |
 
 ## 2. Linking and keeping bank data fresh
 
@@ -47,11 +47,11 @@ Evidence: [Plaid routes](../backend/app/api/plaid.py), [sync service](../backend
 
 ![One chat turn](diagrams/chat-flow.svg)
 
-Every question triggers retrieval before the model chooses tools. The four current tools are `get_accounts`, `get_debts`, `get_spending`, and `search_kb`. Account/debt/spending context passes through field allowlists, scrubbing and pseudonymization. Public guidance retrieval uses the local embedding model directly. A maximum of six tool rounds bounds the loop, and SSE keep-alives prevent the proxy timing out while the model is silent.
+Every question triggers retrieval before the model chooses tools. The seven current tools are `get_accounts`, `get_debts`, `get_spending`, `search_kb`, `plan_debt_payoff`, `get_recurring`, and `get_cash_forecast`. User-data context passes through field allowlists, scrubbing and pseudonymization. Public guidance retrieval uses the local embedding model directly. A maximum of six tool rounds bounds the loop, and SSE keep-alives prevent the proxy timing out while the model is silent.
 
 **Boundary to document accurately:** user messages and conversation history go directly into the local model prompt. The gateway audits the financial context it builds, not every full model prompt. Checkpoints also contain conversation and tool messages. The gateway limits database-derived exposure; it does not guarantee arbitrary personal names are removed from all text. A future hosted-model comparison needs a separate review of user text, retrieval queries, checkpoint contents and logging.
 
-**Retrieval is not evidence of use.** The UI lists retrieved passages even when the answer does not substantively use them. The old `search_kb` tool description still asks for URLs, while the newer system prompt tells the model not to write URLs. Align those instructions and test unsupported questions and irrelevant retrieval.
+**Retrieval is not evidence of use.** The UI lists retrieved passages even when the answer does not substantively use them. The tool description and system prompt ask for passage titles rather than model-written URLs. Unsupported questions and irrelevant retrieval still need evaluation.
 
 **Source-year handling is missing.** The stored IRS comparison chart contains historical years while another stored IRA source includes 2026. Both have recent fetch dates. Add effective-year metadata and tests for current-year versus historical questions; “fetched recently” does not mean every number is for the current year.
 
@@ -59,9 +59,9 @@ Evidence: [chat graph](../backend/app/agents/chat_graph.py), [tools](../backend/
 
 ## 4. One budget run
 
-![Budget graph with branching and arithmetic](diagrams/budget-agent-loop.svg)
+![Budget agent decisions and approval](diagrams/budget-agent-loop.svg)
 
-The design's strongest separation is already implemented: code computes limits, pace, evidence and proposed cents; the model classifies the cause and chooses an action. Invalid structured output retries once, then falls back to an ordinary alert. An unavailable model is different: transport exceptions propagate and mark the run `error`.
+The design's strongest separation is already implemented: code computes limits, pace, evidence and proposed cents; the model classifies the cause and chooses an action. Invalid structured output retries once, then falls back to an ordinary alert. Known model transport failures also use fallback behavior; other unhandled exceptions mark the run `error`.
 
 Current arithmetic and defaults:
 
@@ -71,7 +71,7 @@ Current arithmetic and defaults:
 - All lines flag when actual spending exceeds the limit. Flexible lines also flag from day five when pace reaches 1.10. Fixed bills are not judged by daily pace.
 - Unbudgeted categories are listed but do not raise overspend alerts. Categorization currently counts missing categories rather than assigning them with an LLM.
 
-**Bootstrap ordering needs a decision:** `load_state` initializes the budget before the graph's sync node. If there is no usable history, it exits `no_budget` without syncing. Linking currently provides a separate first sync, but a failed first sync means a later budget run alone cannot bootstrap the history. Sync first, or make a prerequisite/retry path explicit.
+**Bootstrap order:** `sync` runs before `load_state`. The agent can initialize from refreshed data; if sync fails, it may continue against stored data.
 
 **Spending is not yet one shared concept.** Chat sums positive transactions and uses Plaid primary categories. The budget nets refunds, excludes transfers/card payments, and prefers `our_category`. Both loaders currently include pending, non-removed rows. Define the pending policy and align category/date/filter semantics before asserting that chat and budget totals agree. Also state a single-currency assumption or store currency before combining arbitrary accounts.
 
@@ -85,7 +85,7 @@ Evidence: [fitting](../backend/app/budget_engine/fit.py), [spending rules](../ba
 
 Only an `adjust_next_budget` proposal pauses a checkpointed run. Ordinary alerts and suggestions can be accepted/dismissed without pausing graph execution. The decision service saves the alert status and advice outcome before attempting to resume the graph. With multiple proposals, the graph waits until all have decisions. Accepting a proposal does not change the current budget line.
 
-**Recovery mismatch:** the TPC-20 spec says a failed resume leaves the run `awaiting_user`, but `resume_budget_run` marks the run `error` when invocation raises; the decision service then catches and logs the exception. The decision remains saved. Choose the expected run status and provide a way to reconcile saved decisions with checkpoint state after restart or a failed resume.
+**Recovery:** a failed budget resume remains `awaiting_user` while the checkpoint is still paused. A failure after leaving the pause marks the run `error`. The decision remains saved, and resumed runs consult those saved decisions.
 
 **Deduplication is a model decision by design.** Memory prompts ask for `no_op` when an equal-severity alert already exists. That is not a database uniqueness guarantee; the invalid-output fallback can still write another ordinary alert. Keep the intended approach, but define and measure acceptable repeat behavior, escalation, dismissed suggestions, and repeat runs after failures.
 
@@ -109,7 +109,7 @@ Evidence: [models](../backend/app/db/models.py), [configuration paths](../backen
 
 ![Remaining lifecycle](diagrams/remaining-lifecycle.svg)
 
-This diagram is the target integration, and part of it is built: the goal graph, the Goals page and accepted goals reaching period close (TPC-25) work today, with the surplus measured from history. Recurring streams feed cash flow; cash flow will supply the surplus instead; debt simulation uses it; goals produce proposals; approvals feed period close. Scheduling and period close are prerequisites for demonstrating autonomous adaptation over several months.
+This diagram is the target integration, and part of it is built: the goal graph, the Goals page and accepted goals reaching period close (TPC-25) work today, with the surplus measured from history. Recurring streams feed cash flow; cash flow will supply the surplus instead; debt simulation uses it; goals produce proposals; approvals feed period close. Scheduling and deterministic period close are now built (TPC-21 and TPC-22 Done); scheduling is opt-in. See the current agent guide for the implemented execution boundary.
 
 Three design questions should be resolved before implementing the forecast and detector:
 
@@ -127,9 +127,11 @@ The chat harness uses the actual graph/tools with synthetic users and a throwawa
 
 **Saved results expose a reliability gap.** The second saved `qwen2.5:14b` run on October 27 has 15 runs: factual pass rate 60%, judge pass rate 80%, tool accuracy 80%, and 100% above the similarity threshold. The debt-priority scenario fails its full fact check in all three runs even though the judge passes it; the mixed debt/emergency scenario fails facts and data consistency. Inspect missing facts and tool use before interpreting the high similarity as success. These are saved historical results, not a fresh measurement of today's code.
 
-**Missing validation:** multi-period replay covering daily updates → flags → decisions → close → next month; time-to-flag, false alarms, repeat alerts, missed-job recovery and adaptation; and later recurring/forecast/payoff benchmarks. The CLI intentionally exits successfully when an evaluation completes despite poor scores, so define a separate quality gate. Record skipped live checks explicitly rather than counting them as proof of behavior.
+**The November 3 baseline widens this.** TPC-26 grew the benchmark to 40 scenarios across chat, budget and goal, including false alarms and time-to-flag over short windows of real daily runs. One pass on `qwen2.5:14b` passed 16 of 22 chat scenarios on facts, 9 of 12 budget and 6 of 6 goal. Results and the five open problems it found are in [the agentic system guide](agent-pipelines.md#7-evaluation-evidence-for-the-writeup).
 
-Evidence: [saved chat summary](../eval/results/2026-10-27/qwen2.5_14b-2/summary.json), [initial-budget results](../eval/results/2026-10-28/budget_accuracy/results.json), [eval instructions](../eval/README.md), [documented test coverage](tests/).
+**Missing validation:** multi-period replay covering daily updates → flags → decisions → close → next month; repeat alerts, missed-job recovery and adaptation; and a multi-run comparison of models. The CLI intentionally exits successfully when an evaluation completes despite poor scores, so define a separate quality gate. Record skipped live checks explicitly rather than counting them as proof of behavior.
+
+Evidence: [November 3 baseline](../eval/results/2026-11-03/qwen2.5_14b/summary.json), [saved chat summary](../eval/results/2026-10-27/qwen2.5_14b-2/summary.json), [initial-budget results](../eval/results/2026-10-28/budget_accuracy/results.json), [eval instructions](../eval/README.md), [documented test coverage](tests/).
 
 ## Review checklist, in suggested order
 

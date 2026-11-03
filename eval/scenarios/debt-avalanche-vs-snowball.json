@@ -1,0 +1,61 @@
+{
+  "id": "debt-avalanche-vs-snowball",
+  "tags": [
+    "high_interest_debt"
+  ],
+  "question": "With an extra $100 a month, should I use avalanche or snowball, and how long until I'm debt-free?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2150
+      },
+      {
+        "name": "Rewards Card",
+        "type": "credit",
+        "subtype": "credit card",
+        "balance": 6000,
+        "liability": {
+          "kind": "credit",
+          "apr": 24.0,
+          "min_payment": 150,
+          "due_in_days": 12
+        }
+      },
+      {
+        "name": "Store Card",
+        "type": "credit",
+        "subtype": "credit card",
+        "balance": 800,
+        "liability": {
+          "kind": "credit",
+          "apr": 12.0,
+          "min_payment": 30,
+          "due_in_days": 12
+        }
+      }
+    ],
+    "transactions": []
+  },
+  "golden_answer": "Avalanche: pay the Rewards Card first because of its 24% APR. With the extra $100 you'd be debt-free in 33 months and pay $2,390.13 in interest. Snowball takes 34 months and costs $2,547.58. This is general information, not financial advice.",
+  "expect": {
+    "forbid": [
+      "http"
+    ],
+    "facts": [
+      {
+        "number": 33,
+        "tol": 0
+      },
+      {
+        "number": 2390.13,
+        "tol": 1
+      }
+    ],
+    "tools": [
+      "plan_debt_payoff"
+    ]
+  }
+}

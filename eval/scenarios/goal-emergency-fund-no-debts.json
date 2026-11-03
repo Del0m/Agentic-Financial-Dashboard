@@ -1,0 +1,19 @@
+{
+  "id": "goal-emergency-fund-no-debts",
+  "kind": "goal",
+  "tags": [
+    "goal_affordability"
+  ],
+  "profile": "goals-no-debts",
+  "today": "2026-11-02",
+  "golden_answer": "The user has about $1,330 left each month, no debts and only $200 saved, so an emergency fund is the goal to propose, within the cap of $1,064. There's no debt to pay off.",
+  "expect": {
+    "status": "ok",
+    "required_kinds": [
+      "emergency_fund"
+    ],
+    "banned_kinds": [
+      "debt_payoff"
+    ]
+  }
+}

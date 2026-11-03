@@ -1,0 +1,41 @@
+{
+  "id": "budget-one-time-known-shop",
+  "kind": "budget",
+  "tags": [
+    "one_time"
+  ],
+  "profile": "overspend-known-merchant",
+  "start": "2026-10-11",
+  "end": "2026-10-13",
+  "golden_answer": "General merchandise goes over its limit on Oct 12 because of a $520 purchase at MegaMart, a shop that usually comes to $120 a month. A big purchase at a regular shop is one_time, not recurring, so next month's budget stays as it is.",
+  "expect": {
+    "flags": [
+      "GENERAL_MERCHANDISE"
+    ],
+    "causes": {
+      "GENERAL_MERCHANDISE": "one_time"
+    },
+    "actions": {
+      "GENERAL_MERCHANDISE": {
+        "accept": [
+          "alert",
+          "suggest_cuts"
+        ],
+        "ban": [
+          "adjust_next_budget"
+        ]
+      }
+    },
+    "flag_by": {
+      "GENERAL_MERCHANDISE": "2026-10-12"
+    },
+    "crossed_on": {
+      "GENERAL_MERCHANDISE": "2026-10-12"
+    },
+    "message_facts": [
+      {
+        "text": "MegaMart"
+      }
+    ]
+  }
+}

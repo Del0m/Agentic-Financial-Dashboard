@@ -2,6 +2,8 @@
 
 Agentic financial dashboard: link bank accounts through Plaid, see balances, net worth and debts, chat about your money, and let a local-LLM budget agent flag overspending and propose changes. Design: [`docs/architecture.md`](docs/architecture.md).
 
+For the graded agentic portion, see [the agentic system guide](docs/agent-pipelines.md): model decisions, tool loops, memory, goal self-correction, approval, rubric evidence, and evaluation limits.
+
 ## Quickstart
 
 You need [Docker](https://www.docker.com/products/docker-desktop/) and [Ollama](https://ollama.com/download), about 13 GB of free disk space, and roughly 16 GB of memory for the chat model. No keys or accounts are needed.

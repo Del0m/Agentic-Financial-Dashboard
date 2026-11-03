@@ -1,0 +1,57 @@
+{
+  "record": {
+    "scenario_id": "kb-emergency-fund",
+    "run": 1,
+    "answer": "Building an emergency fund is crucial because it helps you cover unexpected expenses without relying on credit cards or loans, which can lead to debt. It also allows you to recover quicker from financial shocks and get back on track towards your larger savings goals.\n\nTo start, you can set a specific goal for your emergency fund and create a system for making consistent contributions. If you have a regular paycheck, setting up automatic transfers to a savings account is an easy way to start. Regularly monitoring your progress and celebrating your successes can also help you stay motivated.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "sources": [
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "How do I build it?",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "There are different strategies to get your savings started. These strategies cover a range of situations, including if you have a limited ability to save or if your pay tends to fluctuate. It may be that you could use all of these strategies, but if you have a limited ability to save, managing your cash flow or putting away a portion of your tax refund are the easiest ways to get started."
+      },
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "An essential guide to building an emergency fund",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "We’ve all experienced unexpected financial emergencies—a fender bender, an unexpected medical bill, a broken appliance, a loss of income, or even a damaged cell phone. Large or small, these unplanned expenses often feel like they hit at the worst times.\n\nSetting up a dedicated savings or emergency fund is one essential way to protect yourself, and it’s one of the first steps you can take to start saving. By putting money aside—even a small amount—for these unplanned expenses, you’re able to recover quicker and get back on track towards reaching your larger savings goals."
+      },
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "Strategy: Create a savings habit",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "Building a savings of any size is easier when you’re able to consistently put money away. It’s one of the fastest ways to see it grow. If you’re not in a regular practice of saving, there are a few key principles to creating and sticking to a savings habit:\n\n**Set a goal**. Having a specific goal for your savingscan help you stay motivated. Establishing your emergency fund may be that achievable goal that helps you stay on track, especially when you’re initially getting started. Use our savings planning tool to calculate how long it’ll take you to reach your goal, based on how much and how often you’re able to put money away. **Create a system for making consistent contributions**. There are a number of different ways to save, and as you’ll read below, setting up automatic recurring transfers is often one of the easiest. It may also be that you put a specific amount of cash aside each day, week, or payday period. Aim to make it a specific amount, and if you can occasionally afford to do more, you’ll watch your savings grow even faster.**Regularly monitor your progress**. Find a way to regularly check your savings. Whether it’s an automatic notification of your account balance or writing down a running total of your contributions, finding a way to watch your progress can offer gratification and encouragement to keep going.**Celebrate your successes**. If you’re sticking with your savings habit, don’t miss the opportunity to recognize what you’ve accomplished. Find a few ways that you can treat yourself, and if you’ve reached your goal, set your next one.\n\n**Who is this helpful for**: Anyone, but particularly those with consistent income. If you know you have a regular paycheck or money consistently coming in, you can create a habit to put some of that money towards an emergency savings fund."
+      },
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "When should I use it?",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "Set some guidelines for yourself on what constitutes an emergency or unplanned expense. Not every unexpected expense is a dire emergency but try to stay consistent. Even if it’s not a trip to the emergency room, you may need it to pay for a medical bill that wasn’t covered by insurance.\n\nHaving a reserve fund for financial shocks can help you avoid relying on other forms of credit or loans that can turn into debt. If you use a credit card or take out a loan to pay for these expenses, your one-time emergency expense may grow significantly larger than your original bill because of interest and fees.\n\n**However, don’t be afraid to use it if you need it**. If you spend down what’s in your emergency savings, just work to build it up again. Practicing your savings skills over time will make this easier."
+      }
+    ],
+    "latency_s": 17.085309041896835,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "similarity": 0.8912567333603317,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "reason": "The answer provides clear and safe general advice about emergency funds, without inventing any user-specific details."
+    },
+    "judge_passed": true
+  }
+}

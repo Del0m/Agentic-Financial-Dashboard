@@ -283,3 +283,59 @@ FORECAST_USERS = (
              Weekly("TRANSPORTATION", "Fuel", 4000, weekday=0)), today=date(2026, 10, 10),
             start=date(2026, 6, 1), end=date(2026, 11, 30), run_date=date(2026, 10, 10), opening_cents=190000),
 )
+
+DAILY_CAFE = Every("FOOD_AND_DRINK", "Cafe", 800, 1, first=date(2026, 7, 1))
+
+# the benchmark's own users (tpc-26), each with one planted decision for a budget or goal scenario to check
+SCENARIO_USERS = (
+    Profile("overspend-new-club", "a $180 wine club that started Sep 4", 41,
+            (*PLANTED_BASE, Monthly("FOOD_AND_DRINK", "Grocer", 30000, day=10),
+             Monthly("FOOD_AND_DRINK", "Vine Club", 18000, day=4, first=date(2026, 9, 4))),
+            today=date(2026, 10, 1), start=date(2026, 7, 1), end=date(2026, 10, 31), run_date=date(2026, 10, 20),
+            expected_cause="recurring", opening_cents=800000),
+    Profile("overspend-back-to-school", "school supplies at seven shops, Sep 1-12", 42,
+            (*PLANTED_BASE, CORNER,
+             *(Once("GENERAL_MERCHANDISE", shop, cents, date(2026, 9, d)) for shop, d, cents in (
+                 ("Pencil Depot", 1, 6000), ("Backpack Barn", 3, 8500), ("Uniform Shop", 4, 11000),
+                 ("Tech for Class", 6, 12000), ("Shoe Shed", 8, 7500), ("Lunchbox Co", 10, 5000),
+                 ("Book Nook", 12, 9000)))),
+            today=date(2026, 9, 1), start=date(2026, 6, 1), end=date(2026, 9, 30), run_date=date(2026, 9, 14),
+            expected_cause="seasonal", opening_cents=800000),
+    # the three controls spend the same every day, so pace is fair to them and any flag is a real false alarm. the
+    # lumpy spending pace is known to be unfair to has its own control, on the steady user. their balance moves, so
+    # the forecast has nothing to warn about either
+    Profile("control-minimal", "the same $8 coffee every day and nothing unusual", 43,
+            (*PLANTED_BASE, DAILY_CAFE),
+            today=date(2026, 10, 1), start=date(2026, 7, 1), end=date(2026, 10, 31), run_date=date(2026, 10, 20),
+            opening_cents=800000),
+    Profile("control-early-rent", "October's coffee habit, and July's rent paid on June 30", 48,
+            (Monthly("RENT_AND_UTILITIES", "Landlord", 150000, moved={date(2026, 7, 1): date(2026, 6, 30)}),
+             *PLANTED_BASE[1:], Every("FOOD_AND_DRINK", "Cafe", 800, 1, first=date(2026, 3, 1))),
+            today=date(2026, 6, 1), start=date(2026, 3, 1), end=date(2026, 7, 31), run_date=date(2026, 6, 30),
+            opening_cents=800000),
+    Profile("control-under-limit", "the usual $20 bakery order, just earlier in October than usual", 44,
+            (*PLANTED_BASE, DAILY_CAFE,
+             Monthly("FOOD_AND_DRINK", "Bakery", 2000, day=28, moved={date(2026, 10, 1): date(2026, 10, 20)})),
+            today=date(2026, 10, 1), start=date(2026, 7, 1), end=date(2026, 10, 31), run_date=date(2026, 10, 22),
+            opening_cents=800000),
+    Profile("goals-no-surplus", "spends more than it earns every month, with a 19.99% card", 45,
+            (RENT, GROCER, Monthly("INCOME", "Employer", -180000, day=15),
+             Monthly("LOAN_PAYMENTS", "Platinum Card", 5000, day=12)),
+            today=date(2026, 11, 2), start=date(2026, 8, 1), end=date(2026, 10, 31),
+            accounts=(("Platinum Card", "credit", "credit card", 150000,
+                       {"kind": "credit", "apr": 19.99, "min_payment_cents": 5000}),)),
+    Profile("goals-thin-surplus", "$10 left each month, with nothing owed", 46,
+            (RENT, Monthly("INCOME", "Employer", -160000, day=15), Monthly("FOOD_AND_DRINK", "Grocer", 4000, day=10),
+             Monthly("TRANSPORTATION", "Fuel", 5000, day=20)),
+            today=date(2026, 11, 2), start=date(2026, 8, 1), end=date(2026, 10, 31)),
+    Profile("goals-no-debts", "a healthy surplus, no debts and almost no savings", 47,
+            (RENT, GROCER, *BASE),
+            today=date(2026, 11, 2), start=date(2026, 8, 1), end=date(2026, 10, 31),
+            accounts=(("Savings", "depository", "savings", 20000, None),)),
+)
+
+
+# None for an unknown id, so a scenario file naming one fails its load
+def profile_by_id(pid: str) -> Optional[Profile]:
+    every = (*PROFILES, *PLANTED, *GOAL_USERS, *RECURRING_USERS, *FORECAST_USERS, *SCENARIO_USERS)
+    return next((p for p in every if p.id == pid), None)

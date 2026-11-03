@@ -1,0 +1,60 @@
+{
+  "id": "debt-higher-apr-smaller-balance",
+  "tags": [
+    "high_interest_debt"
+  ],
+  "question": "Which of my cards should I pay off first?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2150
+      },
+      {
+        "name": "Store Card",
+        "type": "credit",
+        "subtype": "credit card",
+        "balance": 4800,
+        "liability": {
+          "kind": "credit",
+          "apr": 18.99,
+          "min_payment": 120,
+          "due_in_days": 12
+        }
+      },
+      {
+        "name": "Travel Card",
+        "type": "credit",
+        "subtype": "credit card",
+        "balance": 900,
+        "liability": {
+          "kind": "credit",
+          "apr": 27.49,
+          "min_payment": 35,
+          "due_in_days": 12
+        }
+      }
+    ],
+    "transactions": []
+  },
+  "golden_answer": "Pay the Travel Card first: at 27.49% APR it costs the most in interest, even though the Store Card has the larger balance. Keep paying the minimum on the Store Card. This is general information, not financial advice.",
+  "expect": {
+    "forbid": [
+      "http"
+    ],
+    "facts": [
+      {
+        "text": "Travel Card"
+      },
+      {
+        "number": 27.49,
+        "tol": 0.01
+      }
+    ],
+    "tools": [
+      "get_debts"
+    ]
+  }
+}

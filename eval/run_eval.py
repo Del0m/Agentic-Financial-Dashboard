@@ -1,11 +1,12 @@
-"""Score the chat agent on the golden scenarios in eval/scenarios/.
+"""Score the chat, budget and goal agents on the golden scenarios in eval/scenarios/.
 
-Each scenario seeds a synthetic user into a throwaway database, asks the real agent its
-question --runs times, and scores every answer on golden facts, semantic similarity and a
-coherence judge. Results go to eval/results/<date>/<model>/, one file per run as it finishes.
+Each scenario seeds a synthetic user into a throwaway database and runs the real agent --runs
+times. A chat answer is scored on golden facts, semantic similarity and a coherence judge; a
+budget or goal run is scored by rule on what the graph decided. Results go to
+eval/results/<date>/<model>/, one file per run as it finishes.
 
 Run from the repo root:
-    venv/bin/python eval/run_eval.py [--model qwen2.5:14b] [--runs 3] [--only <id>] [--judge gemma3:12b]
+    venv/bin/python eval/run_eval.py [--model qwen2.5:14b] [--runs 3] [--only <id>] [--kind budget] [--judge gemma3:12b]
 """
 import argparse
 import json
@@ -30,8 +31,9 @@ import httpx
 from app import config
 from app.agents.llm import get_chat_model, get_embeddings
 from app.rag.store import KnowledgeBase
-from eval.fixtures import ScenarioError, load_scenarios
-from eval.metrics import score_run, summarize
+from eval.agent_runner import run_budget_once, run_goal_once
+from eval.fixtures import KINDS, ScenarioError, load_scenarios
+from eval.metrics import score_budget, score_goal, score_run, summarize, summarize_budget, summarize_goal
 from eval.runner import run_once
 
 JUDGE_MODEL = "gemma3:12b"
@@ -45,6 +47,7 @@ def parse_args(argv):
     p.add_argument("--judge", default=JUDGE_MODEL, help=f"judge model (default: {JUDGE_MODEL})")
     p.add_argument("--runs", type=int, default=3, help="runs per scenario (default: 3)")
     p.add_argument("--only", help="run just this scenario id")
+    p.add_argument("--kind", choices=KINDS, help="run just this kind of scenario (default: all)")
     args = p.parse_args(argv)
     if args.runs < 1:
         p.error("--runs must be at least 1")
@@ -61,13 +64,14 @@ def missing_models(models: list[str]):
     return [m for m in models if m not in names and f"{m}:latest" not in names]
 
 
+# kb is None when no chat scenario will run: only chat uses it, the embeddings and the judge
 def preflight(agent: str, judge: str, kb) -> list[str]:
-    needed = list(dict.fromkeys([agent, config.OLLAMA_EMBED_MODEL, judge]))
+    needed = list(dict.fromkeys([agent] if kb is None else [agent, config.OLLAMA_EMBED_MODEL, judge]))
     missing = missing_models(needed)
     if missing is None:
         return [f"Ollama isn't reachable at {config.OLLAMA_BASE_URL}. Start it with: ollama serve"]
     problems = [f"Model {m} isn't pulled. Run: ollama pull {m}" for m in missing]
-    if kb.count() == 0:
+    if kb is not None and kb.count() == 0:
         problems.append("The knowledge base is empty. Run: venv/bin/python backend/scripts/ingest_kb.py")
     return problems
 
@@ -103,7 +107,7 @@ def _pct(x) -> str:
     return f"{x * 100:5.0f}%"
 
 
-def _print_table(summary: dict) -> None:
+def _print_chat(summary: dict) -> None:
     print(f"\n{'scenario':<28}{'facts':>7}{'sim':>7}{'judge':>7}{'tools':>7}{'errors':>8}")
     rows = list(summary["scenarios"].items()) + [("OVERALL", summary["overall"])]
     for sid, s in rows:
@@ -111,17 +115,39 @@ def _print_table(summary: dict) -> None:
               f"{_pct(s['judge_pass_rate']):>7}{_pct(s['tool_accuracy']):>7}{s['errors']:>8}")
 
 
+def _print_agent(name: str, summary: dict) -> None:
+    print(f"\n{name + ' scenario':<28}{'pass':>7}{'all runs':>10}{'errors':>8}")
+    for sid, s in [*summary["scenarios"].items(), ("OVERALL", summary)]:
+        print(f"{sid:<28}{_pct(s['pass_rate']):>7}{_pct(s['pass_all_runs_rate']):>10}{s['errors']:>8}")
+    if summary.get("false_alarm_rate") is not None:
+        print(f"false alarms on controls: {_pct(summary['false_alarm_rate']).strip()}")
+
+
+def _print_table(summary: dict) -> None:
+    if summary["overall"]["runs"]:
+        _print_chat(summary)
+    for name in ("budget", "goal"):
+        if name in summary:
+            _print_agent(name, summary[name])
+
+
 def main(argv=None) -> int:
     args = parse_args(argv)
-    kb = KnowledgeBase()
-    problems = preflight(args.model, args.judge, kb)
-    if problems:
-        print("Can't run the eval yet:\n" + "\n".join(f"- {p}" for p in problems))
-        return 2
     try:
         scenarios = load_scenarios(SCENARIOS_DIR, only=args.only)
     except ScenarioError as exc:
         print(f"Bad scenario: {exc}")
+        return 2
+    if args.kind:
+        scenarios = [s for s in scenarios if s.kind == args.kind]
+    if not scenarios:
+        print(f"Bad scenario: nothing to run for --kind {args.kind}")
+        return 2
+    has_chat = any(s.kind == "chat" for s in scenarios)
+    kb = KnowledgeBase() if has_chat else None
+    problems = preflight(args.model, args.judge, kb)
+    if problems:
+        print("Can't run the eval yet:\n" + "\n".join(f"- {p}" for p in problems))
         return 2
 
     out = results_dir(RESULTS_DIR, date.today(), args.model)
@@ -131,20 +157,33 @@ def main(argv=None) -> int:
     _write(out / "config.json", cfg)
 
     model = get_chat_model(temperature=0, model=args.model)
-    judge_model = get_chat_model(temperature=0, model=args.judge)
-    embeddings = get_embeddings()
-    scored = []
+    judge_model = get_chat_model(temperature=0, model=args.judge) if has_chat else None
+    embeddings = get_embeddings() if has_chat else None
+    audit = out / "audit.jsonl"
+    scored = {kind: [] for kind in KINDS}
     for scenario in scenarios:
         for run in range(1, args.runs + 1):
             print(f"{scenario.id} run {run}/{args.runs}...", flush=True)
-            rec = run_once(scenario, model=model, kb=kb, audit_path=out / "audit.jsonl", run=run)
-            item = {"record": rec.to_dict(),
-                    "scores": score_run(rec, scenario, embeddings=embeddings, judge_model=judge_model)}
+            if scenario.kind == "chat":
+                rec = run_once(scenario, model=model, kb=kb, audit_path=audit, run=run)
+                item = {"record": rec.to_dict(),
+                        "scores": score_run(rec, scenario, embeddings=embeddings, judge_model=judge_model)}
+            elif scenario.kind == "budget":
+                record = run_budget_once(scenario, model=model, audit_path=audit, run=run).to_dict()
+                item = {"record": record, "scores": score_budget(record, scenario)}
+            else:
+                record = run_goal_once(scenario, model=model, audit_path=audit, run=run).to_dict()
+                item = {"record": record, "scores": score_goal(record, scenario)}
             # written now, so a crash or ctrl-c keeps every finished run
             _write(out / f"{scenario.id}.run{run}.json", item)
-            scored.append(item)
+            scored[scenario.kind].append(item)
 
-    summary = summarize(scored)
+    by_kind = lambda kind: {s.id: s for s in scenarios if s.kind == kind}
+    summary = summarize(scored["chat"], tags={s.id: s.tags for s in by_kind("chat").values()})
+    if scored["budget"]:
+        summary["budget"] = summarize_budget(scored["budget"], by_kind("budget"))
+    if scored["goal"]:
+        summary["goal"] = summarize_goal(scored["goal"], by_kind("goal"))
     _write(out / "summary.json", summary)
     _write(out / "config.json", {**cfg, "finished_at": _now()})
     _print_table(summary)

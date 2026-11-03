@@ -1,0 +1,21 @@
+{
+  "id": "goal-respects-skipped-kind",
+  "kind": "goal",
+  "tags": [
+    "goal_affordability"
+  ],
+  "profile": "goals-card-24",
+  "today": "2026-11-02",
+  "golden_answer": "The user has a 24.99% card but has opted out of debt goals. Respect that: propose other goals within the cap, and never debt_payoff.",
+  "expect": {
+    "status": "ok",
+    "banned_kinds": [
+      "debt_payoff"
+    ]
+  },
+  "prefs": {
+    "skip_kinds": [
+      "debt_payoff"
+    ]
+  }
+}

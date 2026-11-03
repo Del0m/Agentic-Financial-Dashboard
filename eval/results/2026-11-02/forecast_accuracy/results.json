@@ -1,0 +1,30 @@
+{
+  "git_commit": "5eb0e073a50bb42b07d1ae63bd755726c399aa60",
+  "profiles": [
+    {
+      "id": "forecast-dip",
+      "n": 79,
+      "mae_d7_cents": 731,
+      "mae_d14_cents": 1007,
+      "coverage_d7": 0.6835443037974683,
+      "coverage_d14": 0.7974683544303798,
+      "mean_band_width_cents": 2296,
+      "baseline_mae_d7_cents": 49402,
+      "baseline_mae_d14_cents": 58709,
+      "dip_lead_days": 14,
+      "dip_bill": "Landlord",
+      "dip_pass": true
+    }
+  ],
+  "pooled": {
+    "n": 79,
+    "mae_d7_cents": 731,
+    "mae_d14_cents": 1007,
+    "coverage_d7": 0.6835443037974683,
+    "coverage_d14": 0.7974683544303798,
+    "mean_band_width_cents": 2296,
+    "baseline_mae_d7_cents": 49402,
+    "baseline_mae_d14_cents": 58709,
+    "dip_pass": true
+  }
+}

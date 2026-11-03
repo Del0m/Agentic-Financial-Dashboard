@@ -310,7 +310,7 @@ This is `budget_engine/pace.py` (`evaluate`). Spending in a category with no bud
 - ENTERTAINMENT at 1.48, because a $15.99 subscription is charged on day 5;
 - TRANSPORTATION at 1.12, because of how many Mondays had passed.
 
-TPC-33 moving subscriptions into the fixed set fixes the first. The thresholds are tuned in M5 against the false-alarm metric.
+TPC-33 moving subscriptions into the fixed set was expected to fix the first. The TPC-26 baseline still flags it: `control-steady-spender` fails on these flags, and TPC-45 tracks tuning the thresholds against the false-alarm metric.
 
 ### 6.5 Period close and adaptation
 At the end of each calendar month: for each line, compare `limit` vs actual. Apply any `adjust_next_budget` actions the user accepted. For lines without an action, nudge toward actual with smoothing: `new = 0.7 * old + 0.3 * actual`, clamped to ±15% per period. This keeps the budget from chasing one bad month. The "does the budget improve over time" benchmark checks this works.
@@ -425,7 +425,7 @@ The output gives each strategy's months to debt-free, total interest, and payoff
 
 The implemented daily route is sync, load_state, categorize, update_totals, detect_recurring, detect_overspend, diagnosis/action when flagged, decide_signals, log_advice, then approval only for budget adjustments and persist_state. With no current budget, load_state goes directly to detect_recurring and decide_signals. Detector and decision errors are recorded by type without stopping overspend alerts. Run summaries add `as_of`, stream count and changed ids, and `signals_error`.
 
-The cash forecast node and seventh chat tool are implemented. Seven current tools include recurring, cash forecast and debt planning; live selection with seven tools remains unverified.
+The cash forecast node and seventh chat tool are implemented. Seven current tools include recurring, cash forecast and debt planning. The TPC-26 baseline measured live selection with all seven: expected tools were called on 20 of 22 chat scenarios, and the two misses are "which debt first" questions (TPC-47).
 
 ---
 
@@ -588,7 +588,7 @@ Code still does every number. The LLM still only names the cause and picks the a
   2. It reads a time from the question by rule: "in 2024", "last month", "since June", or else today.
   3. It pulls `neighborhood(linked, as_of)`.
   4. It puts the triples in the system prompt under "Facts (valid as of <date>)", beside the vector guidance.
-- **New tool `get_history(entity, relation?)`:** the time-ordered edges for one entity, for explicit "when did / how has" questions. This brings the chat agent to 5 tools.
+- **New tool `get_history(entity, relation?)`:** the time-ordered edges for one entity, for explicit "when did / how has" questions. This brings the chat agent to 8 tools.
 - **Privacy:** user-half triples are built through a new gateway purpose, `graph`, with the same allowlist as `spending`. Pseudonymized user, no account numbers, inflow streams as category and amount only. Every prompt is audited. The guidance half is public text and skips the gateway, like `search_kb`.
 - **Modes** for the eval: `KG_CHAT=vector` (today's behaviour), `graph`, `hybrid` (the default).
 
@@ -631,7 +631,7 @@ Until now the chat agent only read what the last sync stored. Sync was a fixed f
 
 The prompt says to check `get_connections` before answering about balances or recent spending, and to refresh when data is more than a day old. The agent then answers from the fresh rows. That is a look, act, re-read loop: ReAct with a real observation from the environment. Code still decides the daily sync; the tool only adds an on-demand one.
 
-`plaid_items` gains `last_synced_at` and `last_error`, set by `sync_item`. Each status change also projects a `CONNECTED` edge (section 6b.1), so the graph remembers outages. The chat agent goes to 7 tools.
+`plaid_items` gains `last_synced_at` and `last_error`, set by `sync_item`. Each status change also projects a `CONNECTED` edge (section 6b.1), so the graph remembers outages. The chat agent goes to 10 tools.
 
 Chat scenarios for this, tagged `tools`:
 - "Is my data up to date?" with a stale item: calls `get_connections` and names the date.
@@ -740,6 +740,14 @@ Build the harness **early** (alongside Milestone 2), even with only two scenario
 - **What a run does:** for each user, it runs the real `initialize_budget` and prints the stored budget. It fits May-July with the median and with the mean, and scores each against August.
 - **Scoring:** MAPE over lines whose category had August spending, plus counts of lines with $0 actual and of spending with no line.
 - **Results** go to `eval/results/<date>/budget_accuracy/results.json`. There's no LLM, so it runs in seconds.
+
+**As built (TPC-26), 40 scenarios across three kinds:** `venv/bin/python eval/run_eval.py [--kind chat|budget|goal]`. The format is in [`eval/README.md`](../eval/README.md), and the design is `docs/superpowers/specs/2026-11-03-tpc-26-golden-scenarios-design.md`.
+- **Chat (22):** the TPC-16 format, plus 4 `abstain` scenarios and category tags.
+- **Budget (12):** a synthetic user from `eval/budget_users.py` goes through a short window of real daily runs (`advance_days`). Rules check flags, cause, action, a flag deadline, signal kinds, message text and low-balance lead time, each reported on its own. A model failure fails cause and message but not the flag, because the user was still warned. Four are no-overspend controls.
+- **Goal (6):** the real goal run on a synthetic user, checked on status, required and banned kinds, priority where the prompt's rule decides it, the cap, and that the model isn't called when nothing is affordable.
+- **Reported:** pass^3 and per-tag rates for every kind; false-alarm rate, time-to-flag and lead time for budget. `overall` stays chat-only, so it remains comparable with the TPC-16 results.
+- **Golden answers are checked offline** (`test_eval_agents.py`): chat number facts must come from the expected tools, and what code decides must match with a fake model. `tools_none` and temporal scenarios aren't built yet (TPC-27, TPC-39).
+- **Baseline (2026-11-03, `qwen2.5:14b`, one pass):** chat facts 73%, budget 75%, goal 100%, false alarms on 1 of 4 controls. Each failure is tracked: TPC-45 to TPC-49.
 
 ### 10.1 Test data
 - **Synthetic users:** JSON fixtures of accounts, liabilities and ~6 months of transactions with known ground truth (e.g., "Dining spend jumps 40% in month 5 because of a recurring new subscription"). Load them straight into the DB, bypassing Plaid, so tests are fast and deterministic.

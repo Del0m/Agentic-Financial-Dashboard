@@ -1,5 +1,5 @@
 {
-  "id": "spending-food-30d",
+  "id": "spending-food-30d", "tags": ["spending"],
   "question": "How much did I spend on food and drink in the last 30 days?",
   "user": {
     "accounts": [

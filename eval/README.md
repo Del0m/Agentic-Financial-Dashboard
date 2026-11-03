@@ -1,6 +1,6 @@
 # Eval harness
 
-Scores the chat agent on golden scenarios. Each scenario is a synthetic user with known numbers, a question, and the answer it should get. The harness runs the same graph and tools as `POST /chat`, against a throwaway in-memory database, and scores every answer three ways:
+Scores the agents on golden scenarios. Each scenario is a synthetic user with known numbers and the answer it should get. Budget and goal scenarios are covered [below](#budget-and-goal-scenarios). For chat, the harness runs the same graph and tools as `POST /chat`, against a throwaway in-memory database, and scores every answer three ways:
 
 | Metric | How | Target |
 |---|---|---|
@@ -38,6 +38,7 @@ venv/bin/python eval/run_eval.py --only debt-highest-apr --runs 1
 | `--judge` | `gemma3:12b` | judge model; keep it outside the agent models being compared |
 | `--runs` | 3 | runs per scenario, all at temperature 0 |
 | `--only` | | one scenario id |
+| `--kind` | all | `chat`, `budget` or `goal`. Checks only what the scenarios that will run need, so budget and goal don't need the judge, embeddings or knowledge base |
 
 The exit code is 0 whenever the eval completes, even with low scores. Low scores are a result, not an error.
 
@@ -91,10 +92,108 @@ Create `eval/scenarios/<id>.json`. The `id` must equal the file name.
 | `expect.tools` | Tools that must have been called. Reported, not part of facts pass/fail |
 | `expect.sources` | `source_url`s that must be among the retrieved guidance |
 
+| `expect.abstain` | `true` replaces `facts`: the answer must say the data isn't available and state no dollar amount. A bare year is fine |
+| `expect.no_numbers` | With `abstain`: the answer can't state any number. For a missing fact that's a bare number, like a credit score |
+| `tags` | Optional, on every kind. Results are also reported per tag |
+
 Tips:
 - Keep a number fact to a figure the tools return directly. The design keeps arithmetic out of the model, so a fact the model would have to compute tests something else.
 - Remember the gateway's rules when choosing expected numbers. Spending totals count money out only, so refunds are excluded, and the default window is the last 30 days.
-- Run `cd backend && ../venv/bin/python -m pytest tests/test_eval_fixtures.py` after adding a file; `test_committed_scenarios_load` checks every committed scenario parses (update its count).
+- A text fact can't be something the question already says, or an answer could pass by repeating the question.
+- Run `cd backend && ../venv/bin/python -m pytest tests/test_eval_fixtures.py tests/test_eval_agents.py` after adding a file. They check that every scenario parses (update the counts), that each number fact comes from the tools it expects, and that each golden answer passes its own facts.
+
+## Budget and goal scenarios
+
+The same command runs them, and they use the agent model only. They're scored by rule on what the real graphs decided, so there's no similarity or judge score. Each check is reported on its own, and the run passes if all of them do.
+
+```bash
+venv/bin/python eval/run_eval.py --kind budget --runs 1
+```
+
+### Budget
+
+Add `"kind": "budget"`, a `profile` from `eval/budget_users.py`, and a `start` and `end`. The user is seeded through `start` with no run, then gets one real daily run per day through `end`.
+
+```json
+{
+  "id": "budget-one-time-new-shop",
+  "kind": "budget",
+  "tags": ["one_time"],
+  "profile": "overspend-one-time",
+  "start": "2026-10-11",
+  "end": "2026-10-13",
+  "golden_answer": "General merchandise goes over its limit on Oct 12 because of one $600 purchase at ElectroMart...",
+  "expect": {
+    "flags": ["GENERAL_MERCHANDISE"],
+    "causes": {"GENERAL_MERCHANDISE": "one_time"},
+    "actions": {"GENERAL_MERCHANDISE": {"accept": ["alert", "suggest_cuts"], "ban": ["adjust_next_budget"]}},
+    "flag_by": {"GENERAL_MERCHANDISE": "2026-10-12"},
+    "message_facts": [{"text": "ElectroMart"}]
+  }
+}
+```
+
+Only the checks a scenario sets are scored:
+
+| Field | Passes when |
+|---|---|
+| `expect.flags` | The categories flagged over the whole window are exactly these. `[]` makes the scenario a control, and leaving it out means flags aren't checked |
+| `expect.causes` | The category's first overspend alert has this cause |
+| `expect.actions` | That alert's action is in `accept`, and no alert for the category has an action in `ban` |
+| `expect.flag_by` | The category is first flagged on or before this date |
+| `expect.crossed_on` | Not a pass or fail check. The day the planted spending crosses the threshold, which time-to-flag counts from |
+| `expect.alert_kinds` | Every signal kind listed appears (`new_subscription`, `price_increase`, `income_change`, `low_balance`) |
+| `expect.message_facts` | These facts appear in the alert messages. They use the same form as `facts` |
+| `expect.min_days_ahead` | The earliest low-balance warning is at least this many days ahead |
+
+Tips:
+- Keep windows short. Each flagged category costs two model calls a day, and a planted user's static $100 balance adds low-balance alerts too. Give a new user `opening_cents` so its balance moves.
+- Start the day before the planted event when pace would otherwise flag early, or the first alert's cause will be about something else.
+- A control must really be on budget, or its flag isn't a false alarm. Pace is only fair to spending that's even through the month.
+- If the model can't answer, code still writes a plain alert. The flag passes, cause and message fail, and `llm_failures` counts it.
+
+### Goal
+
+Add `"kind": "goal"`, a `profile`, a `today`, and optionally `prefs` (the same as `--prefs` on the goal graph).
+
+```json
+{
+  "id": "goal-respects-skipped-kind",
+  "kind": "goal",
+  "tags": ["goal_affordability"],
+  "profile": "goals-card-24",
+  "today": "2026-11-02",
+  "prefs": {"skip_kinds": ["debt_payoff"]},
+  "golden_answer": "The user has a 24.99% card but has opted out of debt goals...",
+  "expect": {"status": "ok", "banned_kinds": ["debt_payoff"]}
+}
+```
+
+| Field | Passes when |
+|---|---|
+| `expect.status` | The run ended with this: `ok`, `no_surplus`, `nothing_offered` or `no_affordable_goals` |
+| `expect.required_kinds` | These kinds are in the plan |
+| `expect.banned_kinds` | These kinds aren't |
+| `expect.first_kind` | This kind has priority 1. Use it only where a rule decides the order: a debt at 8% APR or more goes first |
+| (always, on `ok`) | A plan exists, and its total is within the cap |
+| (always, otherwise) | The model was never called |
+
+Retries are reported in `attempts` and never fail a run on their own.
+
+### Adding one
+
+Add its user to `SCENARIO_USERS` in `eval/budget_users.py` if no existing user fits, with a test in `test_budget_users.py` that its planted fact is there. `test_eval_agents.py` then runs the scenario with a fake model and checks what code decides: flags, deadlines, signals and lead time. If that fails because of a known agent problem, keep the right golden answer, file a ticket, and add the scenario to `KNOWN_FAILURES`.
+
+### What the summary adds
+
+`summary.json` keeps `overall` for chat, and adds `by_tag`, `fact_pass_all_runs_rate` and these sections:
+
+| Section | Holds |
+|---|---|
+| `budget` | `pass_rate`, `pass_all_runs_rate` (pass^3), each check's rate, `false_alarm_rate` (control runs with any flag or overspend alert), `time_to_flag_days_mean` (planted crossing to first alert), `missed_alerts` (crossings with no alert), `low_balance_days_ahead_mean`, `llm_failures`, `by_tag`, `scenarios` |
+| `goal` | `pass_rate`, `pass_all_runs_rate`, each check's rate, `attempts_mean`, `by_tag`, `scenarios` |
+
+A check no scenario sets has a rate of `null`.
 
 ## Budget accuracy
 

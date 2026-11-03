@@ -1,0 +1,38 @@
+{
+  "id": "budget-recurring-new-gym",
+  "kind": "budget",
+  "tags": [
+    "recurring"
+  ],
+  "profile": "overspend-recurring",
+  "start": "2026-10-02",
+  "end": "2026-10-04",
+  "golden_answer": "Personal care goes over on Oct 3 because a $90 FitClub Gym charge started in September and now repeats monthly. The cause is recurring, so proposing a higher limit for next month is reasonable.",
+  "expect": {
+    "flags": [
+      "PERSONAL_CARE"
+    ],
+    "causes": {
+      "PERSONAL_CARE": "recurring"
+    },
+    "actions": {
+      "PERSONAL_CARE": {
+        "accept": [
+          "adjust_next_budget",
+          "alert"
+        ]
+      }
+    },
+    "flag_by": {
+      "PERSONAL_CARE": "2026-10-03"
+    },
+    "crossed_on": {
+      "PERSONAL_CARE": "2026-10-03"
+    },
+    "message_facts": [
+      {
+        "text": "FitClub Gym"
+      }
+    ]
+  }
+}

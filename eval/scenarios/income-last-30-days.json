@@ -1,0 +1,62 @@
+{
+  "id": "income-last-30-days",
+  "tags": [
+    "spending"
+  ],
+  "question": "How much money came in as income over the last 30 days?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2150
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 2,
+        "amount": -1850,
+        "category": "INCOME",
+        "merchant": "Employer"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 16,
+        "amount": -1850,
+        "category": "INCOME",
+        "merchant": "Employer"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 44,
+        "amount": -1850,
+        "category": "INCOME",
+        "merchant": "Employer"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 5,
+        "amount": 60,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Grocer"
+      }
+    ]
+  },
+  "golden_answer": "You received $3,700.00 in income over the last 30 days. This is general information, not financial advice.",
+  "expect": {
+    "forbid": [
+      "http"
+    ],
+    "facts": [
+      {
+        "number": 3700,
+        "tol": 0.01
+      }
+    ],
+    "tools": [
+      "get_spending"
+    ]
+  }
+}

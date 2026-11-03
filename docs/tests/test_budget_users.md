@@ -251,3 +251,37 @@ Run them from `backend/`:
 **What it does:** `RECURRING_USERS` holds the two new profiles, and neither is in `PROFILES` or `PLANTED`.
 
 **Why it's there:** Adding them to those tuples would change the accuracy eval's results and the tests that assert its users.
+
+---
+
+## The benchmark's own users (TPC-26)
+
+## `test_profile_by_id_finds_every_tuple`, `test_profile_ids_are_unique`
+
+**What they do:** `profile_by_id` finds a user from every tuple and returns `None` for an unknown id. No id is used twice.
+
+**Why they're there:** Scenario files and `advance_days` find users through this one lookup, and a duplicate would silently return the wrong user.
+
+## `test_scenario_users_are_not_in_the_accuracy_eval`
+
+**What it does:** No `SCENARIO_USERS` id is in `PROFILES` or `PLANTED`.
+
+**Why it's there:** The accuracy eval's results and the tests on its users must not change.
+
+## `test_new_club_starts_in_september`, `test_back_to_school_is_spread_across_seven_shops`
+
+**What they do:** The wine club's first two charges are Sep 4 and Oct 4. School supplies are at seven shops, none of them most of the total.
+
+**Why they're there:** These planted facts are why the golden causes are `recurring` and `seasonal`. The diagnose prompt calls a purchase with most of the spending `one_time`.
+
+## `test_flat_control_spends_the_same_every_month`, `test_early_order_control_ends_october_at_its_usual_total`, `test_early_rent_control_pays_twice_in_june_and_never_in_july`
+
+**What they do:** The flat user spends $248 in each 31-day month. The early-order user's October matches a usual month at $268, with the bakery order on Oct 20. The early-rent user pays $3,000 of rent in June and none in July.
+
+**Why they're there:** A control only means something if nothing is really overspent, so a flag on one is a real false alarm.
+
+## `test_goal_scenario_users_have_their_planted_surplus`, `test_no_debts_user_has_almost_no_savings_and_no_debts`
+
+**What they do:** Check each goal user's measured surplus: below zero, exactly $10, and $1,000-$1,500. The no-debts user has no debts and $200 saved.
+
+**Why they're there:** Each goal scenario's expected status follows directly from these numbers.

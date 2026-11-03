@@ -1,0 +1,38 @@
+{
+  "id": "budget-recurring-wine-club",
+  "kind": "budget",
+  "tags": [
+    "recurring"
+  ],
+  "profile": "overspend-new-club",
+  "start": "2026-10-04",
+  "end": "2026-10-06",
+  "golden_answer": "Food and drink runs well ahead of pace by Oct 5 because a $180 Vine Club charge started in September and repeats monthly. The cause is recurring, not a one-off.",
+  "expect": {
+    "flags": [
+      "FOOD_AND_DRINK"
+    ],
+    "causes": {
+      "FOOD_AND_DRINK": "recurring"
+    },
+    "actions": {
+      "FOOD_AND_DRINK": {
+        "accept": [
+          "adjust_next_budget",
+          "alert"
+        ]
+      }
+    },
+    "flag_by": {
+      "FOOD_AND_DRINK": "2026-10-05"
+    },
+    "crossed_on": {
+      "FOOD_AND_DRINK": "2026-10-05"
+    },
+    "message_facts": [
+      {
+        "text": "Vine Club"
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "goal-debt-first",
+  "kind": "goal",
+  "tags": [
+    "goal_affordability"
+  ],
+  "profile": "goals-card-24",
+  "today": "2026-11-02",
+  "golden_answer": "The user has about $1,020 left each month, so goals may use up to $816. A 24.99% card comes first: propose debt_payoff first, within the cap, with a dated plan.",
+  "expect": {
+    "status": "ok",
+    "required_kinds": [
+      "debt_payoff"
+    ],
+    "first_kind": "debt_payoff"
+  }
+}

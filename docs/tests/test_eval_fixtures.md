@@ -91,7 +91,7 @@ Run them from `backend/`:
 
 ## `test_committed_scenarios_load`
 
-**What it does:** Loads every file in `eval/scenarios/` and expects 6.
+**What it does:** Loads every file in `eval/scenarios/` and expects 40.
 
 **Why it's there:** It catches a broken committed scenario in the normal test run, before anyone spends minutes of model time on an eval.
 
@@ -154,3 +154,57 @@ Run them from `backend/`:
 The committed-scenario count now includes recurring-subscriptions. Its seed refreshes stored streams before chat; live model tool selection remains a separate check.
 
 The committed count includes cash-before-payday, which checks get_cash_forecast selection.
+
+---
+
+## Budget and goal scenarios, abstention and tags (TPC-26)
+
+`budget_dict()` and `goal_dict()` build one valid scenario of each kind, and `write_dict` writes one to a file.
+
+## `test_chat_is_the_default_kind`
+
+**What it does:** A file with no `kind` loads as chat, with no tags and no abstain rule.
+
+**Why it's there:** The original 8 scenarios and their results must keep their meaning.
+
+## `test_budget_scenario_loads`
+
+**What it does:** Checks every field of a full budget scenario: profile, window, tags, flags, causes, the accept and ban lists, `flag_by` as dates, alert kinds, lead time and message facts.
+
+**Why it's there:** These fields are what the scoring reads.
+
+## `test_empty_flags_is_a_control_and_absent_flags_is_not`
+
+**What it does:** `flags: []` makes a control. Leaving `flags` out gives `None`, which isn't a control and isn't checked.
+
+**Why it's there:** The two mean opposite things: "nothing should be flagged" and "flags aren't what this scenario tests". Mixing them up would corrupt the false-alarm rate.
+
+## `test_goal_scenario_loads`
+
+**What it does:** Checks a goal scenario's profile, date, prefs, status, required and banned kinds, and first kind.
+
+**Why it's there:** The same reason, for goal scoring.
+
+## `test_abstain_scenario_needs_no_facts`, `test_abstain_with_facts_rejected`, `test_abstain_must_be_a_bool`
+
+**What they do:** An abstain scenario loads with no facts. One that also lists facts is rejected, and so is `abstain: "yes"`.
+
+**Why they're there:** A scenario can't both expect a number and expect no number, and a stray string would silently change how it's scored.
+
+## `test_unknown_kind_rejected`, `test_tags_must_be_a_list_of_strings`
+
+**What they do:** Reject `kind: close`, and tags that are a bare string, an empty string or a number.
+
+**Why they're there:** A misspelled kind or tag would silently drop a scenario from its reporting group.
+
+## `test_bad_budget_scenario_rejected`, `test_bad_goal_scenario_rejected`
+
+**What they do:** Each case breaks one field, such as an unknown profile, a bad date, an end before the start, a misspelled category, cause, action, alert kind or goal kind, a negative lead time, or a missing golden answer. Each must fail the load and name the field. `error` isn't an allowed goal status.
+
+**Why they're there:** A typo in a budget scenario would otherwise look like the agent failing. `error` can't be a golden answer, because no scenario should expect the run to fail.
+
+## `test_committed_scenarios_cover_the_ticket`
+
+**What it does:** Checks that there are 30-50 scenarios, each with a golden answer and a tag, that every ticket category has one, that the mix is 22 chat, 12 budget and 6 goal, and that 4 are abstain scenarios.
+
+**Why it's there:** This is the ticket's done-when, as a test.

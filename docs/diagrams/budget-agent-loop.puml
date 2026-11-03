@@ -1,64 +1,47 @@
 @startuml
-title Current budget graph: one run for one user and date
+title Budget agent: evidence, decisions, and approval
 skinparam shadowing false
 skinparam defaultFontName SansSerif
-skinparam defaultFontSize 15
 start
-:Create agent_runs row: running;
-:sync (if sync_fn supplied);
-:load_state -> initialize_budget;
-note right
-First fit: up to 3 prior calendar months.
-Exclude income, transfers, card payments.
-Net refunds within each category.
-Fixed: lower median of paying months.
-Flexible: median x 1.05; skip zero median.
-Persist fit evidence with budget lines.
-end note
-if (No budget / date before start?) then (yes)
+:Trigger: scheduler, CLI or API;
+:Deterministic input boundary\nsync FIRST, then load_state and measure pace;
+if (No usable budget / period ended?) then (yes)
   :detect_recurring -> forecast_cash -> decide_signals -> log_advice;
-  :Finish no_budget;
-  stop
-elseif (Date past period end?) then (yes)
-  :detect_recurring -> forecast_cash -> decide_signals -> log_advice;
-  :Finish period_ended;
-  note right: Period close opens the next month.
+  :Output boundary: no_budget / period_ended;
   stop
 endif
-:categorize: count uncategorized only;
-:update_totals: net category spending;
 :detect_recurring: refresh and diff streams;
 :forecast_cash: checking range, bill dip and surplus;
-:detect_overspend;
-note right
-All lines: spent > limit.
-Flexible only: from day 5,
-pace >= 1.10 also flags.
-Unbudgeted categories: reported, not flagged.
-end note
-if (Any flags?) then (no)
-  :decide_signals -> log_advice;
-  :persist_state -> ok;
-  stop
+if (Any category flagged?) then (yes)
+  :Privacy input boundary\nfacts + current alerts + past advice/outcomes;
+  note right
+    Memory: current period alerts;
+    up to five advice entries from this
+    budget month and the preceding three.
+    Categorization only counts missing categories.
+  end note
+  :LLM diagnoses each flag\none_time / seasonal / recurring;
+  :LLM chooses each action\nalert / suggest_cuts / adjust_next_budget / no_op;
+  :Deterministic output boundary: enforce rules;
+  note right
+    Invalid action after one schema retry, or known
+    model outage: code-written fallback alert.
+    Adjustment without recurring cause, or on
+    free/saving line: downgrade to alert.
+    no_op without prior equal-or-higher severity
+    alert: downgrade to alert.
+    Unknown exceptions can fail the run.
+  end note
+  :decide_signals: one call per signal, cap 3;
+  :Output boundary: save alerts and advice\nSkip valid no_op; retain outcomes as memory;
+  if (Adjustment proposals AND checkpointer?) then (yes)
+    :interrupt: awaiting_user;
+    :Human accepts or dismisses each proposal;
+    :Resume without LLM\nWait again until all proposals decided;
+  endif
 endif
-:Code builds facts and proposed limits;
-:Gateway minimizes and audits each category;
-:diagnose: LLM classifies cause;
-:decide_action: LLM picks action;
-:decide_signals: one call per signal, cap 3;
-note right
-Invalid structured output retries once,
-then falls back to an ordinary alert.
-Transport failure marks the run error.
-Memory asks model to avoid repeats.
-Only recurring causes may adjust a limit.
-end note
-:log_advice: alerts + linked advice rows;
-if (Adjust proposal AND checkpointer?) then (yes)
-  :await_approval -> interrupt;
-  :awaiting_user until every proposal decided;
-endif
-:persist_state -> ok + summary;
+:decide_signals and log_advice if no overspend;
+:Output boundary: run ok;
 stop
 note right
 Recurring signals: new subscription, price increase, income change.

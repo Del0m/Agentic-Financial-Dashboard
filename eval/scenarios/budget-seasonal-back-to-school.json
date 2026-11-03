@@ -1,0 +1,36 @@
+{
+  "id": "budget-seasonal-back-to-school",
+  "kind": "budget",
+  "tags": [
+    "seasonal"
+  ],
+  "profile": "overspend-back-to-school",
+  "start": "2026-09-03",
+  "end": "2026-09-05",
+  "golden_answer": "General merchandise runs ahead of pace by Sep 4 because of school supplies across several shops, with no single purchase dominating. The cause is seasonal, so next month's budget stays as it is.",
+  "expect": {
+    "flags": [
+      "GENERAL_MERCHANDISE"
+    ],
+    "causes": {
+      "GENERAL_MERCHANDISE": "seasonal"
+    },
+    "actions": {
+      "GENERAL_MERCHANDISE": {
+        "accept": [
+          "alert",
+          "suggest_cuts"
+        ],
+        "ban": [
+          "adjust_next_budget"
+        ]
+      }
+    },
+    "flag_by": {
+      "GENERAL_MERCHANDISE": "2026-09-04"
+    },
+    "crossed_on": {
+      "GENERAL_MERCHANDISE": "2026-09-04"
+    }
+  }
+}

@@ -121,7 +121,7 @@ def test_only_unknown_id_rejected(tmp_path):
 
 
 def test_committed_scenarios_load():
-    assert len(load_scenarios(REPO / "eval" / "scenarios")) == 8
+    assert len(load_scenarios(REPO / "eval" / "scenarios")) == 40
 
 
 # the payoff scenario's facts are the planner's numbers (tpc-32); months and interest don't depend on the start date
@@ -157,7 +157,7 @@ def test_liability_without_kind_rejected(tmp_path):
 # a text fact the question already contains passes on any answer that echoes the question
 def test_text_facts_not_in_question():
     for s in load_scenarios(REPO / "eval" / "scenarios"):
-        for f in s.expect.facts:
+        for f in s.expect.facts if s.kind == "chat" else ():
             assert f.text is None or f.text.lower() not in s.question.lower(), (s.id, f.text)
 
 
@@ -172,3 +172,136 @@ def test_bad_liability_field_rejected(tmp_path, field, value):
 # two accounts with one name would share a plaid_account_id and fail at seed time
 def test_duplicate_account_name_rejected(tmp_path):
     rejected(write(tmp_path, lambda d: d["user"]["accounts"][1].update(name="Everyday Checking")), "name")
+
+
+# --- budget and goal scenarios, abstention and tags (tpc-26) ---
+
+def budget_dict(**kw):
+    return {"id": "b1", "kind": "budget", "profile": "overspend-one-time", "start": "2026-10-11", "end": "2026-10-13",
+            "golden_answer": "A one-off at ElectroMart.", "tags": ["one_time"],
+            "expect": {"flags": ["GENERAL_MERCHANDISE"], "causes": {"GENERAL_MERCHANDISE": "one_time"},
+                       "actions": {"GENERAL_MERCHANDISE": {"accept": ["alert"], "ban": ["adjust_next_budget"]}},
+                       "flag_by": {"GENERAL_MERCHANDISE": "2026-10-12"}, "alert_kinds": ["low_balance"],
+                       "min_days_ahead": 3, "message_facts": [{"text": "ElectroMart"}]}, **kw}
+
+
+def goal_dict(**kw):
+    return {"id": "g1", "kind": "goal", "profile": "goals-card-24", "today": "2026-11-02", "golden_answer": "Debt first.",
+            "expect": {"status": "ok", "required_kinds": ["debt_payoff"], "banned_kinds": ["savings"],
+                       "first_kind": "debt_payoff"}, **kw}
+
+
+def write_dict(tmp_path, d, edit=None):
+    if edit:
+        edit(d)
+    path = tmp_path / f"{d['id']}.json"
+    path.write_text(json.dumps(d))
+    return path
+
+
+def test_chat_is_the_default_kind(tmp_path):
+    scenario = load_scenario(write(tmp_path))
+    assert (scenario.kind, scenario.tags, scenario.expect.abstain) == ("chat", (), False)
+
+
+def test_budget_scenario_loads(tmp_path):
+    s = load_scenario(write_dict(tmp_path, budget_dict()))
+    assert (s.kind, s.profile, s.start, s.end, s.tags) == ("budget", "overspend-one-time", date(2026, 10, 11),
+                                                           date(2026, 10, 13), ("one_time",))
+    e = s.expect
+    assert e.flags == ("GENERAL_MERCHANDISE",) and e.causes == {"GENERAL_MERCHANDISE": "one_time"}
+    assert e.actions["GENERAL_MERCHANDISE"].accept == ("alert",) and e.actions["GENERAL_MERCHANDISE"].ban == ("adjust_next_budget",)
+    assert e.flag_by == {"GENERAL_MERCHANDISE": date(2026, 10, 12)} and e.alert_kinds == ("low_balance",)
+    assert e.min_days_ahead == 3 and e.message_facts[0].text == "ElectroMart" and not s.is_control
+
+
+# an empty list is a control; leaving flags out is a scenario about something else, whose flags aren't checked
+def test_empty_flags_is_a_control_and_absent_flags_is_not(tmp_path):
+    control = load_scenario(write_dict(tmp_path, budget_dict(id="c1", expect={"flags": []})))
+    signal = load_scenario(write_dict(tmp_path, budget_dict(id="s1", expect={"alert_kinds": ["price_increase"]})))
+    assert control.is_control and control.expect.flags == ()
+    assert not signal.is_control and signal.expect.flags is None
+
+
+def test_goal_scenario_loads(tmp_path):
+    s = load_scenario(write_dict(tmp_path, goal_dict(prefs={"max_share": 0.5})))
+    assert (s.kind, s.profile, s.today, s.prefs) == ("goal", "goals-card-24", date(2026, 11, 2), {"max_share": 0.5})
+    assert (s.expect.status, s.expect.required_kinds, s.expect.banned_kinds, s.expect.first_kind) == (
+        "ok", ("debt_payoff",), ("savings",), "debt_payoff")
+
+
+def test_abstain_scenario_needs_no_facts(tmp_path):
+    def edit(d):
+        d["expect"] = {"abstain": True}
+    scenario = load_scenario(write(tmp_path, edit))
+    assert scenario.expect.abstain and scenario.expect.facts == []
+
+
+def test_abstain_with_facts_rejected(tmp_path):
+    rejected(write(tmp_path, lambda d: d["expect"].update(abstain=True)), "expect.facts")
+
+
+def test_abstain_must_be_a_bool(tmp_path):
+    rejected(write(tmp_path, lambda d: d["expect"].update(abstain="yes")), "expect.abstain")
+
+
+def test_unknown_kind_rejected(tmp_path):
+    rejected(write(tmp_path, lambda d: d.update(kind="close")), "kind")
+
+
+@pytest.mark.parametrize("tags", ["one_time", [""], [3]])
+def test_tags_must_be_a_list_of_strings(tmp_path, tags):
+    rejected(write(tmp_path, lambda d: d.update(tags=tags)), "tags")
+
+
+@pytest.mark.parametrize("edit, field", [
+    (lambda d: d.update(profile="nobody"), "profile"),
+    (lambda d: d.pop("profile"), "profile"),
+    (lambda d: d.update(start="soon"), "start"),
+    (lambda d: d.update(end="2026-10-11"), "end"),
+    (lambda d: d["expect"].update(flags="GENERAL_MERCHANDISE"), "expect.flags"),
+    (lambda d: d["expect"].update(flags=["GROCERIES"]), "expect.flags"),
+    (lambda d: d["expect"].update(causes={"GROCERIES": "one_time"}), "expect.causes"),
+    (lambda d: d["expect"].update(causes={"GENERAL_MERCHANDISE": "bad_luck"}), "expect.causes"),
+    (lambda d: d["expect"].update(actions={"GENERAL_MERCHANDISE": "alert"}), "expect.actions"),
+    (lambda d: d["expect"].update(actions={"GENERAL_MERCHANDISE": {"accept": []}}), "accept"),
+    (lambda d: d["expect"].update(actions={"GENERAL_MERCHANDISE": {"accept": ["panic"]}}), "accept"),
+    (lambda d: d["expect"].update(actions={"GENERAL_MERCHANDISE": {"accept": ["alert"], "ban": ["panic"]}}), "ban"),
+    (lambda d: d["expect"].update(flag_by={"GENERAL_MERCHANDISE": "soon"}), "flag_by"),
+    (lambda d: d["expect"].update(alert_kinds=["overspend"]), "alert_kinds"),
+    (lambda d: d["expect"].update(min_days_ahead=-1), "min_days_ahead"),
+    (lambda d: d["expect"].update(min_days_ahead=True), "min_days_ahead"),
+    (lambda d: d["expect"].update(message_facts=[{"text": ""}]), "facts"),
+    (lambda d: d.pop("golden_answer"), "golden_answer"),
+])
+def test_bad_budget_scenario_rejected(tmp_path, edit, field):
+    rejected(write_dict(tmp_path, budget_dict(), edit), field)
+
+
+@pytest.mark.parametrize("edit, field", [
+    (lambda d: d.update(profile="nobody"), "profile"),
+    (lambda d: d.update(today="soon"), "today"),
+    (lambda d: d.update(prefs="low"), "prefs"),
+    (lambda d: d["expect"].update(status="error"), "expect.status"),
+    (lambda d: d["expect"].pop("status"), "expect.status"),
+    (lambda d: d["expect"].update(required_kinds=["vacation"]), "required_kinds"),
+    (lambda d: d["expect"].update(banned_kinds=["vacation"]), "banned_kinds"),
+    (lambda d: d["expect"].update(first_kind="vacation"), "first_kind"),
+    (lambda d: d.pop("golden_answer"), "golden_answer"),
+])
+def test_bad_goal_scenario_rejected(tmp_path, edit, field):
+    rejected(write_dict(tmp_path, goal_dict(), edit), field)
+
+
+# the ticket's done-when and its six categories
+def test_committed_scenarios_cover_the_ticket():
+    scenarios = load_scenarios(REPO / "eval" / "scenarios")
+    assert 30 <= len(scenarios) <= 50
+    assert all(s.golden_answer.strip() for s in scenarios)
+    tags = {tag for s in scenarios for tag in s.tags}
+    assert {"high_interest_debt", "unused_subscription", "one_time", "recurring", "seasonal", "no_overspend_control",
+            "goal_affordability"} <= tags
+    kinds = [s.kind for s in scenarios]
+    assert (kinds.count("chat"), kinds.count("budget"), kinds.count("goal")) == (22, 12, 6)
+    assert len([s for s in scenarios if "abstain" in s.tags and s.expect.abstain]) == 4
+    assert all(s.tags for s in scenarios)
