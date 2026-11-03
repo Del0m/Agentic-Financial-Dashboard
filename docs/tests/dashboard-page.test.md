@@ -64,3 +64,15 @@ npm test -- app/dashboard/page.test.tsx
 **What it does:** Shows the recurring empty-state copy.
 
 **Why it's there:** Covers the recurring integration without coupling it to other cards.
+
+## `shows the Cash forecast card`
+
+**What it does:** Shows the cash forecast card.
+
+**Why it's there:** Checks the forecast integration while preserving the existing workflow.
+
+## `keeps a forecast failure inside its card`
+
+**What it does:** Keeps a forecast failure inside its card.
+
+**Why it's there:** Checks the forecast integration while preserving the existing workflow.

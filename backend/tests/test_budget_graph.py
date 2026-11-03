@@ -57,7 +57,7 @@ def test_full_run_one_time(db, tmp_path):
     [agent_run] = rows(db, AgentRun, user_id=uid)
     assert (agent_run.graph, agent_run.status) == ("budget", "ok") and agent_run.finished_at is not None
     assert set(agent_run.summary_json) == {"period_id", "flags", "causes", "actions", "alert_ids", "unbudgeted",
-                                           "uncategorized", "sync", "llm_failures", "decisions", "as_of", "streams", "signals_error"}
+                                           "uncategorized", "sync", "llm_failures", "decisions", "as_of", "streams", "signals_error", "forecast"}
     gm_line = next(ln for ln in rows(db, BudgetLine) if ln.category == GM)
     assert gm_line.spent_cents > 60000 and gm_line.last_pace is not None
 

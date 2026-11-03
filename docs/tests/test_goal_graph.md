@@ -315,3 +315,5 @@ These came from the final review. `red_user(db)` seeds a user spending $2,000 a 
 **What it does:** A user with no surplus, a standing proposal and an accepted goal. The run withdraws the proposal and the accepted goal stays accepted.
 
 **Why it's there:** Withdrawing supersedes `proposed` rows only.
+
+The autouse `force_measured_surplus` fixture keeps existing exact-number regressions on the measured path; `forecast_surplus` marks separate forecast integration tests.

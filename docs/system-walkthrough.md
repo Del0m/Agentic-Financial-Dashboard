@@ -26,9 +26,9 @@ Evidence: [API registration](../backend/app/main.py), [proxy](../frontend/next.c
 | Advice memory, graph pause/resume, decision service, Budget/Alerts APIs | Backend implemented; TPC-20 in progress | Frontend integration and recovery contract |
 | Daily scheduler | Planned TPC-21 | Due-job policy, user timezone, overlap, missed runs and restart recovery |
 | Period close | Pure adjustment function implemented | TPC-22 orchestration: persist close and open next month atomically |
-| Debt simulation, goal agent, Goals page (TPC-23 to TPC-25) | Implemented: goals are proposed, accepted or dismissed per goal, and accepted goals become budget lines at the next close | No contribution tracking; the surplus is measured from history until TPC-31's forecast |
+| Debt simulation, goal agent, Goals page (TPC-23 to TPC-25) | Implemented: goals are proposed, accepted or dismissed per goal, and accepted goals become budget lines at the next close | No contribution tracking; the surplus uses the forecast with a measured-history fallback |
 | Recurring detection | Implemented: detector, stored streams, keyed signals, API, chat tool and dashboard card | Real Plaid comparison remains unverified |
-| Cash forecast | Planned | Implement forecast, buffer, surplus integration and evaluation |
+| Cash forecast | Implemented: live snapshot, buffer, keyed bill warnings, chart/table, chat and goal surplus | Real balances, live tool choice and viewport review remain unverified |
 | Evaluation | Chat and initial-budget harnesses implemented | Longitudinal budget replay and explicit quality gates |
 
 ## 2. Linking and keeping bank data fresh
@@ -155,3 +155,5 @@ plantuml -tpng -failfast2 docs/diagrams/*.puml
 ```
 
 Recurring signals and cancellation close behavior are implemented; see [the verification handoff](handoffs/2026-11-02-tpc-33-manual-verification.md).
+
+The Cash forecast card, strict buffer setting and shared goal affordability snapshot are implemented. Synthetic replay metrics and environment-limited checks are in [the forecast handoff](handoffs/2026-11-02-tpc-31-manual-verification.md).

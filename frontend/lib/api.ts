@@ -255,7 +255,26 @@ export type GoalRun = {
   attempts: number | null;
   issues: { message: string; index: number | null; kind: string | null }[];
   error: string | null;
+  surplus_source: "forecast" | "measured" | null;
 };
+
+export type ForecastDay = { date: string; expected_cents: number; low_cents: number; high_cents: number };
+export type ForecastEvent = { date: string; label: string; cents: number; kind: "bill" | "card_min" | "income" | "goal" };
+export type Forecast = {
+  today: string; status: "ok" | "no_checking" | "no_history"; start_cents: number | null; buffer_cents: number;
+  horizon_days: number; income: "paycheck" | "none"; days: ForecastDay[]; events: ForecastEvent[];
+  dip: { date: string; days_ahead: number; shortfall_cents: number; bill_label: string | null } | null;
+  monthly_surplus_cents: number | null; surplus_source: "forecast" | "measured"; suggested_extra_cents: number | null;
+  notes: string[];
+};
+
+export function getForecast(days?: number): Promise<Forecast> {
+  return request<Forecast>(`/forecast${days === undefined ? "" : `?days=${days}`}`);
+}
+
+export function setForecastBuffer(cents: number): Promise<{ buffer_cents: number; default_cents: number }> {
+  return request("/forecast/buffer", { method: "PUT", body: JSON.stringify({ buffer_cents: cents }) });
+}
 
 // current is the proposal plus the accepted goals; the server's default is the proposal alone
 export function getGoals(status?: "proposed" | "accepted" | "current"): Promise<Goal[]> {

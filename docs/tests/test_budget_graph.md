@@ -239,3 +239,5 @@ SQLite gives the new run the same id, and it still pauses, with its alert pendin
 **What it does:** A checkpointer whose `delete_thread` raises makes `run_budget` raise, and the run row is `error`.
 
 **Why it's there:** `delete_thread` and the gateway were set up between the run row's insert and the `try`. A failure there left the row `running` until the next server restart, against the "a crash still leaves a run marked error" rule. All setup now sits inside the `try`. The review on #13 found it.
+
+TPC-31 adds the safe `forecast` run-summary field. Static-balance fixtures isolate the cash snapshot; marked forecast tests use moving balances.

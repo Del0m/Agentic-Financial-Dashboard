@@ -169,3 +169,9 @@ Run them from `backend/`:
 **What it does:** Dismissing a proposed goal and an accepted one both give `dismissed`. Dismissing either again, or a completed goal, is a 409.
 
 **Why it's there:** "Stop" on an accepted goal is the same route as "Dismiss"; a finished goal can't be undone.
+
+## `test_run_out_reports_the_surplus_source`
+
+**What it does:** Runs goal generation on the forecast path and checks its public source label.
+
+**Why it's there:** The user needs to know the affordability basis.

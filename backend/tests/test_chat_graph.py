@@ -45,7 +45,7 @@ TOOLS = [get_lucky_number, bad, boom, strict]
 CONFIG = {"configurable": {"thread_id": "t1"}}
 
 
-def test_chat_binds_six_tools_and_the_prompt_names_get_recurring(db, tmp_path):
+def test_chat_binds_seven_tools_and_the_prompt_names_both_forecast_tools(db, tmp_path):
     from app.agents.tools import make_tools
     from app.privacy.gateway import PrivacyGateway
     from tests.factories import add_user
@@ -56,8 +56,8 @@ def test_chat_binds_six_tools_and_the_prompt_names_get_recurring(db, tmp_path):
         tools = make_tools(PrivacyGateway(s, "u1", audit_path=tmp_path / "audit.jsonl"), FakeKB())
         m = ScriptedChatModel(replies=[AIMessage("No subscriptions yet.")])
         run(m, tools=tools)
-    assert len(m.tools_seen[0]) == 6 and "get_recurring" in m.tools_seen[0]
-    assert "get_recurring" in m.seen[0][0].content
+    assert len(m.tools_seen[0]) == 7 and {"get_recurring", "get_cash_forecast"} <= set(m.tools_seen[0])
+    assert "get_recurring" in m.seen[0][0].content and "get_cash_forecast" in m.seen[0][0].content
 
 
 def test_get_recurring_returns_scrubbed_rows(db, tmp_path):

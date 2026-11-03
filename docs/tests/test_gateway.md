@@ -343,3 +343,15 @@ The graph can supply an explicit debt snapshot to the goals context; default cal
 **What it does:** Facts with `committed_cents=58300` give `already_committed` of 583.0 in the goals payload. Facts with the default leave the key out.
 
 **Why it's there:** The model should know why the cap is smaller than the surplus suggests, and a payload with a zero for a user with no accepted goals is noise (TPC-25).
+
+## `test_goal_context_names_its_surplus_basis`
+
+**What it does:** Checks measured and forecast basis labels, with the forecast accounting assumption.
+
+**Why it's there:** The user needs to know the affordability basis.
+
+## `test_cash_flow_context_has_no_account_names_or_balances`
+
+**What it does:** Cash flow context has no account names or balances.
+
+**Why it's there:** Pins the forecast signal guard, privacy boundary or reversible migration behavior.

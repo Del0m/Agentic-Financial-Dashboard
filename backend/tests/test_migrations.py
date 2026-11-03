@@ -95,9 +95,22 @@ def test_recurring_streams_upgrade_and_downgrade(tmp_path, monkeypatch):
     assert {"stream_id", "signal_key"} <= {c["name"] for c in inspector.get_columns("alerts")}
     assert "ix_alerts_user_signal_key" in {i["name"] for i in inspector.get_indexes("alerts")}
     engine.dispose()
+
     command.downgrade(cfg, "a3d9e1b7c2f5")
     engine = sa.create_engine(url)
     inspector = sa.inspect(engine)
     assert "recurring_streams" not in inspector.get_table_names()
     assert not {"stream_id", "signal_key"} & {c["name"] for c in inspector.get_columns("alerts")}
+    engine.dispose()
+
+
+def test_low_balance_signal_upgrade_and_downgrade(tmp_path, monkeypatch):
+    url=f"sqlite:///{tmp_path / 'forecast.db'}"
+    monkeypatch.setattr(db_session,'DATABASE_URL',url)
+    cfg=alembic_config();command.upgrade(cfg,'head')
+    engine=sa.create_engine(url)
+    assert {'signal_cents','signal_days'} <= {c['name'] for c in sa.inspect(engine).get_columns('alerts')}
+    engine.dispose();command.downgrade(cfg,'c4e8f2a1b6d3')
+    engine=sa.create_engine(url)
+    assert not {'signal_cents','signal_days'} & {c['name'] for c in sa.inspect(engine).get_columns('alerts')}
     engine.dispose()

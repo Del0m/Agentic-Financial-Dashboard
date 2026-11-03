@@ -154,4 +154,12 @@ flowchart LR
     Pause --> Done
 ```
 
-Cancellation suggestions are ordinary pending alerts. Accepted suggestions mute future signals and reduce the next category line once at close; pending suggestions do not expire. Budget checkpoints save only on exit after signal payloads and prompt facts are cleared. CLI report details remain in process memory. The recurring API, dashboard and sixth chat tool are implemented; the cash forecast remains the next step.
+Cancellation suggestions are ordinary pending alerts. Accepted suggestions mute future signals and reduce the next category line once at close; pending suggestions do not expire. Budget checkpoints save only on exit after signal payloads and prompt facts are cleared. CLI report details remain in process memory. The recurring API, dashboard and sixth chat tool are implemented; the cash forecast is implemented below.
+
+## Cash forecast path (implemented)
+
+Both daily budget routes now run `detect_recurring -> forecast_cash` before overspend or signal decisions. Forecasting is deterministic and adds no model calls on a quiet day. It shares a read-only snapshot with the forecast API and Goal Agent: checking balances, posted checking-only everyday spending, calendar-projected streams, card minimums and accepted goals. The first three ranked signals share the model-call cap; the remaining signals still alert with code-written text.
+
+Low-balance keys identify a bill and dip date. Repeats require +25% and +$20, approaching within two days from three or more days away, or a new dip date beyond the three-day sliding tolerance. A bill remains the attributed cause for a crossing within five days, unless income intervenes, including when it just posted. Neither a buffer change nor a dismissal overrides those repeat rules. Savings and delay-spend suggestions are proposals only, and no paycheck means alert only.
+
+Checkpoint writes filter transient signals and prompt facts even on exceptions; summaries retain dates, ids and flow cents. Goals report forecast versus measured affordability, and the cap uses gross surplus before subtracting commitments once. The replay records absolute error, range coverage and the flat-balance baseline rather than claiming universal interval coverage.

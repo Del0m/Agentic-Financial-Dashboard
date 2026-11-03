@@ -133,3 +133,9 @@ npm test -- app/goals/page.test.tsx
 **What it does:** When `GET /goals` fails, the server's message is shown.
 
 **Why it's there:** The page must not sit on "Loading…" forever.
+
+## `says which surplus a run used: %s`
+
+**What it does:** Says which surplus a run used: %s.
+
+**Why it's there:** Checks the forecast integration while preserving the existing workflow.

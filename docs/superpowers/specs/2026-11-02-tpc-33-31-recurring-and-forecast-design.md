@@ -4,7 +4,7 @@ Date: 2026-11-02. Status: **approved, nothing implemented.** The user approved t
 
 Tickets: [TPC-33](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-33) (recurring streams and alerts) and [TPC-31](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-31) (forecast and surplus), both M3. TPC-31 depends on TPC-33. Two plans, two PRs: [TPC-33](../plans/2026-11-02-tpc-33-recurring-streams.md) on branch `TPC-33` (stacked on `TPC-25`), then [TPC-31](../plans/2026-11-02-tpc-31-cash-flow-forecast.md). Evidence is in the four [investigation handoffs](../../handoffs/2026-11-02-tpc-33-31-investigation-index.md); "h1" to "h4" below mean investigations 1 to 4.
 
-Status: recurring implementation complete through Task 8; forecast implementation pending.
+Status: recurring and forecast implementations complete through Task 8; environment-limited checks are recorded in their verification handoffs.
 
 ## Departures from the tickets (approve before anything is built)
 
@@ -136,3 +136,7 @@ Two cards between Goals and Transactions on `app/dashboard/page.tsx`, each with 
 | 21 goal tests assert measured numbers | Fixture keeps them on the measured path (conflicts table) |
 | Jira closes a ticket when a merged PR names it | The index handoff; a PR names only the ticket it completes |
 | Subscription false pace flags remain | Decision 6 |
+
+## Implementation seam findings
+
+The approved growth and urgency repeat rules take precedence over the later one-alert-through-payday test outline: the planted October run has an initial Landlord warning, one qualifying growth warning and one urgency reminder. A crossing within five days of a bill retains that bill as cause until income intervenes, including after the bill posts; this prevents everyday-key duplicates from a one-day band shift. Goal events use the first calendar paycheck, not the latest one in a biweekly series. Budget checkpoint filtering protects writes on errors as well as pauses.

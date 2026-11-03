@@ -193,6 +193,24 @@ The API has `PUT /budget/style`, `PATCH /budget/lines/{id}` (rename a line, or m
 
 The dashboard's **Paying off your debts** card compares the two usual ways to pay off debt: **avalanche** (highest APR first) and **snowball** (smallest balance first). Type an extra amount per month and it shows each method's months to debt-free, total interest, the month each debt is paid off, and what the extra saves. In chat, ask "How fast am I debt-free if I add $200 a month?" and the answer comes from the same simulation. It charges interest monthly at APR/12 and holds minimum payments at today's amounts, so it's for comparing plans, not predicting a statement. Debts with no APR or minimum on file are listed and left out. The API is `POST /debt-plan`.
 
+## Cash forecast
+
+The dashboard's Cash forecast card shows the expected checking balance and a typical range, the buffer line, scheduled bill markers, and a daily table. Change **Keep at least $** and Save to redraw it. `GET /forecast?days=7` reads a live snapshot; `PUT /forecast/buffer` accepts integer cents from $0 to $10,000. Chat answers "Will I run short before payday?" with `get_cash_forecast`, the seventh tool.
+
+Daily runs warn when the low path crosses the buffer within 14 days. The alert names the bill. A warning repeats only for a sufficiently deeper shortfall, the one-time approach within two days, or a genuinely new dip date; changing the buffer never dismisses an existing alert. Proposals to delay spending or move savings do not move money. With no paycheck pattern, the app assumes no income and only alerts.
+
+Monthly surplus comes from normalized income minus bills, uncovered card minimums, accepted goals and average everyday spending; it is independent of the cash balance and buffer. Goals use this figure when supported, otherwise the measured three-month fallback, and display the source. The debt planner shows a suggested extra without entering it for you.
+
+```bash
+cd backend
+../venv/bin/python scripts/seed_budget_user.py --profile forecast-dip --replace --start 2026-09-30
+DEV_USER_EMAIL=forecast-dip@eval.local ENABLE_ADMIN=1 ../venv/bin/uvicorn app.main:app
+# another terminal, same disposable DATABASE_URL:
+../venv/bin/python scripts/simulate.py --user budget-forecast-dip --days 12
+```
+
+See the [forecast verification handoff](docs/handoffs/2026-11-02-tpc-31-manual-verification.md) for isolated setup. Offline replay: `venv/bin/python eval/forecast_accuracy.py`. On 79 synthetic dates: MAE $7.31 at d+7 and $10.07 at d+14, coverage 68.4% / 79.7%, Landlord dip named 14 days ahead. Real Plaid balances and live seven-tool choice remain unverified.
+
 ## Recurring charges
 
 The dashboard lists stored recurring charges and income between Goals and Transactions. The daily run detects posted transactions over 180 days, raises new-subscription, price-increase and income-change alerts, and keeps stopped streams in a muted group. Chat can answer "What subscriptions do I have?" with `get_recurring`; `GET /recurring` reads the same stored data without running detection.

@@ -9,7 +9,7 @@ component "Implemented scheduler (TPC-21)\nuser + timezone + due date\nretry / c
 component "Existing sync service\ntransactions + balances + debts" as sync
 component "Existing budget graph\nfit / pace / diagnose / decide" as budget
 component "Implemented recurring detector\n180-day transaction window" as recurring
-component "PLANNED cash forecast\nchecking cash + scheduled bills\n+ income + everyday spending" as forecast
+component "Implemented cash forecast\nchecking cash + scheduled bills\n+ income + everyday spending" as forecast
 component "Implemented debt-payoff planner\nminimums + APR + extra amount" as payoff
 component "Goal graph\npropose affordable goals,\nuser accepts or dismisses each\n(interrupt, TPC-25)" as goal
 component "Existing approval core + API\nalerts and goals" as approval
@@ -17,9 +17,9 @@ component "Implemented period-close service\nexisting pure close maths\n+ DB rol
 schedule ..> sync : daily
 sync --> budget : current balances / transactions
 sync --> recurring
-recurring ..> forecast : future inflows / outflows
+recurring --> forecast : future inflows / outflows
 recurring --> budget : new / changed streams
-forecast ..> payoff : monthly surplus
+forecast --> payoff : monthly surplus
 payoff ..> goal : computed plans
 goal --> approval : proposals
 budget --> approval : proposed next limit

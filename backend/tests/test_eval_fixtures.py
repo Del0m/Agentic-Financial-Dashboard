@@ -121,7 +121,7 @@ def test_only_unknown_id_rejected(tmp_path):
 
 
 def test_committed_scenarios_load():
-    assert len(load_scenarios(REPO / "eval" / "scenarios")) == 7
+    assert len(load_scenarios(REPO / "eval" / "scenarios")) == 8
 
 
 # the payoff scenario's facts are the planner's numbers (tpc-32); months and interest don't depend on the start date

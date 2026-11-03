@@ -34,3 +34,9 @@ Run them from `backend/`:
 **What it does:** Upgrades a SQLite file to `c4e8f2a1b6d3` and checks for `recurring_streams`, `alerts.stream_id`, `alerts.signal_key` and its index. Downgrades, and checks they're gone.
 
 **Why it's there:** `alerts` gains a foreign key, which SQLite can only do in batch mode, and the test suite builds its schema from the models, so it wouldn't catch a broken migration.
+
+## `test_low_balance_signal_upgrade_and_downgrade`
+
+**What it does:** Low balance signal upgrade and downgrade.
+
+**Why it's there:** Pins the forecast signal guard, privacy boundary or reversible migration behavior.

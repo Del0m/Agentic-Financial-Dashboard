@@ -60,8 +60,8 @@ function Column({ plan, base, extraCents, cheapest }: {
 }
 
 // debtsKey changes when the dashboard's debts do (a new link, a sync), so the plan is asked for again
-export default function DebtPlanCompare({ debtsKey = "", fetchPlan = debtPlan }: {
-  debtsKey?: string; fetchPlan?: typeof debtPlan;
+export default function DebtPlanCompare({ debtsKey = "", fetchPlan = debtPlan, suggestedExtraCents }: {
+  debtsKey?: string; fetchPlan?: typeof debtPlan; suggestedExtraCents?: number | null;
 }) {
   const [dollars, setDollars] = useState("0");
   const [result, setResult] = useState<{ extraCents: number; plan: DebtPlan } | null>(null);
@@ -95,6 +95,7 @@ export default function DebtPlanCompare({ debtsKey = "", fetchPlan = debtPlan }:
           onChange={(e) => setDollars(e.target.value)}
           className="w-28 rounded border border-black/20 bg-transparent px-2 py-1 dark:border-white/25" />
       </label>
+      {suggestedExtraCents != null && <p className="text-sm text-neutral-500">You could add about {formatCents(suggestedExtraCents)}.</p>}
       {error && <p className="text-sm text-red-600 dark:text-red-400">Couldn&apos;t plan your payoff: {error}</p>}
       {!plan ? (
         !error && <p className="text-sm text-neutral-500">Loading…</p>

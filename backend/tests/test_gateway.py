@@ -649,3 +649,26 @@ def test_goals_context_reports_committed_money_only_when_some(db, tmp_path):
     assert d["already_committed"] == 583.0
     _, d, _ = goals_context(db, tmp_path, goal_facts())
     assert "already_committed" not in d
+
+
+@pytest.mark.parametrize("source", ["forecast", "measured"])
+def test_goal_context_names_its_surplus_basis(db, tmp_path, source):
+    from dataclasses import replace
+    seed_debts(db)
+    _, d, _ = goals_context(db, tmp_path, replace(goal_facts(), surplus_source=source))
+    assert d["surplus_basis"] == source
+    if source == "forecast":
+        assert "accepted goals and everyday spending" in d["assumptions"]
+
+
+def test_cash_flow_context_has_no_account_names_or_balances(db, tmp_path):
+    from app.privacy.gateway import CASH_FIELDS
+    uid = seed_pii_user(db)
+    signal = Signal("low_balance", "private", None, None, {"date": "2026-10-13", "days_ahead": 3,
+        "shortfall_cents": 5000, "buffer_cents": 10000, "bill": "Landlord 12345", "starting_cents": 424242,
+        "account_name": "Secret Account", "account_balance": 424242, "move_cents": 15000})
+    with db() as s:
+        text = PrivacyGateway(s, uid, audit_path=tmp_path / "audit.jsonl").build_context("cash_flow", signal=signal)
+    d = data(text)
+    assert set(d) == set(CASH_FIELDS) and d["bill"] == "Landlord [number]" and d["starting_available"] == 4242
+    assert "Secret Account" not in text and "424242" not in text and "12345" not in text

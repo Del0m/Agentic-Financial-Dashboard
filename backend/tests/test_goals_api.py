@@ -65,6 +65,12 @@ def run_of(api, run_id):
     return api.client.get(f"/goals/runs/{run_id}").json()
 
 
+@pytest.mark.forecast_surplus
+def test_run_out_reports_the_surplus_source(api):
+    rid = generate(api, g("savings", 1000))
+    assert run_of(api, rid)["surplus_source"] == "forecast"
+
+
 def status_of(api, goal_id):
     with api.db() as s:
         return s.get(Goal, goal_id).status

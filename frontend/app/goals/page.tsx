@@ -16,7 +16,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // what a settled run says; failures also list the validator's reasons under it
-type Result = { text: string; issues: string[] };
+type Result = { text: string; issues: string[]; source?: GoalRun["surplus_source"] };
 
 function resultOf(run: GoalRun): Result {
   const say = (text: string): Result => ({ text, issues: [] });
@@ -44,7 +44,7 @@ function resultOf(run: GoalRun): Result {
       if (run.goal_ids.length) return say(`${plural(run.goal_ids.length, "goal")} proposed.`);
       switch (run.outcome) {
         case "no_surplus":
-          return say("No money left over in a typical month, so there's nothing to put toward a goal.");
+          return say("No money left over, so there's nothing to put toward a goal.");
         case "nothing_offered":
           return say("Your preferences and accepted goals already cover every kind of goal on offer.");
         case "no_affordable_goals":
@@ -107,7 +107,8 @@ export default function GoalsPage() {
         if (run.status !== "running") break;
       }
       if (!mounted.current) return;
-      setResult(run && run.status !== "running" ? resultOf(run) : { text: "Still running. Check back later.", issues: [] });
+      setResult(run && run.status !== "running" ? { ...resultOf(run), source: run.surplus_source }
+        : { text: "Still running. Check back later.", issues: [] });
     } catch (err) {
       setResult({ text: errorMessage(err), issues: [] });
     } finally {
@@ -152,6 +153,8 @@ export default function GoalsPage() {
             {generating ? "Generating…" : "Generate goals"}
           </button>
           {result && <p role="status" className="text-sm">{result.text}</p>}
+          {result?.source && <p className="text-sm text-neutral-500">{result.source === "forecast"
+            ? "Based on your cash-flow forecast." : "Based on your last 3 months (no paycheck pattern found yet)."}</p>}
         </div>
         {result && result.issues.length > 0 && (
           <ul className="list-disc space-y-1 pl-5 text-sm">
