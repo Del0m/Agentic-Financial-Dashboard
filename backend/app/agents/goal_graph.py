@@ -19,7 +19,7 @@ from app.agents.goal_llm import GoalProposal, goal_messages
 from app.agents.llm import get_chat_model
 from app.budget_engine.fit import HISTORY_MONTHS
 from app.budget_engine.goals import (MIN_MONTHLY_CENTS, GoalAllocation, GoalFacts, GoalIssue, GoalPlan, build_goal,
-                                     card_minimums, committed_cents, emergency_gap, monthly_surplus, normalize_goal,
+                                     card_minimums, committed_cents, emergency_gap, goal_cap, monthly_surplus, normalize_goal,
                                      offered_kinds, validate_allocations, validate_plans)
 from app.budget_engine.payoff import Debt
 from app.budget_engine.groups import NEEDS_DEFAULT
@@ -28,6 +28,7 @@ from app.budget_service.daily import running_elsewhere, sim_today, user_lock
 from app.budget_service.debts import load_debts, incomplete_card_obligations
 from app.budget_service.goal_lines import committed_goals, expire_paused_runs
 from app.budget_service.goal_prefs import set_goal_prefs, user_goal_prefs
+from app.budget_service.forecast_service import snapshot
 from app.budget_service.initialize import load_txns, history_start
 from app.db.models import Account, AgentRun, BudgetLine, BudgetPeriod, Goal, User, utcnow
 from app.privacy.gateway import PrivacyGateway
@@ -40,6 +41,7 @@ logger = logging.getLogger(__name__)
 # waits, and its goals can still be decided in the app
 
 MAX_GOAL_CALLS = 2
+USE_FORECAST = True
 
 
 class GoalState(TypedDict, total=False):
@@ -69,6 +71,11 @@ class GoalState(TypedDict, total=False):
     validation_history: list[dict]
     decisions: dict             # goal id -> the status its row ended on
     waiting_for: list[int]
+    surplus_source: str
+    surplus_fallback_reason: Optional[str]
+    forecast_surplus_cents: Optional[int]
+    measured_surplus_cents: Optional[int]
+    forecast_as_of: str
 
 
 # the categories in the open budget's needs lines, or the default ones for a user with no budget yet
@@ -129,9 +136,15 @@ def build_goal_graph(session_factory, *, model: Optional[BaseChatModel], gateway
             minimums = card_minimums(debts)
             boundary = history_start(s, user_id, today)
             measured = monthly_surplus(txns, today, history_start=boundary)
-            surplus = None if measured is None else measured - minimums
+            measured = None if measured is None else measured - minimums
+            snap = snapshot(s, user_id, today) if USE_FORECAST else None
+            source = "forecast" if snap is not None and snap.result.surplus_fallback is None else "measured"
+            surplus = snap.result.monthly_surplus_cents if source == "forecast" else measured
+            basis = {"surplus_source": source, "surplus_fallback_reason": snap.result.surplus_fallback if snap else None,
+                     "forecast_surplus_cents": snap.result.monthly_surplus_cents if snap else None,
+                     "measured_surplus_cents": measured, "forecast_as_of": today.isoformat()}
             if surplus is None or surplus <= 0:
-                return {"status": "no_surplus", "reason": "no_surplus", "surplus_cents": surplus,
+                return {**basis, "status": "no_surplus", "reason": "no_surplus", "surplus_cents": surplus,
                         "card_minimums_cents": minimums}
             prefs = user_goal_prefs(s, user_id)
             committed = committed_goals(s, user_id)
@@ -140,8 +153,8 @@ def build_goal_graph(session_factory, *, model: Optional[BaseChatModel], gateway
         # outgrow it (the surplus fell), and then there's nothing left to offer
         offered = offered_kinds(debts, gap, (*prefs.skip_kinds, *(c.kind for c in committed)), start=start)
         taken = committed_cents(committed)
-        cap = max(round_cents(Decimal(surplus) * Decimal(str(prefs.max_share))) - taken, 0)
-        facts = {"surplus_cents": surplus, "card_minimums_cents": minimums, "cap_cents": cap, "gap_cents": gap,
+        cap = goal_cap(surplus, taken, prefs.max_share, net_of_goals=source == "forecast")
+        facts = {**basis, "surplus_cents": surplus, "card_minimums_cents": minimums, "cap_cents": cap, "gap_cents": gap,
                  "offered": offered, "committed_cents": taken, "committed_ids": [c.id for c in committed],
                  "start": start.isoformat(), "debts": debts}
         if not offered:
@@ -149,7 +162,7 @@ def build_goal_graph(session_factory, *, model: Optional[BaseChatModel], gateway
         if cap < MIN_MONTHLY_CENTS:
             return {**facts, "status": "no_affordable_goals", "reason": "cap_below_minimum"}
         context = gateway.build_context("goals", goal_facts=GoalFacts(
-            surplus, cap, tuple(offered), gap, start, prefs.protected_categories, prefs.note, taken),
+            surplus, cap, tuple(offered), gap, start, prefs.protected_categories, prefs.note, taken, source),
             goal_debts=debts)
         return {**facts, "context": context}
 
@@ -276,7 +289,9 @@ def build_goal_graph(session_factory, *, model: Optional[BaseChatModel], gateway
 
 
 def _summary(result: dict) -> dict:
-    return {"outcome": result["status"], "reason": result.get("reason"),
+    return {**{k: result.get(k) for k in ("surplus_source", "surplus_fallback_reason", "forecast_surplus_cents",
+                                         "measured_surplus_cents", "forecast_as_of")},
+            "outcome": result["status"], "reason": result.get("reason"),
             "surplus_cents": result.get("surplus_cents"), "cap_cents": result.get("cap_cents"),
             "card_minimums_cents": result.get("card_minimums_cents", 0),
             "gap_cents": result.get("gap_cents"), "goal_ids": result.get("goal_ids", []),

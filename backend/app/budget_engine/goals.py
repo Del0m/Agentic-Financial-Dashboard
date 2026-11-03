@@ -89,6 +89,7 @@ class GoalFacts:
     protected_categories: tuple[str, ...] = ()
     note: Optional[str] = None
     committed_cents: int = 0      # monthly money accepted goals already take; the cap is net of it
+    surplus_source: str = "measured"
 
 
 # an accepted goal as the budget sees it (tpc-25): a line from its start month through the month of its target date

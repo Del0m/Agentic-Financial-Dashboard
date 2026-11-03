@@ -22,6 +22,13 @@ from app.db.session import get_session
 from app.main import app
 
 
+@pytest.fixture(autouse=True)
+def force_measured_surplus(request, monkeypatch):
+    from app.agents import goal_graph
+    if request.node.get_closest_marker("forecast_surplus") is None:
+        monkeypatch.setattr(goal_graph, "USE_FORECAST", False)
+
+
 # every test gets its own checkpoint files: code that opens config's path (the budget cli, the routes' default
 # hooks) must never read or delete threads in the developer's backend/data/*.db
 @pytest.fixture(autouse=True)

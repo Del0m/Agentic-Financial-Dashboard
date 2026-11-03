@@ -68,6 +68,7 @@ class GoalRunOut(BaseModel):
     attempts: Optional[int] = None
     issues: list[IssueOut]
     error: Optional[str] = None
+    surplus_source: Optional[str] = None
 
 
 def _out(g: Goal) -> GoalOut:
@@ -157,7 +158,7 @@ def get_run(run_id: int, user: User = Depends(get_current_user)):
               for i in summary.get("validation_issues") or []]
     return GoalRunOut(run_id=run_id, status=status, outcome=summary.get("outcome"), reason=summary.get("reason"),
                       goal_ids=goal_ids, waiting_for=waiting, attempts=summary.get("attempts"), issues=issues,
-                      error=summary.get("error"))
+                      error=summary.get("error"), surplus_source=summary.get("surplus_source"))
 
 
 def _decide(goal_id: int, decision: Decision, user: User) -> GoalOut:

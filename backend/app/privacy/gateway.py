@@ -234,11 +234,16 @@ class PrivacyGateway:
     def _goals(self, facts: GoalFacts, debts: Optional[Sequence[Debt]] = None) -> dict:
         data = {
             "monthly_surplus": _dollars(facts.surplus_cents), "cap": _dollars(facts.cap_cents),
+            "surplus_basis": facts.surplus_source,
             "offered_kinds": list(facts.offered), "emergency_fund_gap": _dollars(facts.gap_cents),
             "protected_categories": list(facts.protected_categories),
             # free text can name anyone
             "note": scrub_note(facts.note), "assumptions": GOAL_ASSUMPTIONS, "debts": [],
         }
+        if facts.surplus_source == "forecast":
+            data["assumptions"] = ("monthly_surplus is the forecast's average inflow minus scheduled bills, accepted goals "
+                                   "and everyday spending. Debt plans charge interest monthly at APR/12 and hold minimum "
+                                   "payments at today's amounts.")
         if facts.committed_cents:
             data["already_committed"] = _dollars(facts.committed_cents)
         if "debt_payoff" not in facts.offered:

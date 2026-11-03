@@ -649,3 +649,13 @@ def test_goals_context_reports_committed_money_only_when_some(db, tmp_path):
     assert d["already_committed"] == 583.0
     _, d, _ = goals_context(db, tmp_path, goal_facts())
     assert "already_committed" not in d
+
+
+@pytest.mark.parametrize("source", ["forecast", "measured"])
+def test_goal_context_names_its_surplus_basis(db, tmp_path, source):
+    from dataclasses import replace
+    seed_debts(db)
+    _, d, _ = goals_context(db, tmp_path, replace(goal_facts(), surplus_source=source))
+    assert d["surplus_basis"] == source
+    if source == "forecast":
+        assert "accepted goals and everyday spending" in d["assumptions"]
