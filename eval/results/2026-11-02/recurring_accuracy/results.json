@@ -1,0 +1,664 @@
+{
+  "git_commit": "5cb88d87169aa00be54e3f5ff106fc9daa742f90",
+  "profiles": [
+    {
+      "id": "steady",
+      "as_of": "2026-08-01",
+      "planted": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ]
+      ],
+      "detected": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ]
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positives": [],
+      "misses": []
+    },
+    {
+      "id": "vacation",
+      "as_of": "2026-08-01",
+      "planted": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ]
+      ],
+      "detected": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ]
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positives": [],
+      "misses": []
+    },
+    {
+      "id": "early-rent",
+      "as_of": "2026-08-01",
+      "planted": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ]
+      ],
+      "detected": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ]
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positives": [],
+      "misses": []
+    },
+    {
+      "id": "rising",
+      "as_of": "2026-08-01",
+      "planted": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ]
+      ],
+      "detected": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ]
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positives": [],
+      "misses": []
+    },
+    {
+      "id": "occasional",
+      "as_of": "2026-08-01",
+      "planted": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ]
+      ],
+      "detected": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ]
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positives": [],
+      "misses": []
+    },
+    {
+      "id": "overspend-one-time",
+      "as_of": "2026-10-20",
+      "planted": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ]
+      ],
+      "detected": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ]
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positives": [],
+      "misses": []
+    },
+    {
+      "id": "overspend-recurring",
+      "as_of": "2026-10-20",
+      "planted": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "barber",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ]
+      ],
+      "detected": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "barber",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ]
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positives": [],
+      "misses": []
+    },
+    {
+      "id": "overspend-seasonal",
+      "as_of": "2026-12-15",
+      "planted": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ]
+      ],
+      "detected": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ]
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positives": [],
+      "misses": []
+    },
+    {
+      "id": "overspend-known-merchant",
+      "as_of": "2026-10-20",
+      "planted": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "megamart",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ]
+      ],
+      "detected": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "megamart",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ]
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positives": [],
+      "misses": []
+    },
+    {
+      "id": "goals-card-24",
+      "as_of": "2026-11-02",
+      "planted": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "platinum card",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ],
+        [
+          "out",
+          "student loan",
+          "monthly"
+        ]
+      ],
+      "detected": [
+        [
+          "in",
+          "employer",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "platinum card",
+          "monthly"
+        ],
+        [
+          "out",
+          "savings",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ],
+        [
+          "out",
+          "student loan",
+          "monthly"
+        ]
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positives": [],
+      "misses": []
+    },
+    {
+      "id": "recurring-planted",
+      "as_of": "2026-10-25",
+      "planted": [
+        [
+          "in",
+          "employer",
+          "biweekly"
+        ],
+        [
+          "out",
+          "clipflix",
+          "monthly"
+        ],
+        [
+          "out",
+          "fitclub gym",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "newflix",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ]
+      ],
+      "detected": [
+        [
+          "in",
+          "employer",
+          "biweekly"
+        ],
+        [
+          "out",
+          "clipflix",
+          "monthly"
+        ],
+        [
+          "out",
+          "fitclub gym",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "newflix",
+          "monthly"
+        ],
+        [
+          "out",
+          "streamly",
+          "monthly"
+        ]
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positives": [],
+      "misses": []
+    },
+    {
+      "id": "recurring-noisy",
+      "as_of": "2026-10-20",
+      "planted": [
+        [
+          "in",
+          "employer",
+          "biweekly"
+        ],
+        [
+          "out",
+          "fitclub gym",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "mobile co",
+          "monthly"
+        ]
+      ],
+      "detected": [
+        [
+          "in",
+          "employer",
+          "biweekly"
+        ],
+        [
+          "out",
+          "fitclub gym",
+          "monthly"
+        ],
+        [
+          "out",
+          "landlord",
+          "monthly"
+        ],
+        [
+          "out",
+          "mobile co",
+          "monthly"
+        ]
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positives": [],
+      "misses": []
+    }
+  ],
+  "pooled": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "noisy_everyday_share": 1.0
+  },
+  "next_date": {
+    "cases": 372,
+    "within_1_day": 313,
+    "max_error": 2,
+    "by_error": {
+      "0": 241,
+      "1": 72,
+      "2": 59
+    }
+  }
+}
