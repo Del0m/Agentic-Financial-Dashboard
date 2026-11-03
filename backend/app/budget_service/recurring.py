@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.budget_engine.recurring import INCOME, METERED_UTILITIES, RTxn, Stream, detect
 from app.budget_engine.txns import Txn, spending
 from app.budget_service.initialize import category_rules, history_start, resolve_category
-from app.db.models import Alert, RecurringStream, Transaction
+from app.db.models import AdviceLog, AgentRun, Alert, RecurringStream, Transaction
 
 # the detector's streams, stored and compared with the previous run (tpc-33). nothing here commits; the caller does
 
@@ -47,6 +47,30 @@ def muted_stream_ids(session: Session, user_id: str) -> set[int]:
     return set(session.scalars(select(Alert.stream_id).where(
         Alert.user_id == user_id, Alert.action == "suggest_cancel", Alert.status == "accepted",
         Alert.stream_id.is_not(None))))
+
+
+def recurring_snapshot(session: Session, user_id: str) -> dict:
+    rows = stored_streams(session, user_id)
+    summaries = session.scalars(select(AgentRun.summary_json).where(
+        AgentRun.user_id == user_id, AgentRun.graph == "budget").order_by(AgentRun.id.desc()))
+    as_of = next((date.fromisoformat(s["as_of"]) for s in summaries if s and s.get("as_of")),
+                 max((r.first_seen_date for r in rows), default=None))
+    changes = {}
+    if as_of is not None:
+        for alert, summary in session.execute(select(Alert, AgentRun.summary_json).outerjoin(
+                AdviceLog, AdviceLog.alert_id == Alert.id).outerjoin(AgentRun, AdviceLog.run_id == AgentRun.id).where(
+                Alert.user_id == user_id, Alert.stream_id.in_([r.id for r in rows]),
+                Alert.kind.in_(("new_subscription", "price_increase", "income_change"))).order_by(Alert.id)):
+            day = date.fromisoformat(summary["as_of"]) if summary and summary.get("as_of") else alert.created_at.date()
+            if as_of - timedelta(days=30) <= day <= as_of:
+                changes[alert.stream_id] = "new" if alert.kind == "new_subscription" else alert.kind
+    streams = [{"id": r.id, "direction": r.direction, "label": "Income" if r.direction == "in" else r.merchant_name,
+                "frequency": r.frequency, "amount_kind": "varies" if r.amount_varies else "fixed",
+                "typical_cents": r.typical_cents, "last_cents": r.last_cents, "last_date": r.last_date,
+                "next_date": r.next_date, "status": r.status, "change": changes.get(r.id),
+                "previous_cents": r.previous_cents, "first_seen": r.first_seen_date} for r in rows]
+    streams.sort(key=lambda r: (2 if r["status"] == "stale" else 0 if r["change"] else 1, r["next_date"], r["id"]))
+    return {"as_of": as_of, "streams": streams}
 
 
 # income, transfers, savings and card payments aren't things a user subscribes to

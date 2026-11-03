@@ -51,6 +51,9 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
     def get_debts() -> str:
         return gateway.build_context("debts")
 
+    def get_recurring() -> str:
+        return gateway.build_context("recurring")
+
     def get_spending(category: Optional[str] = None, start_date: Optional[str] = None,
                      end_date: Optional[str] = None) -> str:
         start, end = _parse_date("start_date", _blank(start_date)), _parse_date("end_date", _blank(end_date))
@@ -124,5 +127,10 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
                         "long until debt-free, what paying more changes, or avalanche vs snowball. Quote its "
                         "numbers exactly: give the months to debt-free and the total interest, then what the "
                         "extra saves.",
+        ),
+        StructuredTool.from_function(
+            get_recurring, name="get_recurring",
+            description="List the user's recurring charges, subscriptions and paycheck patterns. "
+                        "Use for what subscriptions they have or how much they pay monthly. Amounts are in dollars.",
         ),
     ]

@@ -129,7 +129,19 @@ class PrivacyGateway:
             self._goal_cap_cents = goal_facts.cap_cents
         return prompt
 
-    def _recurring(self, signal: Signal) -> dict:
+    def _recurring(self, signal: Optional[Signal]) -> dict:
+        if signal is None:
+            from ..budget_service.recurring import stored_streams
+            streams = []
+            for row in stored_streams(self._session, self._user_id):
+                if row.direction == "in":
+                    streams.append({"category": "INCOME", "frequency": row.frequency, "typical": _dollars(row.typical_cents)})
+                else:
+                    streams.append({"merchant": scrub_merchant(row.merchant_name), "category": row.category,
+                                    "frequency": row.frequency, "typical": _dollars(row.typical_cents),
+                                    "last": _dollars(row.last_cents), "previous": _dollars(row.previous_cents),
+                                    "next_date": row.next_date})
+            return {"streams": streams}
         n = signal.numbers
         if n.get("direction") == "in":
             row = {"category": "INCOME", "frequency": n["frequency"], "typical": _dollars(n["typical_cents"])}

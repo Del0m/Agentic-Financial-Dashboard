@@ -196,4 +196,8 @@ def seed(session: Session, scenario: Scenario, today: date) -> str:
         add_txn(session, accounts[t["account"]], _cents(t["amount"]), t["category"],
                 merchant=t.get("merchant", "Shop"), day=today - timedelta(days=t["days_ago"]))
     session.commit()
+    if "get_recurring" in scenario.expect.tools:
+        from app.budget_service.recurring import refresh_streams
+        refresh_streams(session, user_id, today, None)
+        session.commit()
     return user_id
