@@ -21,6 +21,11 @@ MIN_MONTHLY_CENTS = 100
 MAX_MONTHLY_CENTS = 100_000_000
 
 
+def goal_cap(surplus_cents: int, committed_cents: int, max_share: float, *, net_of_goals: bool) -> int:
+    gross = surplus_cents + committed_cents if net_of_goals else surplus_cents
+    return max(round_cents(Decimal(gross) * Decimal(str(max_share))) - committed_cents, 0)
+
+
 @dataclass(frozen=True)
 class GoalAllocation:
     kind: GoalKind
