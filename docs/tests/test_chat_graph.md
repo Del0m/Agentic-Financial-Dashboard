@@ -154,9 +154,9 @@ Run them from `backend/`:
 
 **Why it's there:** It proves the graph works with real tool calling on `llama3.1:8b`, not just with the fake. It replaces the `call_with_tools` live test from TPC-12. It passed on 2026-10-26 on `llama3.1:8b`, and again after the chat model became `qwen2.5:14b`.
 
-## `test_chat_binds_six_tools_and_the_prompt_names_get_recurring`
+## `test_chat_binds_seven_tools_and_the_prompt_names_both_forecast_tools`
 
-**What it does:** Builds the real tool set and checks the six bound names and recurring prompt instruction.
+**What it does:** Builds the real tool set and checks the seven bound names and recurring prompt instruction.
 
 **Why it's there:** The model must be able to select the added tool.
 

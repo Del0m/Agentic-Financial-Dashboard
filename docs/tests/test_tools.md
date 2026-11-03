@@ -1,6 +1,6 @@
 # Tests: `backend/tests/test_tools.py`
 
-These tests cover `app/agents/tools.py`, the chat agent's six tools. The data tools, `get_accounts`, `get_debts` and `get_spending`, read through the privacy gateway (TPC-12), and so does `plan_debt_payoff` (TPC-32), which runs the debt-payoff planner there. `search_kb` (TPC-14) searches the public knowledge base instead. The checks here are about the tool layer itself:
+These tests cover `app/agents/tools.py`, the chat agent's seven tools. The data tools, `get_accounts`, `get_debts` and `get_spending`, read through the privacy gateway (TPC-12), and so does `plan_debt_payoff` (TPC-32), which runs the debt-payoff planner there. `search_kb` (TPC-14) searches the public knowledge base instead. The checks here are about the tool layer itself:
 - the model can't choose a user;
 - the argument schemas are small and forgiving where they can be;
 - bad arguments come back as errors the model can act on.
@@ -26,9 +26,9 @@ Run them from `backend/`:
 
 ---
 
-## `test_six_tools_with_descriptions`
+## `test_seven_tools_with_descriptions`
 
-**What it does:** Checks that the tools are exactly `get_accounts`, `get_debts`, `get_spending`, `search_kb` `plan_debt_payoff` and `get_recurring`, in that order, and that each has a description.
+**What it does:** Checks that the tools are exactly `get_accounts`, `get_debts`, `get_spending`, `search_kb` `plan_debt_payoff` `get_recurring` and `get_cash_forecast`, in that order, and that each has a description.
 
 **Why it's there:** The model picks a tool from its name and description alone. A tool with no description is one it can't choose well.
 

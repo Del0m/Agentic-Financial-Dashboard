@@ -59,8 +59,8 @@ def data(out: str):
     return json.loads(out)["data"]
 
 
-def test_six_tools_with_descriptions(tools):
-    assert list(tools) == ["get_accounts", "get_debts", "get_spending", "search_kb", "plan_debt_payoff", "get_recurring"]
+def test_seven_tools_with_descriptions(tools):
+    assert list(tools) == ["get_accounts", "get_debts", "get_spending", "search_kb", "plan_debt_payoff", "get_recurring", "get_cash_forecast"]
     assert all(t.description for t in tools.values())
 
 

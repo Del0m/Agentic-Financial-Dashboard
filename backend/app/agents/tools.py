@@ -54,6 +54,9 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
     def get_recurring() -> str:
         return gateway.build_context("recurring")
 
+    def get_cash_forecast() -> str:
+        return gateway.build_context("cash_flow")
+
     def get_spending(category: Optional[str] = None, start_date: Optional[str] = None,
                      end_date: Optional[str] = None) -> str:
         start, end = _parse_date("start_date", _blank(start_date)), _parse_date("end_date", _blank(end_date))
@@ -132,5 +135,10 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
             get_recurring, name="get_recurring",
             description="List the user's recurring charges, subscriptions and paycheck patterns. "
                         "Use for what subscriptions they have or how much they pay monthly. Amounts are in dollars.",
+        ),
+        StructuredTool.from_function(
+            get_cash_forecast, name="get_cash_forecast",
+            description="Forecast checking cash as a range and identify upcoming low-balance dips. "
+                        "Use for will I run short before payday. State a range and say when no income is assumed.",
         ),
     ]
