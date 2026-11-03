@@ -425,7 +425,7 @@ The output gives each strategy's months to debt-free, total interest, and payoff
 
 The implemented daily route is sync, load_state, categorize, update_totals, detect_recurring, detect_overspend, diagnosis/action when flagged, decide_signals, log_advice, then approval only for budget adjustments and persist_state. With no current budget, load_state goes directly to detect_recurring and decide_signals. Detector and decision errors are recorded by type without stopping overspend alerts. Run summaries add `as_of`, stream count and changed ids, and `signals_error`.
 
-The cash forecast node and seventh chat tool are implemented. Seven current tools include recurring, cash forecast and debt planning; live selection with seven tools remains unverified.
+The cash forecast node and seventh chat tool are implemented. Seven current tools include recurring, cash forecast and debt planning. The TPC-26 baseline measured live selection with all seven: expected tools were called on 20 of 22 chat scenarios, and the two misses are "which debt first" questions (TPC-47).
 
 ---
 
@@ -588,7 +588,7 @@ Code still does every number. The LLM still only names the cause and picks the a
   2. It reads a time from the question by rule: "in 2024", "last month", "since June", or else today.
   3. It pulls `neighborhood(linked, as_of)`.
   4. It puts the triples in the system prompt under "Facts (valid as of <date>)", beside the vector guidance.
-- **New tool `get_history(entity, relation?)`:** the time-ordered edges for one entity, for explicit "when did / how has" questions. This brings the chat agent to 5 tools.
+- **New tool `get_history(entity, relation?)`:** the time-ordered edges for one entity, for explicit "when did / how has" questions. This brings the chat agent to 8 tools.
 - **Privacy:** user-half triples are built through a new gateway purpose, `graph`, with the same allowlist as `spending`. Pseudonymized user, no account numbers, inflow streams as category and amount only. Every prompt is audited. The guidance half is public text and skips the gateway, like `search_kb`.
 - **Modes** for the eval: `KG_CHAT=vector` (today's behaviour), `graph`, `hybrid` (the default).
 
@@ -631,7 +631,7 @@ Until now the chat agent only read what the last sync stored. Sync was a fixed f
 
 The prompt says to check `get_connections` before answering about balances or recent spending, and to refresh when data is more than a day old. The agent then answers from the fresh rows. That is a look, act, re-read loop: ReAct with a real observation from the environment. Code still decides the daily sync; the tool only adds an on-demand one.
 
-`plaid_items` gains `last_synced_at` and `last_error`, set by `sync_item`. Each status change also projects a `CONNECTED` edge (section 6b.1), so the graph remembers outages. The chat agent goes to 7 tools.
+`plaid_items` gains `last_synced_at` and `last_error`, set by `sync_item`. Each status change also projects a `CONNECTED` edge (section 6b.1), so the graph remembers outages. The chat agent goes to 10 tools.
 
 Chat scenarios for this, tagged `tools`:
 - "Is my data up to date?" with a stale item: calls `get_connections` and names the date.

@@ -1,6 +1,6 @@
 # How the system works, and what is still missing
 
-For the current agent behavior, Jira status, and Agent-Track grading evidence, use [the agentic system guide](agent-pipelines.md), reviewed November 2, 2026. This broader walkthrough retains historical system-design discussion; its other diagrams are not the current agent specification.
+For the current agent behavior, Jira status, and Agent-Track grading evidence, use [the agentic system guide](agent-pipelines.md), reviewed November 2 and updated November 3, 2026. This broader walkthrough retains historical system-design discussion; its other diagrams are not the current agent specification.
 
 Review date: October 28, 2026. This walkthrough compares the architecture, milestone specs/plans, test documentation, and saved evaluation results with the implementation. It does not verify current external financial rules or re-run live Plaid/Ollama tests.
 
@@ -21,7 +21,7 @@ Evidence: [API registration](../backend/app/main.py), [proxy](../frontend/next.c
 | Capability | Reviewed state | Remaining work |
 |---|---|---|
 | Plaid link, sync, dashboard | Implemented | Freshness visibility, webhook verification and concurrency handling |
-| Chat, five tools, local RAG, SSE, persisted conversations | Implemented | Spending consistency, factual reliability, context growth policy |
+| Chat, seven tools, local RAG, SSE, persisted conversations | Implemented | Spending consistency, factual reliability, context growth policy |
 | Initial budget, pace, diagnosis, proposed limits | Implemented | Uncategorized and unbudgeted policy |
 | Advice memory, graph pause/resume, decision service, Budget/Alerts APIs | Implemented; TPC-20 Done | Broader recovery and repeat-alert evaluation |
 | Daily scheduler | Built, opt-in; TPC-21 Done | Disabled by default; demo dates advance manually |
@@ -29,7 +29,7 @@ Evidence: [API registration](../backend/app/main.py), [proxy](../frontend/next.c
 | Debt simulation, goal agent, Goals page (TPC-23 to TPC-25) | Implemented: goals are proposed, accepted or dismissed per goal, and accepted goals become budget lines at the next close | No contribution tracking; the surplus uses the forecast with a measured-history fallback |
 | Recurring detection | Implemented: detector, stored streams, keyed signals, API, chat tool and dashboard card | Real Plaid comparison remains unverified |
 | Cash forecast | Implemented: live snapshot, buffer, keyed bill warnings, chart/table, chat and goal surplus | Real balances, live tool choice and viewport review remain unverified |
-| Evaluation | Chat and initial-budget harnesses implemented | Longitudinal budget replay and explicit quality gates |
+| Evaluation | 40 golden scenarios across chat, budget and goal, plus offline budget, recurring and forecast harnesses; one baseline pass | Model comparison, longitudinal budget replay and explicit quality gates; five agent problems open (TPC-45 to TPC-49) |
 
 ## 2. Linking and keeping bank data fresh
 
@@ -47,7 +47,7 @@ Evidence: [Plaid routes](../backend/app/api/plaid.py), [sync service](../backend
 
 ![One chat turn](diagrams/chat-flow.svg)
 
-Every question triggers retrieval before the model chooses tools. The five current tools are `get_accounts`, `get_debts`, `get_spending`, `search_kb`, and `plan_debt_payoff`. Account/debt/spending context passes through field allowlists, scrubbing and pseudonymization. Public guidance retrieval uses the local embedding model directly. A maximum of six tool rounds bounds the loop, and SSE keep-alives prevent the proxy timing out while the model is silent.
+Every question triggers retrieval before the model chooses tools. The seven current tools are `get_accounts`, `get_debts`, `get_spending`, `search_kb`, `plan_debt_payoff`, `get_recurring`, and `get_cash_forecast`. User-data context passes through field allowlists, scrubbing and pseudonymization. Public guidance retrieval uses the local embedding model directly. A maximum of six tool rounds bounds the loop, and SSE keep-alives prevent the proxy timing out while the model is silent.
 
 **Boundary to document accurately:** user messages and conversation history go directly into the local model prompt. The gateway audits the financial context it builds, not every full model prompt. Checkpoints also contain conversation and tool messages. The gateway limits database-derived exposure; it does not guarantee arbitrary personal names are removed from all text. A future hosted-model comparison needs a separate review of user text, retrieval queries, checkpoint contents and logging.
 
@@ -127,9 +127,11 @@ The chat harness uses the actual graph/tools with synthetic users and a throwawa
 
 **Saved results expose a reliability gap.** The second saved `qwen2.5:14b` run on October 27 has 15 runs: factual pass rate 60%, judge pass rate 80%, tool accuracy 80%, and 100% above the similarity threshold. The debt-priority scenario fails its full fact check in all three runs even though the judge passes it; the mixed debt/emergency scenario fails facts and data consistency. Inspect missing facts and tool use before interpreting the high similarity as success. These are saved historical results, not a fresh measurement of today's code.
 
-**Missing validation:** multi-period replay covering daily updates → flags → decisions → close → next month; time-to-flag, false alarms, repeat alerts, missed-job recovery and adaptation; and later recurring/forecast/payoff benchmarks. The CLI intentionally exits successfully when an evaluation completes despite poor scores, so define a separate quality gate. Record skipped live checks explicitly rather than counting them as proof of behavior.
+**The November 3 baseline widens this.** TPC-26 grew the benchmark to 40 scenarios across chat, budget and goal, including false alarms and time-to-flag over short windows of real daily runs. One pass on `qwen2.5:14b` passed 16 of 22 chat scenarios on facts, 9 of 12 budget and 6 of 6 goal. Results and the five open problems it found are in [the agentic system guide](agent-pipelines.md#7-evaluation-evidence-for-the-writeup).
 
-Evidence: [saved chat summary](../eval/results/2026-10-27/qwen2.5_14b-2/summary.json), [initial-budget results](../eval/results/2026-10-28/budget_accuracy/results.json), [eval instructions](../eval/README.md), [documented test coverage](tests/).
+**Missing validation:** multi-period replay covering daily updates → flags → decisions → close → next month; repeat alerts, missed-job recovery and adaptation; and a multi-run comparison of models. The CLI intentionally exits successfully when an evaluation completes despite poor scores, so define a separate quality gate. Record skipped live checks explicitly rather than counting them as proof of behavior.
+
+Evidence: [November 3 baseline](../eval/results/2026-11-03/qwen2.5_14b/summary.json), [saved chat summary](../eval/results/2026-10-27/qwen2.5_14b-2/summary.json), [initial-budget results](../eval/results/2026-10-28/budget_accuracy/results.json), [eval instructions](../eval/README.md), [documented test coverage](tests/).
 
 ## Review checklist, in suggested order
 

@@ -1,6 +1,6 @@
 # TPC-26 golden scenarios: manual verification
 
-The benchmark now has 40 scenarios across chat, budget and goal, run by one command. The work is on branch `TPC-26`, cut from `TPC-31`. Neither is pushed. Design: [spec](../superpowers/specs/2026-11-03-tpc-26-golden-scenarios-design.md). Format: [`eval/README.md`](../../eval/README.md).
+The benchmark now has 40 scenarios across chat, budget and goal, run by one command. The work is on branch `TPC-26`, stacked on `TPC-31`, `TPC-33` and `TPC-25`. Design: [spec](../superpowers/specs/2026-11-03-tpc-26-golden-scenarios-design.md). Format: [`eval/README.md`](../../eval/README.md).
 
 ## Baseline
 
@@ -85,7 +85,7 @@ Run these from the repo root unless a step says otherwise.
 
 ## Not done
 
-- Nothing is pushed. The baseline's `commit` field records `6ce8567`, the last commit on `TPC-31`, because the baseline ran before this work was committed. The code it ran is this branch's commit.
+- The baseline's `commit` field records `6ce8567`, the last commit on `TPC-31`, because the baseline ran before this work was committed. The code it ran is this branch's commit.
 - `TPC-26` is still In Progress in Jira.
 - `tools_none` scoring and `temporal` scenarios are left for TPC-27 and TPC-39.
 - Your uncommitted docs, diagrams and older `eval/results` folders were left alone.
