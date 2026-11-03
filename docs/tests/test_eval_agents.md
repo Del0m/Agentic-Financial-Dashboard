@@ -124,3 +124,9 @@ Run them from `backend/`:
 **What it does:** Each goal scenario passes every check given a reply built from its own expected answer. A scenario where nothing is affordable gets no replies, so any model call would fail its run.
 
 **Why it's there:** It proves each scenario can be passed, and that the affordability endings really are decided by code before the model is asked.
+
+## `test_planted_overspends_name_their_crossing_day`, `test_crossing_day_is_when_code_first_flags`
+
+**What they do:** Every planted overspend sets `crossed_on`, and with a fake model the code first flags the category on that day.
+
+**Why they're there:** Time-to-flag counts from this date, so a wrong one would skew the metric for every model.

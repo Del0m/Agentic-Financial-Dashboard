@@ -270,11 +270,11 @@ The same three rules apply to `sources_ok` with `source_url`s.
 
 **Why it's there:** A crash would otherwise pass a control, whose only check is that nothing was flagged.
 
-## `test_budget_flag_to_alert_days`
+## `test_time_to_flag_counts_from_the_planted_crossing`, `test_time_to_flag_reports_a_missing_alert`
 
-**What it does:** A flag on Oct 2 with its alert on Oct 3 reports one day.
+**What they do:** A flag and alert both on Oct 6 for an Oct 2 crossing score 4 days, not 0. A crossing with no alert is listed in `missed_alerts`.
 
-**Why it's there:** This is the time-to-flag metric in architecture 10.2.
+**Why they're there:** This is the time-to-flag metric in architecture 10.2. Measuring between two agent outputs would hide late detection.
 
 ## `test_goal_status_required_banned_and_first`, `test_goal_over_cap_fails_even_with_the_right_kinds`
 
@@ -305,3 +305,9 @@ The same three rules apply to `sources_ok` with `source_url`s.
 **What they do:** Pin the summary fields: pass rates, pass^3, false-alarm rate, each check's rate (`None` when no scenario sets it), time-to-flag, model failures, tags and per-scenario rows.
 
 **Why they're there:** TPC-27 and TPC-28 chart these.
+
+## `test_abstain_no_numbers_rejects_an_invented_score`, `test_abstain_without_no_numbers_allows_the_year_asked_about`
+
+**What they do:** "I don't have a full credit report, but your current credit score is 780" fails when `no_numbers` is set. Without it, the year in a Roth question is still fine.
+
+**Why they're there:** A refusal phrase about something else shouldn't let an invented score pass as abstention.

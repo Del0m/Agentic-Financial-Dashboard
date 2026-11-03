@@ -93,6 +93,7 @@ Create `eval/scenarios/<id>.json`. The `id` must equal the file name.
 | `expect.sources` | `source_url`s that must be among the retrieved guidance |
 
 | `expect.abstain` | `true` replaces `facts`: the answer must say the data isn't available and state no dollar amount. A bare year is fine |
+| `expect.no_numbers` | With `abstain`: the answer can't state any number. For a missing fact that's a bare number, like a credit score |
 | `tags` | Optional, on every kind. Results are also reported per tag |
 
 Tips:
@@ -140,6 +141,7 @@ Only the checks a scenario sets are scored:
 | `expect.causes` | The category's first overspend alert has this cause |
 | `expect.actions` | That alert's action is in `accept`, and no alert for the category has an action in `ban` |
 | `expect.flag_by` | The category is first flagged on or before this date |
+| `expect.crossed_on` | Not a pass or fail check. The day the planted spending crosses the threshold, which time-to-flag counts from |
 | `expect.alert_kinds` | Every signal kind listed appears (`new_subscription`, `price_increase`, `income_change`, `low_balance`) |
 | `expect.message_facts` | These facts appear in the alert messages. They use the same form as `facts` |
 | `expect.min_days_ahead` | The earliest low-balance warning is at least this many days ahead |
@@ -188,7 +190,7 @@ Add its user to `SCENARIO_USERS` in `eval/budget_users.py` if no existing user f
 
 | Section | Holds |
 |---|---|
-| `budget` | `pass_rate`, `pass_all_runs_rate` (pass^3), each check's rate, `false_alarm_rate` (control runs with any flag or overspend alert), `flag_to_alert_days_mean`, `low_balance_days_ahead_mean`, `llm_failures`, `by_tag`, `scenarios` |
+| `budget` | `pass_rate`, `pass_all_runs_rate` (pass^3), each check's rate, `false_alarm_rate` (control runs with any flag or overspend alert), `time_to_flag_days_mean` (planted crossing to first alert), `missed_alerts` (crossings with no alert), `low_balance_days_ahead_mean`, `llm_failures`, `by_tag`, `scenarios` |
 | `goal` | `pass_rate`, `pass_all_runs_rate`, each check's rate, `attempts_mean`, `by_tag`, `scenarios` |
 
 A check no scenario sets has a rate of `null`.

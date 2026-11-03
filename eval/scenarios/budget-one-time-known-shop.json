@@ -29,6 +29,9 @@
     "flag_by": {
       "GENERAL_MERCHANDISE": "2026-10-12"
     },
+    "crossed_on": {
+      "GENERAL_MERCHANDISE": "2026-10-12"
+    },
     "message_facts": [
       {
         "text": "MegaMart"
