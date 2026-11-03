@@ -46,8 +46,8 @@ def create_link_token(client_user_id: str) -> str:
         # goes here instead: enabled where the bank has it, without hiding banks that don't
         "products": ["transactions"],
         "required_if_supported_products": ["liabilities"],
-        # fixed when the item is created; the initial budget needs ~90 days (section 6.3)
-        "transactions": {"days_requested": 90},
+        # fixed when the item is created; the initial budget needs ~90 days (section 6.3), recurring detection 180 (tpc-33)
+        "transactions": {"days_requested": 180},
     }
     # items only get SYNC_UPDATES_AVAILABLE webhooks if a URL is set when they're created
     if config.PLAID_WEBHOOK_URL:
@@ -62,7 +62,7 @@ def exchange_public_token(public_token: str) -> tuple[str, str]:
 
 # sandbox only: get a public_token without the Link UI (First Platypus Bank by default)
 def sandbox_public_token(institution_id: str = "ins_109508") -> str:
-    options = {"transactions": {"days_requested": 90}}
+    options = {"transactions": {"days_requested": 180}}
     if config.PLAID_WEBHOOK_URL:
         options["webhook"] = config.PLAID_WEBHOOK_URL
     data = plaid_post("/sandbox/public_token/create", {

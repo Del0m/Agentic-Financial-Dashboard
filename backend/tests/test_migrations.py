@@ -82,3 +82,22 @@ def test_budget_tables_downgrade_drops_enum_types():
 
     for enum in ("budget_period_status", "budget_line_kind", "budget_line_source"):
         assert f"DROP TYPE IF EXISTS {enum}" in sql
+
+
+def test_recurring_streams_upgrade_and_downgrade(tmp_path, monkeypatch):
+    url = f"sqlite:///{tmp_path / 'm.db'}"
+    monkeypatch.setattr(db_session, "DATABASE_URL", url)
+    cfg = alembic_config()
+    command.upgrade(cfg, "c4e8f2a1b6d3")
+    engine = sa.create_engine(url)
+    inspector = sa.inspect(engine)
+    assert "recurring_streams" in inspector.get_table_names()
+    assert {"stream_id", "signal_key"} <= {c["name"] for c in inspector.get_columns("alerts")}
+    assert "ix_alerts_user_signal_key" in {i["name"] for i in inspector.get_indexes("alerts")}
+    engine.dispose()
+    command.downgrade(cfg, "a3d9e1b7c2f5")
+    engine = sa.create_engine(url)
+    inspector = sa.inspect(engine)
+    assert "recurring_streams" not in inspector.get_table_names()
+    assert not {"stream_id", "signal_key"} & {c["name"] for c in inspector.get_columns("alerts")}
+    engine.dispose()

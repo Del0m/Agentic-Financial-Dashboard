@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 from app.budget_engine.styles import STYLES
 from app.budget_service.settings import set_user_style
 from app.db.models import (Account, AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, CategoryRule, Goal, Liability,
-                           PlaidItem, Transaction, User)
+                           PlaidItem, RecurringStream, Transaction, User)
 from eval.budget_users import GOAL_USERS, PLANTED, PROFILES, RECURRING_USERS, default_start, seed_profile
 
 
@@ -48,6 +48,7 @@ def delete_user(session: Session, user_id: str) -> None:
     session.execute(delete(AdviceLog).where(AdviceLog.user_id == user_id))
     session.execute(delete(Alert).where(Alert.user_id == user_id))
     session.execute(delete(Goal).where(Goal.user_id == user_id))
+    session.execute(delete(RecurringStream).where(RecurringStream.user_id == user_id))
     session.execute(delete(AgentRun).where(AgentRun.user_id == user_id))
     session.execute(delete(BudgetLine).where(BudgetLine.period_id.in_(periods)))
     for model in (BudgetPeriod, Transaction, CategoryRule, Liability, Account, PlaidItem):
