@@ -81,6 +81,28 @@ def _scheduled(stream: Stream, today: date, through: date, assumptions: list[str
     return [d for d in project(stream, through) if d > today]
 
 
+def _pays_goal(s: Stream, goal: CommittedGoal) -> bool:
+    loan = (s.detailed or "").startswith("LOAN_PAYMENTS")
+    kind = loan if goal.kind == "debt_payoff" else s.category == "SAVINGS_TRANSFER"
+    return s.direction == "out" and kind and s.first_date >= goal.start_date
+
+
+# the goal's own payment is already an event, so a stream paying it mustn't count twice. streams name no goal, so a match
+# is the right kind, new since the goal started, and about the goal's amount or more; each goal takes the closest one
+# and only its own amount. a miss counts the payment twice, which understates the surplus: an unrelated bill left out
+# would overstate it. returns monthly cents by id(stream)
+def _goal_shares(streams: Sequence[Stream], goals: Sequence[CommittedGoal]) -> dict[int, int]:
+    shares: dict[int, int] = {}
+    for goal in goals:
+        size = lambda s: monthly_cents(s.typical_cents, s.frequency)
+        matches = [s for s in streams if id(s) not in shares and _pays_goal(s, goal)
+                   and size(s) * 10 >= goal.monthly_cents * 9]
+        best = min(matches, key=lambda s: abs(size(s) - goal.monthly_cents), default=None)
+        if best is not None:
+            shares[id(best)] = min(size(best), goal.monthly_cents)
+    return shares
+
+
 def forecast(inp: ForecastInput) -> ForecastResult:
     today = inp.today
     active = [s for s in inp.streams if s.status == "active"]
@@ -103,11 +125,17 @@ def forecast(inp: ForecastInput) -> ForecastResult:
     horizon = min(max(30, (pay_dates[0] - today).days + 1 if pay_dates else 30), 45)
     through = today + timedelta(days=horizon)
 
-    def goal_payment(s: Stream) -> bool:
-        return s.direction == "out" and (s.category == "SAVINGS_TRANSFER" or
-               (s.detailed or "").startswith("LOAN_PAYMENTS")) and any(s.first_date >= g.start_date for g in goals)
-
-    included = [s for s in active if not goal_payment(s)]
+    shares = _goal_shares(active, goals)
+    included = []
+    for s in active:
+        monthly, share = monthly_cents(s.typical_cents, s.frequency), shares.get(id(s), 0)
+        if share >= monthly > 0:
+            continue
+        if share:
+            rest = replace(s, typical_cents=round_cents(Decimal(s.typical_cents * (monthly - share)) / monthly))
+            dates[id(rest)] = dates[id(s)]
+            s = rest
+        included.append(s)
     events = [Event(d, "Income" if s.direction == "in" else s.merchant_name,
                     s.typical_cents * (1 if s.direction == "in" else -1), "stream", s.merchant_key)
               for s in included for d in dates[id(s)] if d <= through]

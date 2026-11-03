@@ -150,6 +150,36 @@ def test_goal_payments_already_in_history_are_not_counted_twice():
     assert a.monthly_surplus_cents == b.monthly_surplus_cents
 
 
+def test_an_unrelated_loan_is_not_taken_for_a_savings_goal():
+    inp=inputs(); goal=CommittedGoal(1,"savings",50000,date(2026,6,1),date(2027,3,1))
+    loan=stream("Auto Loan",50000,5,category="LOAN_PAYMENTS",detailed="LOAN_PAYMENTS_CAR_PAYMENT",first_date=date(2026,7,1))
+    a=forecast(replace(inp,goals=[goal])); b=forecast(replace(inp,goals=[goal],streams=[*inp.streams,loan]))
+    assert a.monthly_surplus_cents-b.monthly_surplus_cents == 50000
+    assert any(e.name == "Auto Loan" for e in b.events)
+
+
+def test_a_much_smaller_loan_is_not_taken_for_a_debt_goal():
+    inp=inputs(); goal=CommittedGoal(1,"debt_payoff",58300,date(2026,6,1),date(2027,3,1))
+    loan=stream("Auto Loan",10000,5,category="LOAN_PAYMENTS",detailed="LOAN_PAYMENTS_CAR_PAYMENT",first_date=date(2026,7,1))
+    a=forecast(replace(inp,goals=[goal])); b=forecast(replace(inp,goals=[goal],streams=[*inp.streams,loan]))
+    assert a.monthly_surplus_cents-b.monthly_surplus_cents == 10000
+
+
+def test_a_payment_above_the_goal_keeps_the_rest():
+    inp=inputs(); goal=CommittedGoal(1,"savings",50000,date(2026,10,1),date(2027,3,1))
+    new=stream("Savings",80000,5,category="SAVINGS_TRANSFER",first_date=date(2026,10,1))
+    a=forecast(replace(inp,goals=[goal])); b=forecast(replace(inp,goals=[goal],streams=[*inp.streams,new]))
+    assert a.monthly_surplus_cents-b.monthly_surplus_cents == 30000
+    assert [e.cents for e in b.events if e.name == "Savings"][0] == -30000
+
+
+def test_one_goal_excuses_only_one_stream():
+    inp=inputs(); goal=CommittedGoal(1,"savings",50000,date(2026,10,1),date(2027,3,1))
+    both=[stream(n,50000,5,category="SAVINGS_TRANSFER",first_date=date(2026,10,1)) for n in ("Savings","Brokerage")]
+    a=forecast(replace(inp,goals=[goal])); b=forecast(replace(inp,goals=[goal],streams=[*inp.streams,*both]))
+    assert a.monthly_surplus_cents-b.monthly_surplus_cents == 50000
+
+
 def test_surplus_is_a_flow_and_ignores_the_balance():
     inp=inputs(); streams=[*inp.streams,stream("Savings",50000,3,category="SAVINGS_TRANSFER"),stream("Streamly",1599,5)]
     a=forecast(replace(inp,streams=streams,everyday_daily_cents=[100]*90,start_balance_cents=10000))
