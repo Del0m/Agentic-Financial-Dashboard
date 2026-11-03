@@ -349,3 +349,9 @@ The graph can supply an explicit debt snapshot to the goals context; default cal
 **What it does:** Checks measured and forecast basis labels, with the forecast accounting assumption.
 
 **Why it's there:** The user needs to know the affordability basis.
+
+## `test_cash_flow_context_has_no_account_names_or_balances`
+
+**What it does:** Cash flow context has no account names or balances.
+
+**Why it's there:** Pins the forecast signal guard, privacy boundary or reversible migration behavior.

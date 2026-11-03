@@ -1,6 +1,8 @@
 import pytest
 
 from app.budget_engine.signals import Signal, allowed_actions, cancel_limit, choose, fallback_message, rank_signals
+from app.budget_engine.signals import PreviousDip, repeat_decision, move_amount
+from datetime import date
 
 
 def signal(kind="price_increase", category="PERSONAL_CARE", **numbers):
@@ -40,3 +42,33 @@ def test_discretionary_stream_can_be_cancelled_and_unknown_actions_downgrade():
 def test_fallback_price_message_quotes_the_old_and_new_price():
     message = fallback_message(signal())
     assert all(text in message for text in ("FitClub Gym", "$40.00", "$43.00"))
+
+
+def test_repeat_rule():
+    previous=PreviousDip(date(2026,10,13),5000,5)
+    assert not repeat_decision(previous,previous.date,5000,4)
+    assert not repeat_decision(previous,previous.date,6250,4)
+    assert repeat_decision(previous,previous.date,7000,4)
+    assert repeat_decision(previous,previous.date,5000,2)
+    assert not repeat_decision(PreviousDip(previous.date,5000,2),previous.date,5000,2)
+
+
+def test_a_dip_that_slides_later_by_3_days_does_not_repeat_and_by_4_does():
+    previous=PreviousDip(date(2026,10,13),5000,5)
+    assert not repeat_decision(previous,date(2026,10,16),5000,5)
+    assert repeat_decision(previous,date(2026,10,17),5000,5)
+
+
+def test_move_amount():
+    assert move_amount(5000,10000)==15000 and move_amount(9700,10000)==20000
+
+
+def test_move_from_savings_is_downgraded_without_cover_or_with_no_income():
+    assert choose(signal('low_balance',savings_cover=False),'move_from_savings')=='alert'
+    assert choose(signal('low_balance',savings_cover=True,assumed_no_income=True),'move_from_savings')=='alert'
+    assert choose(signal('low_balance',savings_cover=True),'move_from_savings')=='move_from_savings'
+
+
+def test_delay_spend_is_downgraded_without_a_budget():
+    assert choose(signal('low_balance',has_budget=False,flexible_ahead=True),'delay_spend')=='alert'
+    assert choose(signal('low_balance',has_budget=True,flexible_ahead=True),'delay_spend')=='delay_spend'

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date
 from typing import Optional, Sequence
 
 # stream and cash-flow signals share a decision path, separate from category overspend facts (tpc-33)
@@ -31,7 +32,37 @@ def allowed_actions(signal: Signal) -> tuple[str, ...]:
 
 
 def choose(signal: Signal, proposed: str) -> str:
+    if signal.kind == "low_balance":
+        n = signal.numbers
+        if n.get("assumed_no_income"):
+            return "alert"
+        if proposed == "move_from_savings" and not n.get("savings_cover"):
+            return "alert"
+        if proposed == "delay_spend" and not (n.get("has_budget") and n.get("flexible_ahead")):
+            return "alert"
     return proposed if proposed in allowed_actions(signal) else "alert"
+
+
+@dataclass(frozen=True)
+class PreviousDip:
+    date: date
+    shortfall_cents: int
+    days_ahead: int
+
+
+def repeat_decision(previous: Optional[PreviousDip], dip_date: date, shortfall_cents: int, days_ahead: int) -> bool:
+    if previous is None or dip_date < previous.date or (dip_date - previous.date).days > 3:
+        return True
+    return ((shortfall_cents * 4 >= previous.shortfall_cents * 5 and shortfall_cents - previous.shortfall_cents >= 2000)
+            or (days_ahead <= 2 and previous.days_ahead >= 3))
+
+
+def low_balance_key(bill_key: str, dip_date: date) -> str:
+    return f"low_balance|{bill_key}|{dip_date.isoformat()}"
+
+
+def move_amount(shortfall_cents: int, buffer_cents: int) -> int:
+    return ((shortfall_cents + buffer_cents + 499) // 500) * 500
 
 
 def cancel_limit(limit_cents: int, monthly_cents: int) -> Optional[int]:
@@ -52,5 +83,6 @@ def fallback_message(signal: Signal) -> str:
             return "Your usual income has not arrived recently. Check whether your pay schedule has changed."
         return f"Your income changed from {money('previous_cents')} to {money('last_cents')}."
     if signal.kind == "low_balance":
-        return f"{n.get('bill', 'Planned spending')} may leave you {money('shortfall_cents')} short on {n.get('date', 'an upcoming day')}."
+        text = f"{n.get('bill', 'Planned spending')} may leave you {money('shortfall_cents')} short on {n.get('date', 'an upcoming day')}."
+        return text + (" No paycheck found, so no income is assumed." if n.get("assumed_no_income") else "")
     return "A change in your recurring activity needs a look."

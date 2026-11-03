@@ -75,6 +75,8 @@ SIGNAL_PROMPT = (
     "Review one change in recurring charges or income for a budgeting app. Choose only from allowed_actions "
     "in the facts. A suggest_cancel proposes cancelling an optional subscription; it never cancels anything. "
     "Income changes only alert. Use the supplied figures exactly and name an outflow's merchant and both its "
+    "For low_balance, name the supplied bill and date and explain the shortfall. A move_from_savings or "
+    "delay_spend action is only a proposal; nothing moves automatically. "
     "old and new prices when they are given. Never invent an employer name. Write at most two plain sentences. "
     "Answer in JSON with action and message."
 )

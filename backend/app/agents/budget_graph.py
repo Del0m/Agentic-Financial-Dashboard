@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import sqlite3
 import sys
@@ -23,11 +24,15 @@ from app.budget_engine.diagnose import overspend_facts, proposed_limit_cents
 from app.budget_engine.fit import HISTORY_MONTHS
 from app.budget_engine.pace import BudgetLine as EngineLine, PaceResult, evaluate
 from app.budget_engine.recurring import monthly_cents
-from app.budget_engine.signals import SIGNAL_CAP, Signal, cancel_limit, choose, fallback_message, rank_signals
+from app.budget_engine.signals import (SIGNAL_CAP, PreviousDip, Signal, cancel_limit, choose, fallback_message,
+                                       low_balance_key, move_amount, rank_signals, repeat_decision)
 from app.budget_engine.txns import add_months
 from app.budget_service.initialize import initialize_budget, load_txns
 from app.budget_service.recurring import muted_stream_ids, refresh_streams, stored_streams
-from app.db.models import AdviceLog, AgentRun, Alert, BudgetPeriod, PlaidItem, utcnow
+from app.budget_service.forecast_service import snapshot
+from app.budget_service.forecast_data import forecast_accounts, start_balance
+from app.db.models import Account, AdviceLog, AgentRun, Alert, BudgetPeriod, PlaidItem, utcnow
+from app.privacy.scrub import scrub_merchant
 from app.plaid_service.sync import sync_item
 from app.privacy.gateway import PrivacyGateway
 
@@ -65,6 +70,7 @@ class BudgetState(TypedDict, total=False):
     signal_actions: dict[str, dict]
     signals_error: Optional[str]
     streams: dict               # counts and stream ids only, safe for the run summary and checkpoint
+    forecast: dict              # dates and cents only; bill names and balances stay in transient signals
 
 
 # default sync: every active plaid item the user has. one failing item doesn't stop the others
@@ -199,6 +205,48 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
         except Exception as exc:
             return {"signals": [], "signals_error": type(exc).__name__}
 
+    def forecast_cash(state: BudgetState) -> dict:
+        try:
+            with session_factory() as s:
+                snap = snapshot(s, state["user_id"], today_of(state))
+                result, dip = snap.result, snap.result.dip
+                summary = {"ok": result.status == "ok", "low_balance": None if dip is None else {
+                    "date": dip.date.isoformat(), "shortfall_cents": dip.shortfall_cents},
+                    "monthly_surplus_cents": result.monthly_surplus_cents,
+                    "surplus_source": "forecast" if result.surplus_fallback is None else "measured",
+                    "committed_goals_cents": result.committed_goal_cents, "assumed_no_income": result.income == "none"}
+                signals = list(state.get("signals", []))
+                if dip is not None:
+                    bill_key = dip.cause.key if dip.cause else "everyday"
+                    previous = s.scalars(select(Alert).where(Alert.user_id == state["user_id"], Alert.kind == "low_balance",
+                        Alert.signal_key.startswith(f"low_balance|{bill_key}|", autoescape=True)).order_by(Alert.id.desc())).first()
+                    prior = PreviousDip(date.fromisoformat(previous.signal_key.rsplit("|", 1)[1]),
+                                        previous.signal_cents, previous.signal_days) if previous is not None else None
+                    if repeat_decision(prior, dip.date, dip.shortfall_cents, dip.days_ahead):
+                        low = min(d.low_cents for d in result.days[:14])
+                        amount = move_amount(dip.shortfall_cents, snap.buffer_cents)
+                        savings = max((a.available_balance_cents if a.available_balance_cents is not None else a.current_balance_cents or 0
+                                       for a in s.scalars(select(Account).where(Account.user_id == state["user_id"],
+                                           Account.type == "depository", Account.subtype == "savings"))), default=0)
+                        flexible = next((r for r in state.get("results", []) if r["kind"] == "flexible"
+                                         and r.get("pace") is not None and r["pace"] >= 1), None)
+                        numbers = {"date": dip.date.isoformat(), "days_ahead": dip.days_ahead,
+                            "shortfall_cents": dip.shortfall_cents, "buffer_cents": snap.buffer_cents,
+                            "bill": "credit card minimum" if dip.cause and dip.cause.source == "card_min" else
+                                    scrub_merchant(dip.cause.name) if dip.cause else "Everyday spending",
+                            "low_below_zero": low < 0, "assumed_no_income": result.income == "none",
+                            "savings_cover": savings >= amount, "move_cents": amount,
+                            "has_budget": state.get("status") not in ("no_budget", "period_ended"),
+                            "flexible_ahead": flexible is not None,
+                            "starting_cents": start_balance(forecast_accounts(s, state["user_id"])) or 0,
+                            "other_events": json.dumps([{"category": e.source, "cents": e.cents} for e in result.events])}
+                        if flexible:
+                            numbers.update(flexible_category=flexible["category"], flexible_spent_cents=flexible["spent_cents"])
+                        signals.append(asdict(Signal("low_balance", low_balance_key(bill_key, dip.date), None, None, numbers)))
+            return {"signals": signals, "forecast": summary}
+        except Exception as exc:
+            return {"signals_error": type(exc).__name__, "forecast": {"ok": False}}
+
     def _decide_signals(state: BudgetState) -> dict:
         actions, failures, error = {}, state.get("llm_failures", 0), state.get("signals_error")
         with session_factory() as s:
@@ -209,17 +257,20 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             fallback = True
             try:
                 # audit each signal once, including ones past the model-call cap
-                context = gateway.build_context("recurring", signal=signal)
+                context = gateway.build_context("cash_flow" if signal.kind == "low_balance" else "recurring", signal=signal)
                 decision = decide_signal(model, context) if i < SIGNAL_CAP else None
                 if decision is not None:
                     fallback = False
                     action = choose(signal, decision.action)
                     # a model's text must still name the charge and quote its code-computed prices
-                    required = [str(signal.numbers.get("merchant", "")), f"${signal.numbers['last_cents'] / 100:,.2f}"]
+                    required = ([str(signal.numbers["bill"])] if signal.kind == "low_balance" else
+                                [str(signal.numbers.get("merchant", "")), f"${signal.numbers['last_cents'] / 100:,.2f}"])
                     if signal.kind == "price_increase":
                         required.append(f"${signal.numbers['previous_cents'] / 100:,.2f}")
                     if action == decision.action and signal.kind != "income_change" and all(t in decision.message for t in required):
                         message = decision.message
+                    if signal.kind == "low_balance" and signal.numbers.get("assumed_no_income"):
+                        message = fallback_message(signal)
                 elif i < SIGNAL_CAP:
                     failures += 1
                 if action == "suggest_cancel":
@@ -327,12 +378,14 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             for data in state.get("signals", []):
                 signal = Signal(**data)
                 # the alert key, not a budget category, identifies a signal. recheck at the write boundary
-                if s.scalar(select(Alert.id).where(Alert.user_id == state["user_id"], Alert.signal_key == signal.key)):
+                if signal.kind != "low_balance" and s.scalar(select(Alert.id).where(Alert.user_id == state["user_id"], Alert.signal_key == signal.key)):
                     continue
                 act = state["signal_actions"][signal.key]
                 alert = Alert(user_id=state["user_id"], period_id=state.get("period_id"), kind=signal.kind,
                               stream_id=signal.stream_id, signal_key=signal.key, category=signal.category,
-                              severity="medium", action=act["action"], message=act["message"],
+                              severity="high" if signal.numbers.get("low_below_zero") else "medium",
+                              signal_cents=signal.numbers.get("shortfall_cents"), signal_days=signal.numbers.get("days_ahead"),
+                              action=act["action"], message=act["message"],
                               proposed_limit_cents=act["proposed_limit_cents"], status="pending_user")
                 s.add(alert)
                 s.flush()
@@ -384,6 +437,7 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             "as_of": state["today"],
             "streams": state.get("streams", {"count": 0, "new": [], "price_up": [], "income_change": []}),
             "signals_error": state.get("signals_error"),
+            "forecast": state.get("forecast"),
         }
 
     def persist_state(state: BudgetState) -> dict:
@@ -413,6 +467,7 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
     for name, fn in (("load_state", load_state), ("sync", sync), ("categorize", categorize),
                      ("update_totals", update_totals), ("detect_overspend", detect_overspend),
                      ("detect_recurring", detect_recurring), ("decide_signals", decide_signals),
+                     ("forecast_cash", forecast_cash),
                      ("diagnose", diagnose), ("decide_action", decide_action), ("log_advice", log_advice),
                      ("await_approval", await_approval), ("persist_state", persist_state)):
         graph.add_node(name, fn)
@@ -422,7 +477,8 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
     graph.add_conditional_edges("load_state", after_load, ["categorize", "detect_recurring"])
     graph.add_edge("categorize", "update_totals")
     graph.add_edge("update_totals", "detect_recurring")
-    graph.add_conditional_edges("detect_recurring", after_recurring, ["detect_overspend", "decide_signals"])
+    graph.add_edge("detect_recurring", "forecast_cash")
+    graph.add_conditional_edges("forecast_cash", after_recurring, ["detect_overspend", "decide_signals"])
     graph.add_conditional_edges("detect_overspend", after_detect, ["diagnose", "decide_signals"])
     graph.add_edge("diagnose", "decide_action")
     graph.add_edge("decide_action", "decide_signals")

@@ -29,6 +29,16 @@ def force_measured_surplus(request, monkeypatch):
         monkeypatch.setattr(goal_graph, "USE_FORECAST", False)
 
 
+@pytest.fixture(autouse=True)
+def isolate_static_balance_fixtures(request, monkeypatch):
+    if request.node.get_closest_marker("cash_forecast") is None:
+        from app.agents import budget_graph
+        from app.budget_engine.forecast import ForecastInput, forecast
+        from app.budget_service.forecast_service import ForecastSnapshot
+        monkeypatch.setattr(budget_graph, "snapshot", lambda s, uid, today: ForecastSnapshot(
+            forecast(ForecastInput(today, None, [], [], [], [], 0, 0)), 10000, 0))
+
+
 # every test gets its own checkpoint files: code that opens config's path (the budget cli, the routes' default
 # hooks) must never read or delete threads in the developer's backend/data/*.db
 @pytest.fixture(autouse=True)

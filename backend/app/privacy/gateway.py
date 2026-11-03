@@ -23,12 +23,14 @@ from .scrub import scrub_account_name, scrub_merchant, scrub_note
 # rows are built field by field from these allowlists, never by serializing a model object,
 # so a column added later can't leak by accident.
 
-Purpose = Literal["accounts", "debts", "spending", "diagnose", "debt_plan", "goals", "recurring"]
+Purpose = Literal["accounts", "debts", "spending", "diagnose", "debt_plan", "goals", "recurring", "cash_flow"]
 
 ACCOUNT_FIELDS = ("name", "type", "subtype", "balance", "available", "limit")
 DEBT_FIELDS = ("name", "kind", "apr", "balance", "min_payment", "next_due_date")
 TXN_FIELDS = ("date", "amount", "merchant")
 RECURRING_FIELDS = ("merchant", "category", "frequency", "typical", "last", "previous", "next_date")
+CASH_FIELDS = ("date", "days_ahead", "shortfall", "buffer", "bill", "starting_available", "savings_cover",
+               "move_amount", "flexible_categories", "other_events", "assumed_no_income", "allowed_actions")
 TXN_LIMIT = 50
 # the budget graph's diagnose step: one flagged category's facts and its rows (spec: tpc-19)
 DIAGNOSE_FIELDS = ("category", "reason", "kind", "month", "limit", "spent", "pace", "day", "days_in_month",
@@ -114,6 +116,8 @@ class PrivacyGateway:
             data = self._goals(goal_facts, goal_debts)
         elif purpose == "recurring":
             data = self._recurring(signal)
+        elif purpose == "cash_flow":
+            data = self._cash_flow(signal)
         else:
             raise ValueError(f"unknown purpose: {purpose}")
 
@@ -128,6 +132,28 @@ class PrivacyGateway:
             self._goal_context = prompt
             self._goal_cap_cents = goal_facts.cap_cents
         return prompt
+
+    def _cash_flow(self, signal: Optional[Signal]) -> dict:
+        if signal is None:
+            from ..budget_service.forecast_service import snapshot
+            snap = snapshot(self._session, self._user_id, self.today())
+            r = snap.result
+            return {"status": r.status, "income": r.income, "buffer": _dollars(snap.buffer_cents),
+                    "monthly_surplus": _dollars(r.monthly_surplus_cents), "assumed_no_income": r.income == "none",
+                    "days": [{"date": d.date, "low": _dollars(d.low_cents), "expected": _dollars(d.expected_cents),
+                              "high": _dollars(d.high_cents)} for d in r.days],
+                    "dip": None if r.dip is None else {"date": r.dip.date, "shortfall": _dollars(r.dip.shortfall_cents),
+                        "bill": "credit card minimum" if r.dip.cause and r.dip.cause.source == "card_min" else
+                                scrub_merchant(r.dip.cause.name) if r.dip.cause else "Everyday spending"}}
+        n = signal.numbers
+        return {"date": n["date"], "days_ahead": n["days_ahead"], "shortfall": _dollars(n["shortfall_cents"]),
+                "buffer": _dollars(n["buffer_cents"]), "bill": scrub_merchant(n["bill"]),
+                "starting_available": round(n.get("starting_cents", 0) / 100), "savings_cover": bool(n.get("savings_cover")),
+                "move_amount": _dollars(n.get("move_cents")), "flexible_categories": [] if not n.get("flexible_category") else [
+                    {"category": n["flexible_category"], "spent": _dollars(n["flexible_spent_cents"])}],
+                "other_events": [{"category": e["category"], "amount": _dollars(e["cents"])}
+                                 for e in json.loads(n.get("other_events", "[]"))],
+                "assumed_no_income": bool(n.get("assumed_no_income")), "allowed_actions": list(allowed_actions(signal))}
 
     def _recurring(self, signal: Optional[Signal]) -> dict:
         if signal is None:

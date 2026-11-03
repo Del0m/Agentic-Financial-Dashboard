@@ -47,3 +47,33 @@ Run from `backend/`:
 **What it does:** Checks that code-written copy names the gym and quotes $40.00 and $43.00.
 
 **Why it's there:** Model failures must still leave an understandable alert with correct figures.
+
+## `test_repeat_rule`
+
+**What it does:** Repeat rule.
+
+**Why it's there:** Pins the forecast signal guard, privacy boundary or reversible migration behavior.
+
+## `test_a_dip_that_slides_later_by_3_days_does_not_repeat_and_by_4_does`
+
+**What it does:** A dip that slides later by 3 days does not repeat and by 4 does.
+
+**Why it's there:** Pins the forecast signal guard, privacy boundary or reversible migration behavior.
+
+## `test_move_amount`
+
+**What it does:** Move amount.
+
+**Why it's there:** Pins the forecast signal guard, privacy boundary or reversible migration behavior.
+
+## `test_move_from_savings_is_downgraded_without_cover_or_with_no_income`
+
+**What it does:** Move from savings is downgraded without cover or with no income.
+
+**Why it's there:** Pins the forecast signal guard, privacy boundary or reversible migration behavior.
+
+## `test_delay_spend_is_downgraded_without_a_budget`
+
+**What it does:** Delay spend is downgraded without a budget.
+
+**Why it's there:** Pins the forecast signal guard, privacy boundary or reversible migration behavior.

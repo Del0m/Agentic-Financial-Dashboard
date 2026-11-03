@@ -212,7 +212,9 @@ class Alert(Base):
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     stream_id: Mapped[Optional[int]] = mapped_column(ForeignKey("recurring_streams.id",
                                                                 name="fk_alerts_stream_id_recurring_streams"))
-    signal_key: Mapped[Optional[str]]                      # one alert per signal, across replays (tpc-33)
+    signal_key: Mapped[Optional[str]]                      # recurring replay key; cash dips use the repeat policy
+    signal_cents: Mapped[Optional[int]]
+    signal_days: Mapped[Optional[int]]
 
 # what the agent told the user, read back so it doesn't repeat or contradict itself
 class AdviceLog(Base):
