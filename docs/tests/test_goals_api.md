@@ -140,6 +140,18 @@ Run them from `backend/`:
 
 **Why it's there:** A decision is final, and every goal is scoped to its user.
 
+## `test_accept_expired_proposal_says_it_expired`
+
+**What it does:** Accepting a superseded goal is a 409 "This proposal expired. Generate goals again." and it stays `superseded`. Dismissing it is a 409 "This goal was already decided."
+
+**Why it's there:** The user never decided an expired proposal, so "already decided" would be wrong.
+
+## `test_accept_commits_when_the_checkpointer_cannot_open`
+
+**What it does:** `get_checkpointer` raises. Accepting is still a 200 with the goal `accepted`, and its run stays `awaiting_user`. Once the checkpointer works again, `GET /goals` finishes the run.
+
+**Why it's there:** The spec says a decision commits before any resume. An unopenable checkpoint file must not turn a click into a 500 with the row left `proposed`.
+
 ## `test_accept_without_start_date_is_409`
 
 **What it does:** A goal with no `start_date` (a row from before TPC-25) can't be accepted: 409, with a message telling the user to generate again, and it stays proposed.

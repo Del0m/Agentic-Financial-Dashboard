@@ -309,6 +309,36 @@ def test_accept_decided_is_409_other_users_404(api):
     assert status_of(api, theirs) == "proposed"
 
 
+def test_accept_expired_proposal_says_it_expired(api):
+    with api.db() as s:
+        goal(s, UID, 1, status="superseded")
+        s.commit()
+        goal_id = s.query(Goal).one().id
+    r = api.client.post(f"/goals/{goal_id}/accept")
+    assert (r.status_code, r.json()["detail"]) == (409, "This proposal expired. Generate goals again.")
+    assert status_of(api, goal_id) == "superseded"
+    r = api.client.post(f"/goals/{goal_id}/dismiss")      # nothing for them to dismiss: it's not "expired" to them
+    assert (r.status_code, r.json()["detail"]) == (409, "This goal was already decided.")
+
+
+# the decision commits before any resume, so a checkpointer that won't open can't lose the click: GET /goals heals later
+def test_accept_commits_when_the_checkpointer_cannot_open(api):
+    run_id = generate(api, g("debt_payoff", 58300, "avalanche"))
+    [goal_id] = run_of(api, run_id)["goal_ids"]
+
+    def broken():
+        raise OSError("unable to open database file")
+
+    api.mp.setattr(budget_hooks, "get_checkpointer", broken)
+    r = api.client.post(f"/goals/{goal_id}/accept")
+    assert (r.status_code, r.json()["status"]) == (200, "accepted")
+    assert status_of(api, goal_id) == "accepted"
+    assert run_of(api, run_id)["status"] == "awaiting_user"
+    api.mp.setattr(budget_hooks, "get_checkpointer", lambda: api.ck)
+    assert api.client.get("/goals?status=accepted").status_code == 200       # the page heals it
+    assert run_of(api, run_id)["status"] == "ok"
+
+
 def test_accept_without_start_date_is_409(api):
     with api.db() as s:
         goal(s, UID, 1, start_date=None)

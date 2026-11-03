@@ -9,7 +9,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from app import config
 from app.agents.goal_graph import goal_waiting_for, run_goals
 from app.budget_service import goal_decisions
-from app.budget_service.goal_decisions import (GoalAlreadyDecided, GoalNotAcceptable, GoalNotFound, decide_goal,
+from app.budget_service.goal_decisions import (GoalAlreadyDecided, GoalExpired, GoalNotAcceptable, GoalNotFound, decide_goal,
                                                finish_decided_runs)
 from app.db.models import AgentRun, Goal
 from eval.budget_users import GOAL_USERS, seed_profile
@@ -106,9 +106,22 @@ def test_accept_after_dismiss_is_already_decided(user):
 
 def test_superseded_goal_cannot_be_accepted(user):
     gid = add_goal(user, status="superseded")
-    with pytest.raises(GoalAlreadyDecided):
+    with pytest.raises(GoalExpired):
         decide_goal(user, UID, gid, "accepted")
     assert goal(user, gid).status == "superseded"
+
+
+# the API catches the base class for the user's own earlier decision, so expiry has to be a subclass
+def test_expired_is_a_kind_of_already_decided():
+    assert issubclass(GoalExpired, GoalAlreadyDecided)
+
+
+# the user never decided an expired proposal, so dismissing one is still "already decided"
+def test_superseded_goal_dismiss_is_already_decided_not_expired(user):
+    gid = add_goal(user, status="superseded")
+    with pytest.raises(GoalAlreadyDecided) as e:
+        decide_goal(user, UID, gid, "dismissed")
+    assert not isinstance(e.value, GoalExpired)
 
 
 def test_completed_goal_cannot_be_dismissed(user):

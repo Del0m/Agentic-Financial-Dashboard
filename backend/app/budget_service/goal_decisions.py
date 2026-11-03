@@ -24,6 +24,11 @@ class GoalAlreadyDecided(Exception):
     pass
 
 
+# a proposal that went stale before the user answered; GoalAlreadyDecided would blame a decision they never made
+class GoalExpired(GoalAlreadyDecided):
+    pass
+
+
 class GoalNotAcceptable(Exception):
     pass
 
@@ -85,6 +90,8 @@ def decide_goal(session_factory, user_id: str, goal_id: int, decision: Decision,
             s.rollback()
             # nothing changed, so the row now says why
             status = s.scalar(select(Goal.status).where(Goal.id == goal_id))
+            if decision == "accepted" and status == "superseded":
+                raise GoalExpired(goal_id)
             if decision == "dismissed" or status != "proposed":
                 raise GoalAlreadyDecided(goal_id)
             raise GoalNotAcceptable(goal_id)

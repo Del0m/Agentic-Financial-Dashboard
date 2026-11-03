@@ -10,8 +10,8 @@ from sqlalchemy import select
 
 from ..agents.goal_graph import run_goals_locked
 from ..budget_service.daily import running_elsewhere, sim_today, user_lock
-from ..budget_service.goal_decisions import (Decision, GoalAlreadyDecided, GoalNotAcceptable, GoalNotFound, decide_goal,
-                                             finish_decided_runs)
+from ..budget_service.goal_decisions import (Decision, GoalAlreadyDecided, GoalExpired, GoalNotAcceptable, GoalNotFound,
+                                             decide_goal, finish_decided_runs)
 from ..db.models import AgentRun, Goal, User
 from . import budget_hooks
 from .deps import get_current_user
@@ -161,11 +161,19 @@ def get_run(run_id: int, user: User = Depends(get_current_user)):
 
 
 def _decide(goal_id: int, decision: Decision, user: User) -> GoalOut:
+    # the decision commits before any resume, so a checkpointer that won't open must not stop it: without one it
+    # still commits, and GET /goals finishes the run later
     try:
-        goal = decide_goal(budget_hooks.session_factory, user.id, goal_id, decision,
-                           checkpointer=budget_hooks.get_checkpointer())
+        checkpointer = budget_hooks.get_checkpointer()
+    except Exception:
+        logger.warning("opening the goal checkpointer failed", exc_info=True)
+        checkpointer = None
+    try:
+        goal = decide_goal(budget_hooks.session_factory, user.id, goal_id, decision, checkpointer=checkpointer)
     except GoalNotFound:
         raise HTTPException(404, "Goal not found.")
+    except GoalExpired:
+        raise HTTPException(409, "This proposal expired. Generate goals again.")
     except GoalAlreadyDecided:
         raise HTTPException(409, "This goal was already decided.")
     except GoalNotAcceptable:

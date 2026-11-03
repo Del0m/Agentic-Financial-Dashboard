@@ -43,9 +43,21 @@ Run them from `backend/`:
 
 ## `test_superseded_goal_cannot_be_accepted`
 
-**What it does:** A superseded goal raises `GoalAlreadyDecided` on accept.
+**What it does:** A superseded goal raises `GoalExpired` on accept and stays `superseded`.
 
-**Why it's there:** A newer run replaced it; the user's page is out of date.
+**Why it's there:** A newer run, or the close that opened its start month, replaced it. The user never decided it, so the error says it expired.
+
+## `test_expired_is_a_kind_of_already_decided`
+
+**What it does:** `GoalExpired` is a subclass of `GoalAlreadyDecided`.
+
+**Why it's there:** Callers that catch `GoalAlreadyDecided` keep working.
+
+## `test_superseded_goal_dismiss_is_already_decided_not_expired`
+
+**What it does:** Dismissing a superseded goal raises `GoalAlreadyDecided`, not `GoalExpired`.
+
+**Why it's there:** Only an accept is a click on a proposal that went stale; "expired" would be the wrong word for a dismiss.
 
 ## `test_completed_goal_cannot_be_dismissed`
 

@@ -128,7 +128,7 @@ Back on /goals the emergency fund card is gone, and **Accepted** shows the debt 
 curl -s -w ' %{http_code}\n' -X POST localhost:8000/goals/2/accept
 ```
 
-**Expected:** `{"detail":"This goal was already decided."} 409`. It's too late to accept an expired proposal; generate again.
+**Expected:** `{"detail":"This proposal expired. Generate goals again."} 409`. It's too late to accept an expired proposal; generate again.
 
 ## Edge cases worth trying
 
@@ -178,7 +178,7 @@ grep -a -c "Platinum" "$BUDGET_CHECKPOINT_PATH" "$BUDGET_CHECKPOINT_PATH-wal"
 
 **Run while writing this handoff, on 2026-11-02, with Ollama and `qwen2.5:14b` running:**
 - Setup: `alembic upgrade head` (head `a3d9e1b7c2f5`), the seed with `--replace --start 2026-11-02`, and the API on a spare port with `DEV_USER_EMAIL=goals-card-24@eval.local`, on a throwaway database.
-- Through the API with `curl`: generate (proposed a $389.00 debt goal and a $388.40 emergency fund, awaiting approval), accept, the accepted list, accept again (409), generate again with the cap at $388.40 (the first run became `expired`), the 29-day `scripts/simulate.py` run to 2026-12-01 (29 runs, no alerts), December's budget (`Debt payoff` $389.00, group `goal`, nothing spent, no pace, Free $783.21, lines summing to the $4,200.00 total), the undecided proposal `superseded` with its run `expired` and a late accept 409, stop 200, stop again 409, unknown goal 404, and 31 more days, after which January has no debt line.
+- Through the API with `curl`: generate (proposed a $389.00 debt goal and a $388.40 emergency fund, awaiting approval), accept, the accepted list, accept again (409), generate again with the cap at $388.40 (the first run became `expired`), the 29-day `scripts/simulate.py` run to 2026-12-01 (29 runs, no alerts), December's budget (`Debt payoff` $389.00, group `goal`, nothing spent, no pace, Free $783.21, lines summing to the $4,200.00 total), the undecided proposal `superseded` with its run `expired` and a late accept 409 ("This proposal expired"), stop 200, stop again 409, unknown goal 404, and 31 more days, after which January has no debt line.
 - The checkpoint file has no occurrence of the card's name.
 
 **Recorded earlier the same day, live, through the browser and the real app** (`qwen2.5:14b`, simulated `goals-card-24`, a disposable database): Generate proposed `debt_payoff` (avalanche) at $583.00/mo, target $21,600.00, February 2029, and `emergency_fund` at $194.40/mo, target $6,851.78, November 2029, with a surplus of $971.75 and a cap of $777.40. Accepting the debt goal showed it on the dashboard as "From December 2026", with Goals (1) for the remaining proposal, and left the budget unchanged. Advancing 29 days to 2026-12-01 closed November: December has "Debt payoff $583.00/mo" with no meter, Free $589.21, a total of $4,200.00 and lines summing to $4,200.00, and the undecided emergency fund proposal expired. Accepting again gave 409, stopping gave 200, stopping again 409, and an unknown goal 404. The 375 px layout looked fine.
