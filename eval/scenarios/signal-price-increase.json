@@ -1,0 +1,29 @@
+{
+  "id": "signal-price-increase",
+  "kind": "budget",
+  "tags": [
+    "signal"
+  ],
+  "profile": "recurring-planted",
+  "start": "2026-10-01",
+  "end": "2026-10-04",
+  "golden_answer": "FitClub Gym charges $43.00 on Oct 3, up from $40.00, so a price_increase alert fires on that day's run and names both prices.",
+  "expect": {
+    "alert_kinds": [
+      "price_increase"
+    ],
+    "message_facts": [
+      {
+        "text": "FitClub Gym"
+      },
+      {
+        "number": 40,
+        "tol": 0.01
+      },
+      {
+        "number": 43,
+        "tol": 0.01
+      }
+    ]
+  }
+}

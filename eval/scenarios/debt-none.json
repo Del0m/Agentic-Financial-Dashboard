@@ -1,0 +1,36 @@
+{
+  "id": "debt-none",
+  "tags": [
+    "high_interest_debt"
+  ],
+  "question": "Which of my debts should I pay off first?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2150
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 4,
+        "amount": 42.1,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Chipotle"
+      }
+    ]
+  },
+  "golden_answer": "You don't have any debts on your linked accounts, so there's nothing to pay off first. This is general information, not financial advice.",
+  "expect": {
+    "forbid": [
+      "http"
+    ],
+    "abstain": true,
+    "tools": [
+      "get_debts"
+    ]
+  }
+}

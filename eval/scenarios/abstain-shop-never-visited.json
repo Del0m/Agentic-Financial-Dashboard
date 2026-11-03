@@ -1,0 +1,40 @@
+{
+  "id": "abstain-shop-never-visited",
+  "tags": [
+    "abstain"
+  ],
+  "question": "How much did I spend at Costco last year?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2150
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 4,
+        "amount": 42.1,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Chipotle"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 11,
+        "amount": 88,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Grocer"
+      }
+    ]
+  },
+  "golden_answer": "I don't see any purchases at Costco in your transactions. This is general information, not financial advice.",
+  "expect": {
+    "forbid": [
+      "http"
+    ],
+    "abstain": true
+  }
+}

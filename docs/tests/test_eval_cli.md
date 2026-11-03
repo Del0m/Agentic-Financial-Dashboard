@@ -67,3 +67,51 @@ Run them from `backend/`:
 **What it does:** The second run raises `KeyboardInterrupt`. The first run's file is already on disk when the interruption escapes.
 
 **Why it's there:** A full eval takes minutes on local models. Stopping it, or a crash, must keep every run that finished.
+
+---
+
+## Budget and goal scenarios (TPC-26)
+
+The `agents` fixture adds one budget and one goal file to `offline`, and stubs their runners.
+
+## `test_kind_defaults_to_every_kind`
+
+**What it does:** With no `--kind`, all three kinds run. `summary.json` has chat under `overall`, plus `budget` and `goal` sections, and each run file holds its named checks.
+
+**Why it's there:** One command runs the whole benchmark. `overall` stays chat-only so it remains comparable with October's results.
+
+## `test_kind_rejects_an_unknown_value`
+
+**What it does:** `--kind close` exits.
+
+**Why it's there:** A typo mustn't quietly run nothing.
+
+## `test_kind_budget_builds_nothing_only_chat_needs`
+
+**What it does:** `--kind budget` never builds the knowledge base or embeddings, only the agent model, and never runs a chat scenario. The summary has `overall.runs == 0` and no `goal` section, `config.json` lists only that scenario, and the table prints the false-alarm rate.
+
+**Why it's there:** Budget runs have to work, and fail clearly, without the judge or KB being set up.
+
+## `test_only_a_budget_scenario_also_skips_chats_needs`
+
+**What it does:** `--only b1` doesn't build the knowledge base either.
+
+**Why it's there:** What's needed comes from the scenarios that will run, however they were chosen.
+
+## `test_kind_with_nothing_to_run_returns_2`
+
+**What it does:** `--kind goal` with no goal scenarios returns 2 and says there's nothing to run.
+
+**Why it's there:** An empty results folder would look like a run that happened.
+
+## `test_preflight_without_chat_needs_only_the_agent_model`
+
+**What it does:** With no knowledge base, `preflight` asks only about the agent model.
+
+**Why it's there:** The same reason, at the check itself.
+
+## `test_chat_summary_carries_tags`
+
+**What it does:** A tagged chat scenario appears under `by_tag`.
+
+**Why it's there:** Per-category rates are what the writeup reports.

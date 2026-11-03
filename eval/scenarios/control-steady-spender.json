@@ -1,0 +1,14 @@
+{
+  "id": "control-steady-spender",
+  "kind": "budget",
+  "tags": [
+    "no_overspend_control"
+  ],
+  "profile": "steady",
+  "start": "2026-08-04",
+  "end": "2026-08-09",
+  "golden_answer": "Nothing is overspent: groceries, dining, fuel and a $15.99 subscription are all at their usual amounts, so no category should be flagged. Weekly purchases and a monthly charge landing early in the month aren't overspending.",
+  "expect": {
+    "flags": []
+  }
+}

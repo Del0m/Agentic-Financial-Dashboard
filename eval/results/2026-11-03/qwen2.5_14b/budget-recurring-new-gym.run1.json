@@ -1,0 +1,52 @@
+{
+  "record": {
+    "scenario_id": "budget-recurring-new-gym",
+    "run": 1,
+    "flags": {
+      "PERSONAL_CARE": "2026-10-03"
+    },
+    "alerts": [
+      {
+        "day": "2026-10-03",
+        "kind": "overspend",
+        "category": "PERSONAL_CARE",
+        "cause": "recurring",
+        "action": "adjust_next_budget",
+        "severity": "high",
+        "message": "You made a $90.00 charge at FitClub Gym, which is now a regular occurrence. Consider setting your Personal Care budget to $135.00 for next month.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-10-03",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "medium",
+        "message": "Low balance warning: Insufficient funds to cover the Landlord bill of 178.28 on 2026-10-04, resulting in a shortfall of 78.28.",
+        "signal_days": 1
+      }
+    ],
+    "llm_failures": 0,
+    "latency_s": 20.87040058290586,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true,
+      "cause": true,
+      "action": true,
+      "flag_by": true,
+      "message": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "flag_to_alert_days": [
+      0
+    ],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0
+  }
+}

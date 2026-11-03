@@ -1,13 +1,14 @@
 import math
 import re
 from dataclasses import asdict, dataclass
+from datetime import date
 from statistics import mean
 from typing import Optional
 
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 
-from eval.fixtures import Expect, Scenario
+from eval.fixtures import BudgetScenario, Expect, Fact, GoalScenario, Scenario
 
 # scores one run (spec: tpc-16 metrics). facts are a rule check so a wrong number fails loudly;
 # similarity and the judge are reported next to it, never instead of it
@@ -19,6 +20,14 @@ SIM_PREFIX = "clustering: "
 _NUMBER = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 # "3.2k" and "401(k)" aren't the numbers 3.2 or 401
 _SUFFIX = re.compile(r"\s?(?:[kmbKMB]\b|\(k\))")
+_DOLLARS = re.compile(r"\$\s?\d|\b\d[\d,]*(?:\.\d+)?\s?(?:dollars|usd)\b", re.I)
+# ways of saying the data isn't there. a phrase missed here fails a good answer, which the run file shows
+ABSTAIN_PHRASES = ("don't have", "do not have", "doesn't have", "does not have", "no record", "no data", "no information",
+                   "no transaction", "no spending", "no purchase", "not available", "isn't available", "unavailable",
+                   "couldn't find", "could not find", "can't find", "cannot find", "didn't find", "did not find",
+                   "don't see", "do not see", "doesn't show", "does not show", "not able to", "unable to", "not yet",
+                   "hasn't been", "has not been", "haven't been", "have not been", "did not spend", "didn't spend",
+                   "haven't spent", "have not spent", "any debt", "no debt")
 
 
 def extract_numbers(text: str) -> list[float]:
@@ -47,7 +56,20 @@ class FactResult:
         return self.found / self.total if self.total else 0.0
 
 
+# one found fact, so the rates average with fact scenarios: it said so, and it stated no dollar amount (tpc-26)
+def check_abstain(answer: str, expect: Expect) -> FactResult:
+    lower = answer.lower().replace("’", "'")
+    missing = [] if any(p in lower for p in ABSTAIN_PHRASES) else ["says the data isn't available"]
+    if _DOLLARS.search(answer):
+        missing.append("states no dollar amount")
+    forbidden = [w for w in expect.forbid if w.lower() in lower]
+    return FactResult(found=0 if missing else 1, total=1, missing=missing, forbidden_hits=forbidden,
+                      passed=not missing and not forbidden)
+
+
 def check_facts(answer: str, expect: Expect) -> FactResult:
+    if expect.abstain:
+        return check_abstain(answer, expect)
     lower, numbers = answer.lower(), extract_numbers(answer)
     missing = []
     for f in expect.facts:
@@ -193,18 +215,154 @@ def _stats(items: list[dict]) -> dict:
     }
 
 
-# items are {"record": dict, "scores": dict}, the shape run_eval writes per run
-def summarize(scored: list[dict]) -> dict:
+def _by_scenario(scored: list[dict]) -> dict[str, list[dict]]:
     by_id: dict[str, list[dict]] = {}
     for item in scored:
         by_id.setdefault(item["record"]["scenario_id"], []).append(item)
+    return by_id
+
+
+# pass^k (architecture 10.2): the share of scenarios passing on every run, beside each mean. a demo only shows one run
+def _pass_all(by_id: dict[str, list[dict]], passed) -> float:
+    return _rate(all(passed(i) for i in items) for items in by_id.values())
+
+
+# scenario id -> its tags; a scenario with several counts once under each
+def _tag_groups(scored: list[dict], tags: dict[str, tuple[str, ...]]) -> dict[str, list[dict]]:
+    groups: dict[str, list[dict]] = {}
+    for item in scored:
+        for tag in tags.get(item["record"]["scenario_id"], ()):
+            groups.setdefault(tag, []).append(item)
+    return groups
+
+
+# items are {"record": dict, "scores": dict}, the shape run_eval writes per run
+def summarize(scored: list[dict], tags: Optional[dict[str, tuple[str, ...]]] = None) -> dict:
+    by_id = _by_scenario(scored)
     scenarios = {}
     for sid, items in by_id.items():
         sims = [i["scores"]["similarity"] for i in items]
         facts = [i["scores"]["facts"]["score"] for i in items]
         scenarios[sid] = {**_stats(items), "similarity_min": min(sims), "similarity_max": max(sims),
                           "fact_score_min": min(facts), "fact_score_max": max(facts)}
-    return {"overall": _stats(scored) if scored else {"runs": 0}, "scenarios": scenarios}
+    fact_passed = lambda i: i["scores"]["facts"]["passed"]
+    overall = {**_stats(scored), "fact_pass_all_runs_rate": _pass_all(by_id, fact_passed)} if scored else {"runs": 0}
+    by_tag = {tag: {"runs": len(items), "fact_pass_rate": _rate(fact_passed(i) for i in items)}
+              for tag, items in _tag_groups(scored, tags or {}).items()}
+    return {"overall": overall, "scenarios": scenarios, "by_tag": by_tag}
+
+
+# budget and goal runs are scored by rule against the rows the real graphs wrote (spec: tpc-26). each check is named and
+# reported on its own, so a wrong cause doesn't hide a correct flag. similarity and the judge are chat only
+
+
+def _facts_in(text: str, facts: list[Fact]) -> bool:
+    return check_facts(text, Expect(facts=facts, forbid=[], tools=[], sources=[])).passed
+
+
+# record is an agent_runner.BudgetRecord as a dict
+def score_budget(record: dict, scenario: BudgetScenario) -> dict:
+    exp, flags = scenario.expect, record["flags"]
+    overspend = [a for a in record["alerts"] if a["kind"] == "overspend"]
+    first = {}
+    for alert in overspend:
+        first.setdefault(alert["category"], alert)
+    wanted = exp.flags or ()
+    checks = {} if exp.flags is None else {"flags": set(flags) == set(wanted)}
+    if exp.causes:
+        checks["cause"] = all((first.get(c) or {}).get("cause") == cause for c, cause in exp.causes.items())
+    if exp.actions:
+        checks["action"] = all(c in first and first[c]["action"] in rule.accept
+                               and not any(a["category"] == c and a["action"] in rule.ban for a in overspend)
+                               for c, rule in exp.actions.items())
+    if exp.flag_by:
+        checks["flag_by"] = all(c in flags and date.fromisoformat(flags[c]) <= by for c, by in exp.flag_by.items())
+    if exp.alert_kinds:
+        checks["alert_kinds"] = set(exp.alert_kinds) <= {a["kind"] for a in record["alerts"]}
+    if exp.message_facts:
+        checks["message"] = _facts_in("\n".join(a["message"] or "" for a in record["alerts"]), exp.message_facts)
+    leads = [a["signal_days"] for a in record["alerts"] if a["kind"] == "low_balance" and a["signal_days"] is not None]
+    # only where a scenario plants a dip: a planted overspend user's static $100 balance raises its own warnings
+    leads = leads if exp.min_days_ahead is not None else []
+    if exp.min_days_ahead is not None:
+        checks["lead_time"] = bool(leads) and max(leads) >= exp.min_days_ahead
+    if record["error"]:
+        checks = {name: False for name in checks}
+    # days from a category's first flag to its first alert. architecture 10.2's time-to-flag target is one run at most
+    lags = [(date.fromisoformat(first[c]["day"]) - date.fromisoformat(flags[c])).days
+            for c in wanted if c in first and c in flags]
+    return {"checks": checks, "passed": all(checks.values()),
+            "false_alarm": scenario.is_control and bool(not record["error"] and (flags or overspend)),
+            "extra_flags": [] if exp.flags is None else sorted(set(flags) - set(wanted)), "flag_to_alert_days": lags,
+            "low_balance_days_ahead": max(leads) if leads else None, "llm_failures": record["llm_failures"]}
+
+
+# record is an agent_runner.GoalRecord as a dict
+def score_goal(record: dict, scenario: GoalScenario) -> dict:
+    exp = scenario.expect
+    kinds = [p["kind"] for p in sorted(record["plans"], key=lambda p: p["priority"])]
+    checks = {"status": record["status"] == exp.status,
+              "banned_kinds": not set(kinds) & set(exp.banned_kinds)}
+    if exp.required_kinds:
+        checks["required_kinds"] = set(exp.required_kinds) <= set(kinds)
+    if exp.first_kind is not None:
+        checks["first_kind"] = bool(kinds) and kinds[0] == exp.first_kind
+    if exp.status == "ok":
+        total = sum(p["monthly_cents"] for p in record["plans"])
+        checks["under_cap"] = bool(kinds) and record["cap_cents"] is not None and total <= record["cap_cents"]
+    else:
+        # nothing was affordable, so the model should never have been asked
+        checks["model_not_called"] = record["attempts"] == 0
+    if record["error"]:
+        checks = {name: False for name in checks}
+    return {"checks": checks, "passed": all(checks.values()), "attempts": record["attempts"]}
+
+
+def _mean_or_none(values: list) -> Optional[float]:
+    return mean(values) if values else None
+
+
+# one check's pass rate over the runs that have it; None when no scenario in the group sets it
+def _check_rate(items: list[dict], name: str) -> Optional[float]:
+    results = [i["scores"]["checks"][name] for i in items if name in i["scores"]["checks"]]
+    return _rate(results) if results else None
+
+
+def _agent_stats(items: list[dict], names: tuple[str, ...]) -> dict:
+    latencies = [i["record"]["latency_s"] for i in items]
+    return {"runs": len(items), "errors": sum(1 for i in items if i["record"]["error"]),
+            "pass_rate": _rate(i["scores"]["passed"] for i in items),
+            "pass_all_runs_rate": _pass_all(_by_scenario(items), lambda i: i["scores"]["passed"]),
+            "checks": {name: _check_rate(items, name) for name in names},
+            "latency_mean_s": mean(latencies), "latency_p95_s": _p95(latencies)}
+
+
+BUDGET_CHECKS = ("flags", "cause", "action", "flag_by", "alert_kinds", "message", "lead_time")
+GOAL_CHECKS = ("status", "banned_kinds", "required_kinds", "first_kind", "under_cap", "model_not_called")
+
+
+def summarize_budget(items: list[dict], scenarios: dict[str, BudgetScenario]) -> dict:
+    controls = [i for i in items if scenarios[i["record"]["scenario_id"]].is_control]
+    lags = [lag for i in items for lag in i["scores"]["flag_to_alert_days"]]
+    leads = [i["scores"]["low_balance_days_ahead"] for i in items if i["scores"]["low_balance_days_ahead"] is not None]
+    tags = {sid: s.tags for sid, s in scenarios.items()}
+    return {**_agent_stats(items, BUDGET_CHECKS),
+            "control_runs": len(controls),
+            "false_alarm_rate": _rate(i["scores"]["false_alarm"] for i in controls) if controls else None,
+            "flag_to_alert_days_mean": _mean_or_none(lags), "low_balance_days_ahead_mean": _mean_or_none(leads),
+            "llm_failures": sum(i["scores"]["llm_failures"] for i in items),
+            "by_tag": {tag: {"runs": len(group), "pass_rate": _rate(i["scores"]["passed"] for i in group)}
+                       for tag, group in _tag_groups(items, tags).items()},
+            "scenarios": {sid: _agent_stats(group, BUDGET_CHECKS) for sid, group in _by_scenario(items).items()}}
+
+
+def summarize_goal(items: list[dict], scenarios: dict[str, GoalScenario]) -> dict:
+    tags = {sid: s.tags for sid, s in scenarios.items()}
+    attempts = [i["scores"]["attempts"] for i in items]
+    return {**_agent_stats(items, GOAL_CHECKS), "attempts_mean": mean(attempts),
+            "by_tag": {tag: {"runs": len(group), "pass_rate": _rate(i["scores"]["passed"] for i in group)}
+                       for tag, group in _tag_groups(items, tags).items()},
+            "scenarios": {sid: _agent_stats(group, GOAL_CHECKS) for sid, group in _by_scenario(items).items()}}
 
 
 # initial budget accuracy (architecture 10.2): mean absolute percentage error of each limit against the

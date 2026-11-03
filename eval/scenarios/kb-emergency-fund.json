@@ -1,0 +1,32 @@
+{
+  "id": "kb-emergency-fund",
+  "tags": [
+    "guidance"
+  ],
+  "question": "Why should I build an emergency fund, and how do I start?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2150
+      }
+    ],
+    "transactions": []
+  },
+  "golden_answer": "An emergency fund is money set aside for unexpected expenses, so a surprise bill doesn't go on a credit card or become a loan. Start small and save a regular amount, for example automatically from each paycheck. This is general information, not financial advice.",
+  "expect": {
+    "forbid": [
+      "http"
+    ],
+    "facts": [
+      {
+        "text": "unexpected"
+      }
+    ],
+    "sources": [
+      "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/"
+    ]
+  }
+}

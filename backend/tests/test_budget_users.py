@@ -11,8 +11,8 @@ from app.budget_engine.txns import Txn, month_start
 from app.budget_service.debts import load_debts
 from app.budget_service.initialize import load_txns
 from app.db.models import Account, Transaction, User
-from eval.budget_users import (GOAL_USERS, PLANTED, PROFILES, RECURRING_USERS, Every, Monthly, Scatter, default_start,
-                               seed_profile, transactions)
+from eval.budget_users import (FORECAST_USERS, GOAL_USERS, PLANTED, PROFILES, RECURRING_USERS, SCENARIO_USERS, Every, Monthly,
+                               Scatter, default_start, profile_by_id, seed_profile, transactions)
 
 
 def profile(pid):
@@ -306,3 +306,75 @@ def test_recurring_users_are_not_in_the_accuracy_tuples():
     ids = {p.id for p in RECURRING_USERS}
     assert ids == {"recurring-planted", "recurring-noisy"}
     assert not ids & {p.id for p in PROFILES + PLANTED}
+
+
+# --- the benchmark's own users (TPC-26) ---
+
+def scenario_user(pid):
+    return next(p for p in SCENARIO_USERS if p.id == pid)
+
+
+def spent_in(p, category, year, month):
+    return sum(c for d, c, cat, _ in transactions(p) if cat == category and (d.year, d.month) == (year, month))
+
+
+def test_profile_by_id_finds_every_tuple():
+    for group in (PROFILES, PLANTED, GOAL_USERS, RECURRING_USERS, FORECAST_USERS, SCENARIO_USERS):
+        assert profile_by_id(group[0].id) is group[0]
+    assert profile_by_id("nobody") is None
+
+
+def test_profile_ids_are_unique():
+    every = [p.id for p in (*PROFILES, *PLANTED, *GOAL_USERS, *RECURRING_USERS, *FORECAST_USERS, *SCENARIO_USERS)]
+    assert len(every) == len(set(every))
+
+
+def test_scenario_users_are_not_in_the_accuracy_eval():
+    assert not {p.id for p in SCENARIO_USERS} & {p.id for p in PROFILES + PLANTED}
+
+
+def test_new_club_starts_in_september():
+    club = [d for d, _, _, m in transactions(scenario_user("overspend-new-club")) if m == "Vine Club"]
+    assert club == [date(2026, 9, 4), date(2026, 10, 4)]
+
+
+def test_back_to_school_is_spread_across_seven_shops():
+    p = scenario_user("overspend-back-to-school")
+    shops = {m: c for d, c, _, m in transactions(p) if d.month == 9 and m != "Corner Shop"
+             and c > 0 and m not in ("Landlord", "Savings")}
+    assert len(shops) == 7 and max(shops.values()) < sum(shops.values()) / 2
+
+
+# the control users really are on budget, so a flag on one is a false alarm and not a planted overspend
+def test_flat_control_spends_the_same_every_month():
+    p = scenario_user("control-minimal")
+    assert {spent_in(p, "FOOD_AND_DRINK", 2026, m) for m in (7, 8, 10)} == {24800}
+
+
+def test_early_order_control_ends_october_at_its_usual_total():
+    p = scenario_user("control-under-limit")
+    assert spent_in(p, "FOOD_AND_DRINK", 2026, 10) == spent_in(p, "FOOD_AND_DRINK", 2026, 8) == 26800
+    assert (date(2026, 10, 20), 2000, "FOOD_AND_DRINK", "Bakery") in transactions(p)
+
+
+def test_early_rent_control_pays_twice_in_june_and_never_in_july():
+    p = scenario_user("control-early-rent")
+    assert (spent_in(p, "RENT_AND_UTILITIES", 2026, 6), spent_in(p, "RENT_AND_UTILITIES", 2026, 7)) == (300000, 0)
+
+
+@pytest.mark.parametrize("pid, low, high", [("goals-no-surplus", -30000, -1), ("goals-thin-surplus", 1000, 1000),
+                                            ("goals-no-debts", 100000, 150000)])
+def test_goal_scenario_users_have_their_planted_surplus(db, pid, low, high):
+    p = scenario_user(pid)
+    with db() as s:
+        uid = seed_profile(s, p)
+        s.commit()
+        assert low <= monthly_surplus(load_txns(s, uid, p.start, p.today), p.today) <= high
+
+
+def test_no_debts_user_has_almost_no_savings_and_no_debts(db):
+    with db() as s:
+        uid = seed_profile(s, scenario_user("goals-no-debts"))
+        s.commit()
+        assert load_debts(s, uid) == []
+        assert s.query(Account).filter_by(user_id=uid, subtype="savings").one().current_balance_cents == 20000

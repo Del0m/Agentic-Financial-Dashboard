@@ -1,0 +1,33 @@
+{
+  "id": "budget-seasonal-holidays",
+  "kind": "budget",
+  "tags": [
+    "seasonal"
+  ],
+  "profile": "overspend-seasonal",
+  "start": "2026-12-04",
+  "end": "2026-12-06",
+  "golden_answer": "General merchandise runs ahead of pace by Dec 5 because of holiday gifts spread across several shops, with no single purchase dominating. The cause is seasonal, so next month's budget stays as it is.",
+  "expect": {
+    "flags": [
+      "GENERAL_MERCHANDISE"
+    ],
+    "causes": {
+      "GENERAL_MERCHANDISE": "seasonal"
+    },
+    "actions": {
+      "GENERAL_MERCHANDISE": {
+        "accept": [
+          "alert",
+          "suggest_cuts"
+        ],
+        "ban": [
+          "adjust_next_budget"
+        ]
+      }
+    },
+    "flag_by": {
+      "GENERAL_MERCHANDISE": "2026-12-05"
+    }
+  }
+}

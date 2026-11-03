@@ -193,3 +193,115 @@ The same three rules apply to `sources_ok` with `source_url`s.
 **What it does:** With the fact 124.25 ± 0.01, checks that `$124.24` and `$124.26` both pass and `$124.27` fails.
 
 **Why it's there:** `abs(124.24 - 124.25)` is `0.0100000000000051` in floating point, so a value exactly one tolerance away passed on one side and failed on the other. The comparison now allows a tiny epsilon. The review on #10 found it.
+
+---
+
+## Abstention, pass^3, and budget and goal scoring (TPC-26)
+
+## `test_abstain_passes_when_it_says_so`, `test_abstain_fails_without_saying_so`
+
+**What they do:** Several ways of saying the data isn't there pass, including with a curly apostrophe. A confident answer without one fails.
+
+**Why they're there:** Architecture 10.2: an abstain scenario passes only if the answer says the information isn't available.
+
+## `test_abstain_fails_on_a_dollar_amount`, `test_abstain_allows_a_bare_year`
+
+**What they do:** `$1,200`, `1200 dollars` and `300 USD` fail even with the right phrase. A bare `2019` doesn't.
+
+**Why they're there:** Saying "I don't have it, but about $1,200" is still inventing a figure, yet repeating the year from the question isn't.
+
+## `test_abstain_still_honours_forbid`
+
+**What it does:** A forbidden string fails an abstain answer.
+
+**Why it's there:** The rule against invented links applies to every chat answer.
+
+## `test_budget_flags_are_exact`, `test_budget_flags_left_out_are_not_checked`
+
+**What they do:** The right flag passes, an extra or missing one fails and is listed, and leaving `flags` out skips the check.
+
+**Why they're there:** An extra flag is a false alarm. A signal scenario isn't about flags, so lumpy pace flags on its user don't fail it.
+
+## `test_budget_cause_scores_the_first_alert`
+
+**What it does:** Only the first alert for a category decides its cause, and no alert fails the check.
+
+**Why it's there:** The first alert is what the user acts on. A later correct cause doesn't undo it.
+
+## `test_budget_action_accepts_a_set_and_bans_any_alert`
+
+**What it does:** Any accepted action passes on the first alert, an action outside the set fails, and a banned action fails on any alert in the window.
+
+**Why it's there:** The agent's prompt allows more than one sensible action, but proposing a new budget for a one-off is wrong whenever it happens.
+
+## `test_budget_flag_by_is_a_deadline`, `test_budget_alert_kinds_must_all_appear`, `test_budget_message_facts_read_every_alert`, `test_budget_lead_time_takes_the_earliest_warning`
+
+**What they do:** Pin the flag deadline, that every listed alert kind must appear, that message facts may appear in any alert, and that lead time is the earliest warning's. With no warning, the lead time check fails.
+
+**Why they're there:** Each is one named check in the results, so its exact meaning is pinned here.
+
+## `test_abstain_accepts_saying_there_was_no_spending`
+
+**What it does:** "You did not spend any money at Costco last year." passes.
+
+**Why it's there:** The first live baseline gave this correct answer, and the phrase list rejected it.
+
+## `test_budget_lead_time_ignores_warnings_where_no_dip_was_planted`
+
+**What it does:** A low-balance alert in a scenario with no `min_days_ahead` reports no lead time.
+
+**Why it's there:** A planted overspend user's static $100 balance raises warnings one day ahead. The first live baseline averaged those in, which made the metric read 1.8 days when the planted dip was warned about 6 days ahead.
+
+## `test_budget_fallback_scores_each_check_apart`
+
+**What it does:** With the code's plain alert, the flag passes while cause and message fail, the run fails, and the failure count is reported.
+
+**Why it's there:** The TPC-26 decision: the user was warned, so the flag counts, but the model's failure must stay visible for the model comparison.
+
+## `test_budget_control_false_alarm`
+
+**What it does:** A control is a false alarm with any flag, but not for a low-balance alert.
+
+**Why it's there:** The false-alarm rate is about overspending. A low-balance warning is a different signal.
+
+## `test_budget_error_fails_every_check`
+
+**What it does:** A crashed run fails every check and isn't counted as a false alarm.
+
+**Why it's there:** A crash would otherwise pass a control, whose only check is that nothing was flagged.
+
+## `test_budget_flag_to_alert_days`
+
+**What it does:** A flag on Oct 2 with its alert on Oct 3 reports one day.
+
+**Why it's there:** This is the time-to-flag metric in architecture 10.2.
+
+## `test_goal_status_required_banned_and_first`, `test_goal_over_cap_fails_even_with_the_right_kinds`
+
+**What they do:** Pin each goal check, using priority rather than list order for `first_kind`. A plan exactly at the cap passes, one cent over fails, and an `ok` with no plans fails.
+
+**Why they're there:** Affordability is the point of these scenarios, and the graph already enforces it, so a failure here means something is badly wrong.
+
+## `test_goal_nothing_affordable_means_no_model_call`
+
+**What it does:** A non-`ok` status passes only with zero attempts.
+
+**Why it's there:** The architecture stops before the model when nothing is affordable.
+
+## `test_goal_attempts_are_reported_not_failed`, `test_goal_error_fails_every_check`
+
+**What they do:** Two attempts with a valid final plan pass and report 2. A crashed run fails everything.
+
+**Why they're there:** Retrying is how the graph is meant to work, per the TPC-26 decision.
+
+## `test_summarize_reports_pass_on_all_runs_and_tags`, `test_summarize_with_no_chat_runs`
+
+**What they do:** Five passes in six runs is 83%, but only half the scenarios pass every run. Tags group the rates, and a scenario with two tags counts under both. A run with no chat scenarios still summarizes.
+
+**Why they're there:** This is pass^3 from architecture 10.2. `--kind budget` has no chat runs.
+
+## `test_summarize_budget`, `test_summarize_budget_without_controls`, `test_summarize_goal`
+
+**What they do:** Pin the summary fields: pass rates, pass^3, false-alarm rate, each check's rate (`None` when no scenario sets it), time-to-flag, model failures, tags and per-scenario rows.
+
+**Why they're there:** TPC-27 and TPC-28 chart these.

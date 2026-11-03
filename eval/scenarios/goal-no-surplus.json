@@ -1,0 +1,13 @@
+{
+  "id": "goal-no-surplus",
+  "kind": "goal",
+  "tags": [
+    "goal_affordability"
+  ],
+  "profile": "goals-no-surplus",
+  "today": "2026-11-02",
+  "golden_answer": "The user spends more than they earn in a typical month, so nothing is affordable and no goals are proposed, even with a 19.99% card. The model isn't asked.",
+  "expect": {
+    "status": "no_surplus"
+  }
+}

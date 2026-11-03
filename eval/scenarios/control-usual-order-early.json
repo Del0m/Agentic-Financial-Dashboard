@@ -1,0 +1,14 @@
+{
+  "id": "control-usual-order-early",
+  "kind": "budget",
+  "tags": [
+    "no_overspend_control"
+  ],
+  "profile": "control-under-limit",
+  "start": "2026-10-17",
+  "end": "2026-10-29",
+  "golden_answer": "The user's usual $20 bakery order comes earlier in October than usual, and the month's total stays at its limit, so no category should be flagged.",
+  "expect": {
+    "flags": []
+  }
+}

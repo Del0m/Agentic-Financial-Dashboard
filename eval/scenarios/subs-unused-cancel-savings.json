@@ -1,0 +1,76 @@
+{
+  "id": "subs-unused-cancel-savings",
+  "tags": [
+    "unused_subscription"
+  ],
+  "question": "I never use Clipflix anymore. How much would I save each month if I cancelled it?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2150
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 65,
+        "amount": 15.49,
+        "category": "ENTERTAINMENT",
+        "merchant": "Clipflix"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 35,
+        "amount": 15.49,
+        "category": "ENTERTAINMENT",
+        "merchant": "Clipflix"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 5,
+        "amount": 15.49,
+        "category": "ENTERTAINMENT",
+        "merchant": "Clipflix"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 72,
+        "amount": 9.99,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 42,
+        "amount": 9.99,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 12,
+        "amount": 9.99,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      }
+    ]
+  },
+  "golden_answer": "Clipflix is a recurring monthly charge of $15.49, so cancelling it would save you $15.49 a month. This is general information, not financial advice.",
+  "expect": {
+    "forbid": [
+      "http"
+    ],
+    "facts": [
+      {
+        "number": 15.49,
+        "tol": 0.01
+      }
+    ],
+    "tools": [
+      "get_recurring"
+    ]
+  }
+}

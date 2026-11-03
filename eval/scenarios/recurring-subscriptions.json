@@ -1,5 +1,5 @@
 {
-  "id": "recurring-subscriptions",
+  "id": "recurring-subscriptions", "tags": ["unused_subscription"],
   "question": "What subscriptions do I have, and how much do I pay monthly?",
   "user": {
     "accounts": [{"name": "Everyday Checking", "type": "depository", "subtype": "checking", "balance": 2150}],

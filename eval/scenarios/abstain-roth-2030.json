@@ -1,0 +1,25 @@
+{
+  "id": "abstain-roth-2030",
+  "tags": [
+    "abstain"
+  ],
+  "question": "What's the 2030 Roth IRA contribution limit?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2150
+      }
+    ],
+    "transactions": []
+  },
+  "golden_answer": "The 2030 limit isn't available: the IRS sets limits year by year, and my sources don't cover 2030. This is general information, not financial advice.",
+  "expect": {
+    "forbid": [
+      "http"
+    ],
+    "abstain": true
+  }
+}

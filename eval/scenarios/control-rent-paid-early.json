@@ -1,0 +1,14 @@
+{
+  "id": "control-rent-paid-early",
+  "kind": "budget",
+  "tags": [
+    "no_overspend_control"
+  ],
+  "profile": "control-early-rent",
+  "start": "2026-06-28",
+  "end": "2026-07-08",
+  "golden_answer": "July's rent is paid on June 30, so two rent payments land in June and none in July. That's next month's bill paid early, not overspending, so rent should not be flagged in either month.",
+  "expect": {
+    "flags": []
+  }
+}

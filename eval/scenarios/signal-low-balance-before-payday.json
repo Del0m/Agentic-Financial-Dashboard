@@ -1,0 +1,22 @@
+{
+  "id": "signal-low-balance-before-payday",
+  "kind": "budget",
+  "tags": [
+    "signal"
+  ],
+  "profile": "forecast-dip",
+  "start": "2026-10-07",
+  "end": "2026-10-09",
+  "golden_answer": "Rent lands on the 13th, two days before the paycheck on the 15th, so the low path dips below the $100 buffer. A low_balance alert fires at least 3 days ahead and names Landlord.",
+  "expect": {
+    "alert_kinds": [
+      "low_balance"
+    ],
+    "min_days_ahead": 3,
+    "message_facts": [
+      {
+        "text": "Landlord"
+      }
+    ]
+  }
+}

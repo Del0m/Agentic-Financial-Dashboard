@@ -1,0 +1,14 @@
+{
+  "id": "control-flat-spending",
+  "kind": "budget",
+  "tags": [
+    "no_overspend_control"
+  ],
+  "profile": "control-minimal",
+  "start": "2026-09-30",
+  "end": "2026-10-21",
+  "golden_answer": "Nothing is overspent: the user buys the same $8 coffee every day, across a month boundary, so no category should be flagged.",
+  "expect": {
+    "flags": []
+  }
+}

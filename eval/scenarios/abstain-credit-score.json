@@ -1,0 +1,37 @@
+{
+  "id": "abstain-credit-score",
+  "tags": [
+    "abstain"
+  ],
+  "question": "What's my current credit score?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2150
+      },
+      {
+        "name": "Platinum Card",
+        "type": "credit",
+        "subtype": "credit card",
+        "balance": 3200,
+        "liability": {
+          "kind": "credit",
+          "apr": 24.99,
+          "min_payment": 95,
+          "due_in_days": 12
+        }
+      }
+    ],
+    "transactions": []
+  },
+  "golden_answer": "I don't have your credit score: it isn't part of your linked account data. This is general information, not financial advice.",
+  "expect": {
+    "forbid": [
+      "http"
+    ],
+    "abstain": true
+  }
+}

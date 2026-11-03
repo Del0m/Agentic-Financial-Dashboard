@@ -1,0 +1,58 @@
+{
+  "id": "cash-no-income",
+  "tags": [
+    "cash_flow"
+  ],
+  "question": "Will I run short of cash this month?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 1900
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 88,
+        "amount": 1500,
+        "category": "RENT_AND_UTILITIES",
+        "merchant": "Landlord"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 58,
+        "amount": 1500,
+        "category": "RENT_AND_UTILITIES",
+        "merchant": "Landlord"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 28,
+        "amount": 1500,
+        "category": "RENT_AND_UTILITIES",
+        "merchant": "Landlord"
+      }
+    ]
+  },
+  "golden_answer": "No: your balance reaches about $400 this month, which stays above your $100 buffer. No paycheck was found, so this forecast assumes no income. This is general information, not financial advice.",
+  "expect": {
+    "forbid": [
+      "http"
+    ],
+    "facts": [
+      {
+        "text": "income"
+      },
+      {
+        "number": 400,
+        "tol": 1
+      }
+    ],
+    "tools": [
+      "get_cash_forecast"
+    ]
+  }
+}

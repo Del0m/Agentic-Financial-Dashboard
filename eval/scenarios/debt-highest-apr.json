@@ -1,5 +1,5 @@
 {
-  "id": "debt-highest-apr",
+  "id": "debt-highest-apr", "tags": ["high_interest_debt"],
   "question": "Which of my debts should I pay off first?",
   "user": {
     "accounts": [

@@ -1,0 +1,20 @@
+{
+  "id": "goal-nothing-offered",
+  "kind": "goal",
+  "tags": [
+    "goal_affordability"
+  ],
+  "profile": "goals-card-24",
+  "today": "2026-11-02",
+  "golden_answer": "The user has money left but has opted out of all three kinds of goal, so nothing is offered and the model isn't asked.",
+  "expect": {
+    "status": "nothing_offered"
+  },
+  "prefs": {
+    "skip_kinds": [
+      "debt_payoff",
+      "emergency_fund",
+      "savings"
+    ]
+  }
+}

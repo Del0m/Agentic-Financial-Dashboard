@@ -1,0 +1,38 @@
+{
+  "record": {
+    "scenario_id": "goal-respects-skipped-kind",
+    "run": 1,
+    "status": "ok",
+    "reason": null,
+    "cap_cents": 81600,
+    "surplus_cents": 102000,
+    "offered": [
+      "emergency_fund",
+      "savings"
+    ],
+    "attempts": 1,
+    "plans": [
+      {
+        "kind": "emergency_fund",
+        "priority": 1,
+        "monthly_cents": 81600,
+        "strategy": null,
+        "target_cents": 685178,
+        "target_date": "2027-08-01",
+        "rationale": "Filling the emergency fund gap as quickly as possible within the monthly surplus limit."
+      }
+    ],
+    "latency_s": 4.2270039999857545,
+    "error": null,
+    "kind": "goal"
+  },
+  "scores": {
+    "checks": {
+      "status": true,
+      "banned_kinds": true,
+      "under_cap": true
+    },
+    "passed": true,
+    "attempts": 1
+  }
+}

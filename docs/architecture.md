@@ -310,7 +310,7 @@ This is `budget_engine/pace.py` (`evaluate`). Spending in a category with no bud
 - ENTERTAINMENT at 1.48, because a $15.99 subscription is charged on day 5;
 - TRANSPORTATION at 1.12, because of how many Mondays had passed.
 
-TPC-33 moving subscriptions into the fixed set fixes the first. The thresholds are tuned in M5 against the false-alarm metric.
+TPC-33 moving subscriptions into the fixed set was expected to fix the first. The TPC-26 baseline still flags it: `control-steady-spender` fails on these flags, and TPC-45 tracks tuning the thresholds against the false-alarm metric.
 
 ### 6.5 Period close and adaptation
 At the end of each calendar month: for each line, compare `limit` vs actual. Apply any `adjust_next_budget` actions the user accepted. For lines without an action, nudge toward actual with smoothing: `new = 0.7 * old + 0.3 * actual`, clamped to ±15% per period. This keeps the budget from chasing one bad month. The "does the budget improve over time" benchmark checks this works.
@@ -740,6 +740,14 @@ Build the harness **early** (alongside Milestone 2), even with only two scenario
 - **What a run does:** for each user, it runs the real `initialize_budget` and prints the stored budget. It fits May-July with the median and with the mean, and scores each against August.
 - **Scoring:** MAPE over lines whose category had August spending, plus counts of lines with $0 actual and of spending with no line.
 - **Results** go to `eval/results/<date>/budget_accuracy/results.json`. There's no LLM, so it runs in seconds.
+
+**As built (TPC-26), 40 scenarios across three kinds:** `venv/bin/python eval/run_eval.py [--kind chat|budget|goal]`. The format is in [`eval/README.md`](../eval/README.md), and the design is `docs/superpowers/specs/2026-11-03-tpc-26-golden-scenarios-design.md`.
+- **Chat (22):** the TPC-16 format, plus 4 `abstain` scenarios and category tags.
+- **Budget (12):** a synthetic user from `eval/budget_users.py` goes through a short window of real daily runs (`advance_days`). Rules check flags, cause, action, a flag deadline, signal kinds, message text and low-balance lead time, each reported on its own. A model failure fails cause and message but not the flag, because the user was still warned. Four are no-overspend controls.
+- **Goal (6):** the real goal run on a synthetic user, checked on status, required and banned kinds, priority where the prompt's rule decides it, the cap, and that the model isn't called when nothing is affordable.
+- **Reported:** pass^3 and per-tag rates for every kind; false-alarm rate, time-to-flag and lead time for budget. `overall` stays chat-only, so it remains comparable with the TPC-16 results.
+- **Golden answers are checked offline** (`test_eval_agents.py`): chat number facts must come from the expected tools, and what code decides must match with a fake model. `tools_none` and temporal scenarios aren't built yet (TPC-27, TPC-39).
+- **Baseline (2026-11-03, `qwen2.5:14b`, one pass):** chat facts 73%, budget 75%, goal 100%, false alarms on 1 of 4 controls. Each failure is tracked: TPC-45 to TPC-49.
 
 ### 10.1 Test data
 - **Synthetic users:** JSON fixtures of accounts, liabilities and ~6 months of transactions with known ground truth (e.g., "Dining spend jumps 40% in month 5 because of a recurring new subscription"). Load them straight into the DB, bypassing Plaid, so tests are fast and deterministic.
