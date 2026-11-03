@@ -609,6 +609,11 @@ Code still does every number. The LLM still only names the cause and picks the a
 - **Privacy:** user-half triples are built through a new gateway purpose, `graph`, with the same allowlist as `spending`. Pseudonymized user, no account numbers, inflow streams as category and amount only. Every prompt is audited. The guidance half is public text and skips the gateway, like `search_kb`.
 - **Modes** for the eval: `KG_CHAT=vector` (today's behaviour), `graph`, `hybrid` (the default).
 
+**As built (TPC-37 to TPC-39):**
+- **Guidance graph (TPC-38):** `scripts/extract_kg.py` writes `eval/kg/raw_graph.json`. `eval/kg_quality.py` applies the recorded review in `kb/graph_review.json` to build `kb/graph.json`, and scores the raw output, so precision and recall measure the model. The knowledge base has no 2025 401(k) limit, so the graph has none.
+- **Budget agent (TPC-37):** code stops a cut or new limit on a `reclassified` category, and a third proposal of a cut dismissed twice. A price rise uses `previous_cents`, because the detector's typical amount lags the first raised charge.
+- **Chat (TPC-39):** `app/kg/retrieve.py` links by rule. A merchant or advice links on any uncommon word in its name, so "gym" finds FitClub Gym, which is looser than the exact or alias match first planned. Merchants, budgets and advice report their history, not one date's snapshot, so "when did it start" can be answered. `KG_CHAT` adds `none` and `hybrid-shuffled` for the ablation, and `hybrid-shuffled` swaps values between facts with a fixed seed.
+
 ### 6b.5 Evaluation: the ablation
 
 | Experiment | Compare | Measure |

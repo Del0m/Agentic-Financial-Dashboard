@@ -128,12 +128,6 @@ The `agents` fixture adds one budget and one goal file to `offline`, and stubs t
 
 **Why they're there:** TPC-27 runs one condition per folder, and a condition must not look like a repeat run.
 
-## `test_graph_modes_are_refused_until_the_graph_is_built`
-
-**What it does:** `--retrieval graph`, `hybrid` and `hybrid-shuffled` exit with code 2 until TPC-39 lands.
-
-**Why it's there:** They would otherwise run with no graph facts and report a result about nothing.
-
 ## `test_limit_spreads_across_the_list`
 
 **What it does:** `--limit` picks evenly across the sorted scenarios.

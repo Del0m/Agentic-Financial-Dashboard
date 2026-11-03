@@ -14,7 +14,10 @@ from app.agents.tools import PFC_CATEGORIES, VALID_CATEGORIES
 from app.budget_engine.goals import GOAL_KINDS
 from app.budget_engine.signals import RANK
 from app.db.base import Base
+from app import config
 from app.budget_engine.txns import month_end, month_start
+from app.kg.guidance import load_guidance
+from app.kg.project import backfill
 from app.db.models import AdviceLog, Alert, BudgetLine, BudgetPeriod, Liability, User
 from eval.budget_users import profile_by_id
 from tests.factories import add_account, add_txn, add_user
@@ -443,6 +446,15 @@ def _seed_history(session: Session, user_id: str, user: dict, today: date) -> No
         session.flush()
         session.add(AdviceLog(user_id=user_id, alert_id=alert.id, category=a["category"], advice_text=a["message"],
                               created_at=when, outcome=a["decision"]))
+
+
+# what the graph conditions need before a run: the user's history and the reviewed guidance (tpc-39)
+def prepare_graph(session: Session, user_id: str, today: date) -> None:
+    backfill(session, user_id, today)
+    graph = config.KB_DIR / "graph.json"
+    if graph.exists():
+        load_guidance(session, graph)
+    session.commit()
 
 
 def seed(session: Session, scenario: Scenario, today: date) -> str:

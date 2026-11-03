@@ -197,7 +197,10 @@ def score_run(record, scenario: Scenario, *, embeddings, judge_model) -> dict:
         sim = similarity(answer, scenario.golden_answer, embeddings)
         called = {c["name"] for c in record.tool_calls}
         missing = [t for t in scenario.expect.tools if t not in called]
-        verdict = (judge(scenario.question, record.tool_results, answer, judge_model, missing_tools=missing)
+        # the judge scores against the data the model was given, and graph facts are that data. without them, an answer
+        # that's right from the graph reads as made up
+        given = [*record.tool_results, *getattr(record, "graph_facts", [])]
+        verdict = (judge(scenario.question, given, answer, judge_model, missing_tools=missing)
                    if answer.strip() else None)
     return {
         "facts": {**asdict(facts), "score": facts.score},

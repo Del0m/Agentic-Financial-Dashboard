@@ -317,3 +317,9 @@ The same three rules apply to `sources_ok` with `source_url`s.
 **What it does:** The right year must appear and a wrong one mustn't, as whole words, so "May" isn't found in "Maybe".
 
 **Why it's there:** A substring match would score ordinary words as wrong dates.
+
+## `test_the_judge_sees_graph_facts_as_data_given`
+
+**What it does:** The judge prompt includes the graph facts the model received.
+
+**Why it's there:** The judge scores against the data given, so without these it failed correct answers from the graph. Vector guidance still isn't shown to it, so the paper has to say judge scores aren't given the same inputs across conditions.

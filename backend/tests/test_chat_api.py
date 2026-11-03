@@ -151,7 +151,7 @@ def test_other_error_is_generic(api, model):
 
 
 def test_empty_answer_message(api, model):
-    model.replies.append(AIMessage(content=""))
+    model.replies += [AIMessage(content=""), AIMessage(content="")]     # still empty on the try with no tools
 
     events = read_events(ask(api).text)
 
@@ -176,7 +176,7 @@ def test_history_grouped_after_turn(api, model):
     assert api.get("/chat/t1").json() == [
         {"role": "user", "text": QUESTION, "tools": []},
         {"role": "assistant", "text": ANSWERED, "tools": [{"name": "get_debts", "args": {}, "ok": True}],
-         "sources": [SOURCE]},
+         "sources": [SOURCE], "graph": False},
     ]
 
 
@@ -297,7 +297,7 @@ def test_lock_not_held_when_body_never_starts(api, model, users):
 def test_empty_answer_after_tool_call_text(api, model):
     call = tool_call("get_debts")
     call.content = "Let me check your debts"
-    model.replies += [call, AIMessage(content="")]
+    model.replies += [call, AIMessage(content=""), AIMessage(content="")]
 
     events = read_events(ask(api).text)
 
@@ -379,3 +379,23 @@ def test_live_chat_answers_which_debt_first(client, db, users, monkeypatch, tmp_
     assert any("how-reduce-your-debt" in u for u in urls), urls
     cited = [u.rstrip(".,") for u in re.findall(r"https?://[^\s)\]>\"']+", text)]
     assert all(u in urls for u in cited), cited
+
+
+def test_graph_chip_event_and_history(api, model, monkeypatch):
+    from app import config
+    from app.privacy.gateway import PrivacyGateway
+    monkeypatch.setattr(config, "KG_CHAT", "hybrid")
+    monkeypatch.setattr(PrivacyGateway, "graph_retrieve", lambda self, q, relation=None: {"as_of": "2026-11-06", "facts": ["a: b"]})
+    model.replies.append(AIMessage("Answer."))
+    events = read_events(ask(api).text)
+    assert ("graph", {"used": True}) in [(e, d) for e, d in events]
+    assert api.get("/chat/t1").json()[1]["graph"] is True
+
+
+def test_no_graph_event_without_facts(api, model, monkeypatch):
+    from app import config
+    from app.privacy.gateway import PrivacyGateway
+    monkeypatch.setattr(config, "KG_CHAT", "hybrid")
+    monkeypatch.setattr(PrivacyGateway, "graph_retrieve", lambda self, q, relation=None: {"as_of": "2026-11-06", "facts": []})
+    model.replies.append(AIMessage("Answer."))
+    assert "graph" not in types(read_events(ask(api).text))

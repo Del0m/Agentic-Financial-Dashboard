@@ -25,7 +25,7 @@ function randomId(): string {
 }
 
 type Tool = ChatTool & { id?: string; pending?: boolean };
-type Turn = { role: "user" | "assistant"; text: string; tools: Tool[]; sources: ChatSource[]; error?: boolean };
+type Turn = { role: "user" | "assistant"; text: string; tools: Tool[]; sources: ChatSource[]; graph?: boolean; error?: boolean };
 
 // storage can throw (private mode, blocked site data); chat still works for the life of the page
 function newThreadId(): string {
@@ -52,6 +52,9 @@ function storedThreadId(): string {
 function applyEvent(turns: Turn[], e: ChatEvent): Turn[] {
   const last = { ...turns[turns.length - 1] };
   switch (e.event) {
+    case "graph":
+      last.graph = e.data.used;
+      break;
     case "sources":
       last.sources = e.data.sources;
       break;
@@ -205,6 +208,7 @@ export default function ChatPanel() {
               {t.text || (t.role === "assistant" && streaming && i === turns.length - 1 ? "…" : t.text)}
             </p>
             {t.role === "assistant" && <ToolChips tools={t.tools} />}
+            {t.role === "assistant" && t.graph && <span className="mt-2 inline-block rounded-full border border-black/10 px-2 py-0.5 font-mono text-xs text-neutral-600 dark:border-white/15 dark:text-neutral-400">graph</span>}
             {t.role === "assistant" && <Sources sources={t.sources} />}
           </li>
         ))}

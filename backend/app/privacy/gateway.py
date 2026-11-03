@@ -23,7 +23,7 @@ from .scrub import scrub_account_name, scrub_merchant, scrub_note
 # rows are built field by field from these allowlists, never by serializing a model object,
 # so a column added later can't leak by accident.
 
-Purpose = Literal["accounts", "debts", "spending", "diagnose", "debt_plan", "goals", "recurring", "cash_flow"]
+Purpose = Literal["accounts", "debts", "spending", "diagnose", "debt_plan", "goals", "recurring", "cash_flow", "graph"]
 
 ACCOUNT_FIELDS = ("name", "type", "subtype", "balance", "available", "limit")
 DEBT_FIELDS = ("name", "kind", "apr", "balance", "min_payment", "next_due_date")
@@ -132,7 +132,8 @@ class PrivacyGateway:
                       extra_monthly_cents: Optional[int] = None, strategy: Optional[str] = None,
                       goal_facts: Optional[GoalFacts] = None,
                       goal_debts: Optional[Sequence[Debt]] = None,
-                      signal: Optional[Signal] = None) -> str:
+                      signal: Optional[Signal] = None,
+                      graph_user: Sequence = (), graph_as_of: Optional[date] = None) -> str:
         if purpose == "diagnose":
             data = self._diagnose(facts, transactions or [])
             data["this_month_alerts"] = [{k: a.get(k) for k in ALERT_MEMORY_FIELDS} for a in this_month_alerts]
@@ -152,6 +153,8 @@ class PrivacyGateway:
             data = self._recurring(signal)
         elif purpose == "cash_flow":
             data = self._cash_flow(signal)
+        elif purpose == "graph":
+            data = {"as_of": graph_as_of.isoformat(), "facts": [f.line for f in graph_user]}
         else:
             raise ValueError(f"unknown purpose: {purpose}")
 
@@ -166,6 +169,15 @@ class PrivacyGateway:
             self._goal_context = prompt
             self._goal_cap_cents = goal_facts.cap_cents
         return prompt
+
+    # what the graph says about a question (tpc-39). facts about the user go through build_context, so they're scrubbed
+    # and audited. guidance is public text and skips it, like search_kb
+    def graph_retrieve(self, question: str, relation: Optional[str] = None) -> dict:
+        from ..kg.retrieve import gather
+        found = gather(self._session, self._user_id, question, self.today(), scrub=scrub_merchant, relation=relation)
+        if found.user:
+            self.build_context("graph", graph_user=found.user, graph_as_of=found.as_of)
+        return {"as_of": found.as_of.isoformat(), "facts": [f.line for f in (*found.user, *found.guidance)]}
 
     def _cash_flow(self, signal: Optional[Signal]) -> dict:
         if signal is None:

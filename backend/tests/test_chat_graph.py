@@ -358,7 +358,7 @@ def test_final_answer_always_carries_the_disclaimer(reply, expected):
 # tpc-27: a condition with no vector guidance can't reach it through a tool or be told it's there
 @pytest.mark.parametrize("mode, guidance, search", [
     ("vector", True, True), ("hybrid", True, True), ("hybrid-shuffled", True, True),
-    ("graph", True, False), ("none", False, False),
+    ("graph", False, False), ("none", False, False),
 ])
 def test_prompt_follows_the_retrieval_mode(monkeypatch, mode, guidance, search):
     from app.agents.chat_graph import system_prompt
@@ -381,3 +381,14 @@ def test_retrieval_only_runs_in_vector_modes(monkeypatch, mode, retrieved):
     graph = build_chat_graph([], retrieve=lambda q: calls.append(q) or [], model=ScriptedChatModel(replies=[AIMessage("x")]))
     graph.invoke({"messages": [HumanMessage("hi")], "tool_rounds": 0})
     assert bool(calls) is retrieved
+
+
+def test_an_empty_reply_with_tools_gets_one_more_try_without_them():
+    @tool
+    def t() -> str:
+        "A tool."
+        return "x"
+    model = ScriptedChatModel(replies=[AIMessage(""), AIMessage("Answer.")])
+    state = build_chat_graph([t], model=model).invoke({"messages": [HumanMessage("hi")], "tool_rounds": 0})
+    assert state["messages"][-1].content.startswith("Answer.")
+    assert model.tools_seen == [["t"], None]

@@ -361,3 +361,5 @@ The graph can supply an explicit debt snapshot to the goals context; default cal
 **What they do:** The forecast's code-written summary states the range, and names any dip with its date, amount, buffer and bill. With no dip, it says the balance stays above the buffer. It says when no income is assumed.
 
 **Why they're there:** Given only the daily figures, the model left out the bill on 2 of 3 runs, and one answer said "you won't run short" above a real dip. The post-fix baseline found this as a regression in `cash-before-payday`.
+
+Graph facts about a user go through `build_context("graph", ...)`, and are tested in `test_kg_retrieve.py`.

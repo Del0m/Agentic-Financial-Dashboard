@@ -10,6 +10,7 @@ from app.agents.goal_graph import run_goals
 from app.budget_service.goal_prefs import set_goal_prefs
 from app.budget_service.simulate import advance_days
 from app.db.models import AgentRun, Alert
+from app.kg.guidance import load_guidance
 from eval.budget_users import profile_by_id, seed_profile
 from eval.fixtures import BudgetScenario, GoalScenario, temp_db
 
@@ -70,6 +71,10 @@ def run_budget_once(scenario: BudgetScenario, *, model, audit_path: Path, run: i
                 user_id = seed_profile(s, profile_by_id(scenario.profile), until=scenario.start)
                 # alerts seeded as history aren't this run's decisions
                 seen = set(s.scalars(select(Alert.id).where(Alert.user_id == user_id)))
+                # shared guidance for the diagnosis's related facts. the daily run backfills the user's own history
+                if config.KG_MODE == "on" and (config.KB_DIR / "graph.json").exists():
+                    load_guidance(s, config.KB_DIR / "graph.json")
+                    s.commit()
 
             def on_day(day: dict) -> None:
                 for category in day["flags"]:

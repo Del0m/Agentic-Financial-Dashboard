@@ -6,6 +6,7 @@ from typing import Optional
 from langchain_core.tools import BaseTool, StructuredTool, ToolException
 from .. import config
 from ..budget_engine.txns import round_cents
+from ..kg.retrieve import HISTORY_RELATIONS
 from ..privacy import gateway as gw
 from ..privacy.gateway import PrivacyGateway
 from ..rag.store import KnowledgeBase
@@ -98,6 +99,16 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
         return gateway.build_context("debt_plan", extra_monthly_cents=round_cents(Decimal(str(extra_monthly)) * 100),
                                      strategy=strategy)
 
+    def get_history(entity: str, relation: Optional[str] = None) -> str:
+        entity = entity.strip()[:MAX_QUERY_CHARS]
+        if not entity:
+            raise ToolException("entity must not be empty")
+        relation = _blank(relation)
+        if relation is not None and relation.upper() not in HISTORY_RELATIONS:
+            raise ToolException(f"unknown relation '{relation}'; use one of: {', '.join(HISTORY_RELATIONS)}, or leave it out")
+        found = gateway.graph_retrieve(entity, relation=relation.upper() if relation else None)
+        return json.dumps({"purpose": "graph", **found}, separators=(",", ":"), ensure_ascii=False)
+
     tools = [
         StructuredTool.from_function(
             get_accounts, name="get_accounts",
@@ -146,4 +157,11 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
     # the retrieval ablation (tpc-27): with no vector guidance, the model mustn't reach it through a tool either
     if config.KG_CHAT in ("none", "graph"):
         tools = [t for t in tools if t.name != "search_kb"]
+    if config.KG_CHAT in ("graph", "hybrid", "hybrid-shuffled"):
+        tools.append(StructuredTool.from_function(
+            get_history, name="get_history",
+            description="When something happened or how it changed: a merchant's charges over time, a budget's limits by "
+                        "month, a price change, or what the user decided about past advice. Give the merchant, category "
+                        "or topic as entity. Optional relation: SPENDS_AT, SUBSCRIBES, BUDGETS or ABOUT.",
+        ))
     return tools

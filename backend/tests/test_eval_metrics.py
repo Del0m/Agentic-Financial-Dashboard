@@ -531,3 +531,18 @@ def test_temporal_check_uses_whole_words():
     assert temporal_ok("Maybe 2024.", e) is True
     assert temporal_ok("It was $23,000.", e) is False
     assert temporal_ok("anything", _expect()) is None
+
+
+def test_the_judge_sees_graph_facts_as_data_given():
+    from types import SimpleNamespace as NS
+    from eval.metrics import score_run
+    seen = []
+
+    class Judge:
+        def invoke(self, messages):
+            seen.append(messages[0].content)
+            return NS(content='{"coherent": 5, "consistent_with_data": 5, "safe": 5, "reason": "ok"}')
+    rec = record(answer="It began in June.")
+    rec.graph_facts = ["Charges at Gym: first in June 2026"]
+    score_run(rec, scenario(), embeddings=FakeEmbeddings([[1.0, 0.0], [1.0, 0.0]]), judge_model=Judge())
+    assert "first in June 2026" in seen[0]

@@ -189,3 +189,9 @@ Run them from `backend/`:
 **What they do:** `none` removes the guidance and `search_kb` from the prompt, `graph` removes `search_kb`, and `vector` is unchanged byte for byte. App-side retrieval only runs in the vector modes.
 
 **Why they're there:** Without these, a "no retrieval" condition could still reach retrieval, and the ablation would measure nothing.
+
+## `test_an_empty_reply_with_tools_gets_one_more_try_without_them`
+
+**What it does:** An empty reply with tools bound gets one more call with no tools.
+
+**Why it's there:** `qwen2.5:14b` returned empty answers on `temporal-decision-accepted`. The same prompt with no tools answered, as on the last tool round. This is the only retry in chat, and it isn't part of the retry ablation.

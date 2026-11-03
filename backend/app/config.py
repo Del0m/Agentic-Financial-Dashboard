@@ -26,9 +26,9 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE") or "0")
 # what the benchmark turns off (tpc-27). read at call time, so the eval can set them per condition
 # chat retrieval: none | vector (today's behaviour) | graph | hybrid | hybrid-shuffled
-KG_CHAT = os.getenv("KG_CHAT", "vector")
+KG_CHAT = os.getenv("KG_CHAT", "hybrid")
 # graph facts in the budget agent's diagnosis: off | on
-KG_MODE = os.getenv("KG_MODE", "off")
+KG_MODE = os.getenv("KG_MODE", "on")
 # the structured-output resend and the goal agent's correct-and-ask-again
 RETRIES_ENABLED = os.getenv("RETRIES_ENABLED", "1").strip().lower() not in ("0", "false", "no")
 
