@@ -195,7 +195,8 @@ def _previous_cents(charges: Sequence[RTxn], cluster: Optional[list[RTxn]], step
         # its first charge was dropped as a one-off, so the rise is only seen now
         if last * 100 > base * 150:
             return base
-    if abs(last - _cents(charges[-2])) * 20 <= last:
+    prior = _cents(charges[-2])
+    if abs(last - prior) * 20 < prior:
         return None
     before = [_cents(t) for t in charges[-4:-1]]
     return _mid(before) if len(before) >= 2 and max(before) * 10 <= min(before) * 11 else None

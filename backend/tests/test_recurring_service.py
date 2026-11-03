@@ -269,3 +269,10 @@ def test_plaid_asks_for_180_days(monkeypatch):
     client.sandbox_public_token()
     assert bodies[0]["transactions"]["days_requested"] == 180
     assert bodies[1]["options"]["transactions"]["days_requested"] == 180
+
+
+def test_price_increase_fires_at_exactly_5_percent_and_1_dollar(db):
+    days = monthly(db, (2000, 2000, 2000))
+    refresh(db, days[-1])
+    day = monthly(db, (2100,), first=date(2026, 4, 5))[0]
+    assert [(c.kind, c.previous_cents) for c in refresh(db, day)] == [("price_increase", 2000)]

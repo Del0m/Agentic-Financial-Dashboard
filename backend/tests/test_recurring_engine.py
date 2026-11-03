@@ -260,3 +260,12 @@ def test_project_steps_a_fixed_cadence():
                                                 ("weekly", 4333)])
 def test_monthly_cents_normalises(frequency, expected):
     assert monthly_cents(1000, frequency) == expected
+
+
+def test_price_rise_of_exactly_5_percent_keeps_its_previous_price():
+    s = one(monthly((6, 7, 8, 9), (2000, 2000, 2000, 2100)), date(2026, 9, 6))
+    assert (s.previous_cents, s.last_cents) == (2000, 2100)
+
+
+def test_price_rise_under_5_percent_has_no_previous_price():
+    assert one(monthly((6, 7, 8, 9), (2000, 2000, 2000, 2099)), date(2026, 9, 6)).previous_cents is None
