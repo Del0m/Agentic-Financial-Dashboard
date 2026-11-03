@@ -1,0 +1,200 @@
+{
+  "reviewer": "claude",
+  "note": "Read against the source text. A person should check this before the paper relies on it.",
+  "reject": [
+    {
+      "src": "checking-account",
+      "rel": "IS_A",
+      "dst": "retirement-account",
+      "valid_from": "2000-01-01",
+      "why": "The FDIC page lists both as insured deposit types, and a checking account isn't a retirement account."
+    },
+    {
+      "src": "savings-account",
+      "rel": "IS_A",
+      "dst": "retirement-account",
+      "valid_from": "2000-01-01",
+      "why": "The FDIC page lists both as insured deposit types, and a savings account isn't a retirement account."
+    },
+    {
+      "src": "ira",
+      "rel": "ALTERNATIVE_TO",
+      "dst": "checking-account",
+      "valid_from": "2000-01-01",
+      "why": "The passage lists ownership categories and doesn't offer these as alternatives."
+    },
+    {
+      "src": "ira",
+      "rel": "ALTERNATIVE_TO",
+      "dst": "savings-account",
+      "valid_from": "2000-01-01",
+      "why": "The passage lists ownership categories and doesn't offer these as alternatives."
+    },
+    {
+      "src": "mutual-fund",
+      "rel": "ALTERNATIVE_TO",
+      "dst": "bonds",
+      "valid_from": "2000-01-01",
+      "why": "The passage is about diversifying across assets and doesn't offer these as alternatives."
+    },
+    {
+      "src": "mutual-fund",
+      "rel": "ALTERNATIVE_TO",
+      "dst": "stocks",
+      "valid_from": "2000-01-01",
+      "why": "The passage is about diversifying across assets and doesn't offer these as alternatives."
+    }
+  ],
+  "correct": [
+    {
+      "src": "roth-401k",
+      "rel": "HAS_LIMIT",
+      "dst": "income-limit",
+      "valid_from": "2021-01-01",
+      "set": {
+        "src": "roth-ira"
+      },
+      "why": "The chart gives this income limit for the Roth IRA, and says a designated Roth 401(k) has no income limitation."
+    },
+    {
+      "src": "roth-401k",
+      "rel": "HAS_LIMIT",
+      "dst": "income-limit",
+      "valid_from": "2022-01-01",
+      "set": {
+        "src": "roth-ira"
+      },
+      "why": "The chart gives this income limit for the Roth IRA, and says a designated Roth 401(k) has no income limitation."
+    },
+    {
+      "src": "roth-401k",
+      "rel": "HAS_LIMIT",
+      "dst": "income-limit",
+      "valid_from": "2023-01-01",
+      "set": {
+        "src": "roth-ira"
+      },
+      "why": "The chart gives this income limit for the Roth IRA, and says a designated Roth 401(k) has no income limitation."
+    },
+    {
+      "src": "roth-401k",
+      "rel": "HAS_LIMIT",
+      "dst": "income-limit",
+      "valid_from": "2024-01-01",
+      "set": {
+        "src": "roth-ira"
+      },
+      "why": "The chart gives this income limit for the Roth IRA, and says a designated Roth 401(k) has no income limitation."
+    },
+    {
+      "src": "ira",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "valid_from": "2020-01-01",
+      "set": {
+        "value": {
+          "cents": 600000,
+          "condition": null
+        }
+      },
+      "why": "$3,500 is one student's compensation in an example. The same passage shows $6,000 as the 2020 limit."
+    },
+    {
+      "src": "ira",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "valid_from": "2021-01-01",
+      "set": {
+        "value": {
+          "cents": 600000,
+          "condition": null
+        }
+      },
+      "why": "The source says $6,000, or $7,000 at age 50 or older. The base limit belongs here, as in other years."
+    },
+    {
+      "src": "ira",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "valid_from": "2022-01-01",
+      "set": {
+        "value": {
+          "cents": 600000,
+          "condition": null
+        }
+      },
+      "why": "The source says $6,000, or $7,000 at age 50 or older. The base limit belongs here, as in other years."
+    },
+    {
+      "src": "roth-401k",
+      "rel": "HAS_LIMIT",
+      "dst": "catch-up-contribution",
+      "valid_from": "2023-01-01",
+      "set": {
+        "value": {
+          "cents": 750000,
+          "condition": null
+        }
+      },
+      "why": "The chart says an additional $7,500 in 2023 and 2024."
+    }
+  ],
+  "add": [
+    {
+      "src": "roth-ira",
+      "rel": "IS_A",
+      "dst": "ira",
+      "value": null,
+      "evidence": {
+        "source": "irs-roth-iras",
+        "chunk_index": null
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null,
+      "why": "The source says a Roth IRA is an IRA. The model missed it."
+    },
+    {
+      "src": "roth-ira",
+      "rel": "HAS_RULE",
+      "dst": "after-tax-contribution",
+      "value": {
+        "text": "Roth IRA contributions are made with after-tax dollars."
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart",
+        "chunk_index": null
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null,
+      "why": "Stated in the comparison chart. The model missed it."
+    },
+    {
+      "src": "fdic-insurance",
+      "rel": "HAS_RULE",
+      "dst": "deposit-insurance-limit",
+      "value": {
+        "text": "FDIC deposit insurance covers $250,000 per depositor, per FDIC-insured bank, for each account ownership category."
+      },
+      "evidence": {
+        "source": "fdic-deposit-insurance",
+        "chunk_index": null
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null,
+      "why": "Stated by the FDIC with no tax year, so the limit check dropped it. It belongs here as a rule."
+    },
+    {
+      "src": "debt-avalanche",
+      "rel": "ALTERNATIVE_TO",
+      "dst": "debt-snowball",
+      "value": null,
+      "evidence": {
+        "source": "cfpb-reduce-debt",
+        "chunk_index": null
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null,
+      "why": "The CFPB offers the highest interest rate method and the snowball method as the two strategies. The model missed it."
+    }
+  ]
+}

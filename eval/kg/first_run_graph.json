@@ -1,0 +1,2145 @@
+{
+  "concepts": [
+    {
+      "key": "roth-ira",
+      "label": "Roth IRA"
+    },
+    {
+      "key": "traditional-ira",
+      "label": "Traditional IRA"
+    },
+    {
+      "key": "ira",
+      "label": "Individual retirement account"
+    },
+    {
+      "key": "401k",
+      "label": "401(k)"
+    },
+    {
+      "key": "roth-401k",
+      "label": "Designated Roth 401(k)"
+    },
+    {
+      "key": "simple-401k",
+      "label": "SIMPLE 401(k)"
+    },
+    {
+      "key": "retirement-account",
+      "label": "Retirement account"
+    },
+    {
+      "key": "contribution-limit",
+      "label": "Annual contribution limit"
+    },
+    {
+      "key": "catch-up-contribution",
+      "label": "Catch-up contribution"
+    },
+    {
+      "key": "income-limit",
+      "label": "Income limit"
+    },
+    {
+      "key": "required-distribution",
+      "label": "Required minimum distribution"
+    },
+    {
+      "key": "withdrawals",
+      "label": "Withdrawals"
+    },
+    {
+      "key": "rollover",
+      "label": "Rollover"
+    },
+    {
+      "key": "after-tax-contribution",
+      "label": "After-tax contribution"
+    },
+    {
+      "key": "pre-tax-contribution",
+      "label": "Pre-tax contribution"
+    },
+    {
+      "key": "employer-match",
+      "label": "Employer match"
+    },
+    {
+      "key": "hsa",
+      "label": "Health savings account"
+    },
+    {
+      "key": "emergency-fund",
+      "label": "Emergency fund"
+    },
+    {
+      "key": "budget",
+      "label": "Budget"
+    },
+    {
+      "key": "50-30-20-rule",
+      "label": "50/30/20 rule"
+    },
+    {
+      "key": "debt-avalanche",
+      "label": "Debt avalanche"
+    },
+    {
+      "key": "debt-snowball",
+      "label": "Debt snowball"
+    },
+    {
+      "key": "minimum-payment",
+      "label": "Minimum payment"
+    },
+    {
+      "key": "credit-card",
+      "label": "Credit card"
+    },
+    {
+      "key": "apr",
+      "label": "Annual percentage rate"
+    },
+    {
+      "key": "grace-period",
+      "label": "Grace period"
+    },
+    {
+      "key": "balance-transfer",
+      "label": "Balance transfer"
+    },
+    {
+      "key": "credit-score",
+      "label": "Credit score"
+    },
+    {
+      "key": "credit-report",
+      "label": "Credit report"
+    },
+    {
+      "key": "student-loan",
+      "label": "Student loan"
+    },
+    {
+      "key": "federal-student-loan",
+      "label": "Federal student loan"
+    },
+    {
+      "key": "income-driven-repayment",
+      "label": "Income-driven repayment"
+    },
+    {
+      "key": "fdic-insurance",
+      "label": "FDIC deposit insurance"
+    },
+    {
+      "key": "deposit-insurance-limit",
+      "label": "Deposit insurance limit"
+    },
+    {
+      "key": "savings-account",
+      "label": "Savings account"
+    },
+    {
+      "key": "checking-account",
+      "label": "Checking account"
+    },
+    {
+      "key": "compound-interest",
+      "label": "Compound interest"
+    },
+    {
+      "key": "asset-allocation",
+      "label": "Asset allocation"
+    },
+    {
+      "key": "diversification",
+      "label": "Diversification"
+    },
+    {
+      "key": "stocks",
+      "label": "Stocks"
+    },
+    {
+      "key": "bonds",
+      "label": "Bonds"
+    },
+    {
+      "key": "mutual-fund",
+      "label": "Mutual fund"
+    },
+    {
+      "key": "risk-tolerance",
+      "label": "Risk tolerance"
+    }
+  ],
+  "sources": [
+    {
+      "slug": "cfpb-credit-card-interest",
+      "title": "How does my credit card company calculate the amount of interest I owe? | Consumer Financial Protection Bureau",
+      "url": "https://www.consumerfinance.gov/ask-cfpb/how-does-my-credit-card-company-calculate-the-amount-of-interest-i-owe-en-51/"
+    },
+    {
+      "slug": "cfpb-credit-card-key-terms",
+      "title": "Credit cards key terms | Consumer Financial Protection Bureau",
+      "url": "https://www.consumerfinance.gov/consumer-tools/credit-cards/answers/key-terms/"
+    },
+    {
+      "slug": "cfpb-credit-reports-scores",
+      "title": "Credit reports and scores | Consumer Financial Protection Bureau",
+      "url": "https://www.consumerfinance.gov/consumer-tools/credit-reports-and-scores/"
+    },
+    {
+      "slug": "cfpb-emergency-fund",
+      "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+      "url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/"
+    },
+    {
+      "slug": "cfpb-reduce-debt",
+      "title": "How to reduce your debt | Consumer Financial Protection Bureau",
+      "url": "https://www.consumerfinance.gov/about-us/blog/how-reduce-your-debt/"
+    },
+    {
+      "slug": "cfpb-student-loans",
+      "title": "Student loans | Consumer Financial Protection Bureau",
+      "url": "https://www.consumerfinance.gov/consumer-tools/student-loans/"
+    },
+    {
+      "slug": "fdic-deposit-insurance",
+      "title": "Understanding Deposit Insurance | FDIC.gov",
+      "url": "https://www.fdic.gov/resources/deposit-insurance/understanding-deposit-insurance"
+    },
+    {
+      "slug": "investor-asset-allocation",
+      "title": "Asset Allocation and Diversification",
+      "url": "https://www.investor.gov/introduction-investing/getting-started/asset-allocation"
+    },
+    {
+      "slug": "investor-compound-interest",
+      "title": "What is compound interest?",
+      "url": "https://www.investor.gov/additional-resources/information/youth/teachers-classroom-resources/what-compound-interest"
+    },
+    {
+      "slug": "investor-five-questions",
+      "title": "Five Questions to Ask Before You Invest",
+      "url": "https://www.investor.gov/introduction-investing/getting-started/five-questions-ask-you-invest"
+    },
+    {
+      "slug": "irs-401k-contribution-limits",
+      "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+      "url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits"
+    },
+    {
+      "slug": "irs-ira-contribution-limits",
+      "title": "Retirement topics - IRA contribution limits | Internal Revenue Service",
+      "url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-ira-contribution-limits"
+    },
+    {
+      "slug": "irs-roth-comparison-chart",
+      "title": "Roth comparison chart | Internal Revenue Service",
+      "url": "https://www.irs.gov/retirement-plans/roth-comparison-chart"
+    },
+    {
+      "slug": "irs-roth-iras",
+      "title": "Roth IRAs | Internal Revenue Service",
+      "url": "https://www.irs.gov/retirement-plans/roth-iras"
+    },
+    {
+      "slug": "irs-traditional-and-roth-iras",
+      "title": "Traditional and Roth IRAs | Internal Revenue Service",
+      "url": "https://www.irs.gov/retirement-plans/traditional-and-roth-iras"
+    },
+    {
+      "slug": "unfcu-50-30-20",
+      "title": "Budgeting basics: The 50-30-20 rule",
+      "url": "https://www.unfcu.org/guides/the-50-30-20-rule"
+    }
+  ],
+  "edges": [
+    {
+      "src": "401k",
+      "rel": "HAS_RULE",
+      "dst": "catch-up-contribution",
+      "value": {
+        "text": "Catch-up contributions are not included in the overall limit on contributions to a participant’s account."
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits",
+        "chunk_index": 0
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_RULE",
+      "dst": "employer-match",
+      "value": {
+        "text": "Employer matching contributions are included in the annual additions limit."
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits",
+        "chunk_index": 7
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_RULE",
+      "dst": "withdrawals",
+      "value": {
+        "text": "the $57,000 limit is not reduced by the elective deferral catch-up contributions"
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits",
+        "chunk_index": 8
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "checking-account",
+      "rel": "HAS_RULE",
+      "dst": "withdrawals",
+      "value": {
+        "text": "You get to decide how much and how often, but once you have it set up, you’ll be making consistent contributions to your savings."
+      },
+      "evidence": {
+        "source": "cfpb-emergency-fund",
+        "chunk_index": 9
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "checking-account",
+      "rel": "IS_A",
+      "dst": "ira",
+      "value": null,
+      "evidence": {
+        "source": "cfpb-emergency-fund",
+        "chunk_index": 9
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "emergency-fund",
+      "rel": "ALTERNATIVE_TO",
+      "dst": "retirement-account",
+      "value": null,
+      "evidence": {
+        "source": "unfcu-50-30-20",
+        "chunk_index": 5
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "fdic-insurance",
+      "rel": "IS_A",
+      "dst": "deposit-insurance-limit",
+      "value": null,
+      "evidence": {
+        "source": "fdic-deposit-insurance",
+        "chunk_index": 0
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "ira",
+      "rel": "HAS_RULE",
+      "dst": "contribution-limit",
+      "value": {
+        "text": "the total of your combined contributions can’t be more than the taxable compensation reported on your joint return"
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 4
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "ira",
+      "rel": "HAS_RULE",
+      "dst": "withdrawals",
+      "value": {
+        "text": "Each spouse can make a contribution up to the current limit"
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 4
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "mutual-fund",
+      "rel": "ALTERNATIVE_TO",
+      "dst": "bonds",
+      "value": null,
+      "evidence": {
+        "source": "investor-asset-allocation",
+        "chunk_index": 3
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "mutual-fund",
+      "rel": "ALTERNATIVE_TO",
+      "dst": "stocks",
+      "value": null,
+      "evidence": {
+        "source": "investor-asset-allocation",
+        "chunk_index": 3
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "rollover",
+      "rel": "HAS_RULE",
+      "dst": "contribution-limit",
+      "value": {
+        "text": "The IRA contribution limit does not apply to rollover contributions"
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 0
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "rollover",
+      "rel": "HAS_RULE",
+      "dst": "withdrawals",
+      "value": {
+        "text": "Make an improper rollover contribution to an IRA."
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 7
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "roth-401k",
+      "rel": "ALTERNATIVE_TO",
+      "dst": "roth-ira",
+      "value": null,
+      "evidence": {
+        "source": "irs-roth-iras",
+        "chunk_index": 2
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "roth-401k",
+      "rel": "IS_A",
+      "dst": "401k",
+      "value": null,
+      "evidence": {
+        "source": "irs-roth-comparison-chart",
+        "chunk_index": 1
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "roth-ira",
+      "rel": "IS_A",
+      "dst": "ira",
+      "value": null,
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 4
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "savings-account",
+      "rel": "HAS_RULE",
+      "dst": "withdrawals",
+      "value": {
+        "text": "You get to decide how much and how often, but once you have it set up, you’ll be making consistent contributions to your savings."
+      },
+      "evidence": {
+        "source": "cfpb-emergency-fund",
+        "chunk_index": 9
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "savings-account",
+      "rel": "IS_A",
+      "dst": "ira",
+      "value": null,
+      "evidence": {
+        "source": "cfpb-emergency-fund",
+        "chunk_index": 9
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "traditional-ira",
+      "rel": "HAS_RULE",
+      "dst": "contribution-limit",
+      "value": {
+        "text": "Contribute more than the contribution limit."
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 7
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "traditional-ira",
+      "rel": "HAS_RULE",
+      "dst": "required-distribution",
+      "value": {
+        "text": "Make a regular IRA contribution for 2019, or earlier, to a traditional IRA at age 70½ or older."
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 7
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "traditional-ira",
+      "rel": "IS_A",
+      "dst": "ira",
+      "value": null,
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 4
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_LIMIT",
+      "dst": "catch-up-contribution",
+      "value": {
+        "cents": 650000,
+        "condition": "eligible to make catch-up contributions"
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits",
+        "chunk_index": 8
+      },
+      "valid_from": "2020-01-01",
+      "valid_to": "2021-01-01"
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "value": {
+        "cents": 5700000,
+        "condition": "nonelective contribution limit"
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits",
+        "chunk_index": 8
+      },
+      "valid_from": "2020-01-01",
+      "valid_to": "2021-01-01"
+    },
+    {
+      "src": "catch-up-contribution",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "value": {
+        "cents": 650000,
+        "condition": "for individuals over 50"
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits",
+        "chunk_index": 5
+      },
+      "valid_from": "2020-01-01",
+      "valid_to": "2021-01-01"
+    },
+    {
+      "src": "ira",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "value": {
+        "cents": 350000,
+        "condition": "for individuals with compensation of $3,500 or less"
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 6
+      },
+      "valid_from": "2020-01-01",
+      "valid_to": "2021-01-01"
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_LIMIT",
+      "dst": "catch-up-contribution",
+      "value": {
+        "cents": 2600000,
+        "condition": null
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart",
+        "chunk_index": 1
+      },
+      "valid_from": "2021-01-01",
+      "valid_to": "2022-01-01"
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "value": {
+        "cents": 1950000,
+        "condition": null
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart",
+        "chunk_index": 1
+      },
+      "valid_from": "2021-01-01",
+      "valid_to": "2022-01-01"
+    },
+    {
+      "src": "contribution-limit",
+      "rel": "HAS_LIMIT",
+      "dst": "income-limit",
+      "value": {
+        "cents": 700000,
+        "condition": "if you’re age 50 or older by the end of the year"
+      },
+      "evidence": {
+        "source": "irs-traditional-and-roth-iras",
+        "chunk_index": 5
+      },
+      "valid_from": "2021-01-01",
+      "valid_to": "2022-01-01"
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_LIMIT",
+      "dst": "catch-up-contribution",
+      "value": {
+        "cents": 2700000,
+        "condition": null
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart",
+        "chunk_index": 1
+      },
+      "valid_from": "2022-01-01",
+      "valid_to": "2023-01-01"
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "value": {
+        "cents": 2050000,
+        "condition": null
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart",
+        "chunk_index": 1
+      },
+      "valid_from": "2022-01-01",
+      "valid_to": "2023-01-01"
+    },
+    {
+      "src": "contribution-limit",
+      "rel": "HAS_LIMIT",
+      "dst": "income-limit",
+      "value": {
+        "cents": 700000,
+        "condition": "if you’re age 50 or older by the end of the year"
+      },
+      "evidence": {
+        "source": "irs-traditional-and-roth-iras",
+        "chunk_index": 5
+      },
+      "valid_from": "2022-01-01",
+      "valid_to": "2023-01-01"
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_LIMIT",
+      "dst": "catch-up-contribution",
+      "value": {
+        "cents": 3000000,
+        "condition": null
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart",
+        "chunk_index": 1
+      },
+      "valid_from": "2023-01-01",
+      "valid_to": "2024-01-01"
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "value": {
+        "cents": 2250000,
+        "condition": null
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart",
+        "chunk_index": 1
+      },
+      "valid_from": "2023-01-01",
+      "valid_to": "2024-01-01"
+    },
+    {
+      "src": "contribution-limit",
+      "rel": "HAS_LIMIT",
+      "dst": "income-limit",
+      "value": {
+        "cents": 650000,
+        "condition": "if less, your taxable compensation for the year"
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 0
+      },
+      "valid_from": "2023-01-01",
+      "valid_to": "2024-01-01"
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_LIMIT",
+      "dst": "catch-up-contribution",
+      "value": {
+        "cents": 3050000,
+        "condition": null
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart",
+        "chunk_index": 1
+      },
+      "valid_from": "2024-01-01",
+      "valid_to": "2025-01-01"
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "value": {
+        "cents": 2300000,
+        "condition": null
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart",
+        "chunk_index": 1
+      },
+      "valid_from": "2024-01-01",
+      "valid_to": "2025-01-01"
+    },
+    {
+      "src": "contribution-limit",
+      "rel": "HAS_LIMIT",
+      "dst": "income-limit",
+      "value": {
+        "cents": 700000,
+        "condition": "if less, your taxable compensation for the year"
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 0
+      },
+      "valid_from": "2024-01-01",
+      "valid_to": "2025-01-01"
+    },
+    {
+      "src": "contribution-limit",
+      "rel": "HAS_LIMIT",
+      "dst": "income-limit",
+      "value": {
+        "cents": 700000,
+        "condition": "if less, your taxable compensation for the year"
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 0
+      },
+      "valid_from": "2025-01-01",
+      "valid_to": "2026-01-01"
+    },
+    {
+      "src": "401k",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "value": {
+        "cents": 7200000,
+        "condition": "lesser of 100% of the participant's compensation or $72,000"
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits",
+        "chunk_index": 7
+      },
+      "valid_from": "2026-01-01",
+      "valid_to": "2027-01-01"
+    },
+    {
+      "src": "catch-up-contribution",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "value": {
+        "cents": 800000,
+        "condition": "for employees aged 50 or over at the end of the calendar year participating in traditional and safe harbor 401(k) plans"
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits",
+        "chunk_index": 4
+      },
+      "valid_from": "2026-01-01",
+      "valid_to": "2027-01-01"
+    },
+    {
+      "src": "contribution-limit",
+      "rel": "HAS_LIMIT",
+      "dst": "401k",
+      "value": {
+        "cents": 2450000,
+        "condition": null
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits",
+        "chunk_index": 1
+      },
+      "valid_from": "2026-01-01",
+      "valid_to": "2027-01-01"
+    },
+    {
+      "src": "contribution-limit",
+      "rel": "HAS_LIMIT",
+      "dst": "income-limit",
+      "value": {
+        "cents": 750000,
+        "condition": "if less, your taxable compensation for the year"
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits",
+        "chunk_index": 0
+      },
+      "valid_from": "2026-01-01",
+      "valid_to": "2027-01-01"
+    },
+    {
+      "src": "simple-401k",
+      "rel": "HAS_LIMIT",
+      "dst": "contribution-limit",
+      "value": {
+        "cents": 1700000,
+        "condition": "subject to cost-of-living adjustments"
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits",
+        "chunk_index": 2
+      },
+      "valid_from": "2026-01-01",
+      "valid_to": "2027-01-01"
+    },
+    {
+      "src": "401k",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-401k-contribution-limits",
+      "value": {
+        "chunks": [
+          0,
+          2,
+          4,
+          5,
+          7,
+          8,
+          10
+        ]
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "401k",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-comparison-chart",
+      "value": {
+        "chunks": [
+          0,
+          1
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "50-30-20-rule",
+      "rel": "MENTIONED_IN",
+      "dst": "unfcu-50-30-20",
+      "value": {
+        "chunks": [
+          1,
+          2,
+          6
+        ]
+      },
+      "evidence": {
+        "source": "unfcu-50-30-20"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "after-tax-contribution",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-comparison-chart",
+      "value": {
+        "chunks": [
+          0
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "apr",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-credit-card-interest",
+      "value": {
+        "chunks": [
+          0
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-credit-card-interest"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "apr",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-credit-card-key-terms",
+      "value": {
+        "chunks": [
+          0,
+          1
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-credit-card-key-terms"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "asset-allocation",
+      "rel": "MENTIONED_IN",
+      "dst": "investor-asset-allocation",
+      "value": {
+        "chunks": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "evidence": {
+        "source": "investor-asset-allocation"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "balance-transfer",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-credit-card-key-terms",
+      "value": {
+        "chunks": [
+          0
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-credit-card-key-terms"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "bonds",
+      "rel": "MENTIONED_IN",
+      "dst": "fdic-deposit-insurance",
+      "value": {
+        "chunks": [
+          4
+        ]
+      },
+      "evidence": {
+        "source": "fdic-deposit-insurance"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "bonds",
+      "rel": "MENTIONED_IN",
+      "dst": "investor-asset-allocation",
+      "value": {
+        "chunks": [
+          1,
+          3
+        ]
+      },
+      "evidence": {
+        "source": "investor-asset-allocation"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "budget",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-emergency-fund",
+      "value": {
+        "chunks": [
+          6
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-emergency-fund"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "budget",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-reduce-debt",
+      "value": {
+        "chunks": [
+          6
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-reduce-debt"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "budget",
+      "rel": "MENTIONED_IN",
+      "dst": "unfcu-50-30-20",
+      "value": {
+        "chunks": [
+          1,
+          2,
+          3,
+          5,
+          6
+        ]
+      },
+      "evidence": {
+        "source": "unfcu-50-30-20"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "catch-up-contribution",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-401k-contribution-limits",
+      "value": {
+        "chunks": [
+          0,
+          4,
+          5,
+          7,
+          8,
+          10
+        ]
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "catch-up-contribution",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-comparison-chart",
+      "value": {
+        "chunks": [
+          1
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "checking-account",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-emergency-fund",
+      "value": {
+        "chunks": [
+          9
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-emergency-fund"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "checking-account",
+      "rel": "MENTIONED_IN",
+      "dst": "fdic-deposit-insurance",
+      "value": {
+        "chunks": [
+          3,
+          5
+        ]
+      },
+      "evidence": {
+        "source": "fdic-deposit-insurance"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "compound-interest",
+      "rel": "MENTIONED_IN",
+      "dst": "investor-compound-interest",
+      "value": {
+        "chunks": [
+          0
+        ]
+      },
+      "evidence": {
+        "source": "investor-compound-interest"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "contribution-limit",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-401k-contribution-limits",
+      "value": {
+        "chunks": [
+          4
+        ]
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "contribution-limit",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-ira-contribution-limits",
+      "value": {
+        "chunks": [
+          0,
+          2,
+          7
+        ]
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "contribution-limit",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-comparison-chart",
+      "value": {
+        "chunks": [
+          0
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "contribution-limit",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-iras",
+      "value": {
+        "chunks": [
+          0
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-iras"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "credit-card",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-credit-card-interest",
+      "value": {
+        "chunks": [
+          0
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-credit-card-interest"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "credit-card",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-credit-card-key-terms",
+      "value": {
+        "chunks": [
+          0,
+          1,
+          2
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-credit-card-key-terms"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "credit-card",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-emergency-fund",
+      "value": {
+        "chunks": [
+          2,
+          6,
+          12
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-emergency-fund"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "credit-card",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-reduce-debt",
+      "value": {
+        "chunks": [
+          2
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-reduce-debt"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "credit-card",
+      "rel": "MENTIONED_IN",
+      "dst": "unfcu-50-30-20",
+      "value": {
+        "chunks": [
+          3
+        ]
+      },
+      "evidence": {
+        "source": "unfcu-50-30-20"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "credit-report",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-credit-reports-scores",
+      "value": {
+        "chunks": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-credit-reports-scores"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "credit-score",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-credit-reports-scores",
+      "value": {
+        "chunks": [
+          2
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-credit-reports-scores"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "debt-avalanche",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-reduce-debt",
+      "value": {
+        "chunks": [
+          1
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-reduce-debt"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "debt-snowball",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-reduce-debt",
+      "value": {
+        "chunks": [
+          1
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-reduce-debt"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "diversification",
+      "rel": "MENTIONED_IN",
+      "dst": "investor-asset-allocation",
+      "value": {
+        "chunks": [
+          0,
+          3
+        ]
+      },
+      "evidence": {
+        "source": "investor-asset-allocation"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "emergency-fund",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-emergency-fund",
+      "value": {
+        "chunks": [
+          0,
+          1,
+          3,
+          5,
+          7,
+          11,
+          12
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-emergency-fund"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "emergency-fund",
+      "rel": "MENTIONED_IN",
+      "dst": "unfcu-50-30-20",
+      "value": {
+        "chunks": [
+          5
+        ]
+      },
+      "evidence": {
+        "source": "unfcu-50-30-20"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "employer-match",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-401k-contribution-limits",
+      "value": {
+        "chunks": [
+          0,
+          7
+        ]
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "fdic-insurance",
+      "rel": "MENTIONED_IN",
+      "dst": "fdic-deposit-insurance",
+      "value": {
+        "chunks": [
+          0,
+          1,
+          2,
+          5,
+          6
+        ]
+      },
+      "evidence": {
+        "source": "fdic-deposit-insurance"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "federal-student-loan",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-student-loans",
+      "value": {
+        "chunks": [
+          0,
+          1,
+          5
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-student-loans"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "grace-period",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-credit-card-interest",
+      "value": {
+        "chunks": [
+          0
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-credit-card-interest"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "grace-period",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-credit-card-key-terms",
+      "value": {
+        "chunks": [
+          1
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-credit-card-key-terms"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "income-limit",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-comparison-chart",
+      "value": {
+        "chunks": [
+          0
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "ira",
+      "rel": "MENTIONED_IN",
+      "dst": "fdic-deposit-insurance",
+      "value": {
+        "chunks": [
+          5
+        ]
+      },
+      "evidence": {
+        "source": "fdic-deposit-insurance"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "ira",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-401k-contribution-limits",
+      "value": {
+        "chunks": [
+          0,
+          6
+        ]
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "ira",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-ira-contribution-limits",
+      "value": {
+        "chunks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "ira",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-comparison-chart",
+      "value": {
+        "chunks": [
+          0,
+          1
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "ira",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-iras",
+      "value": {
+        "chunks": [
+          0,
+          1,
+          2
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-iras"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "ira",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-traditional-and-roth-iras",
+      "value": {
+        "chunks": [
+          0,
+          5,
+          6,
+          8,
+          10
+        ]
+      },
+      "evidence": {
+        "source": "irs-traditional-and-roth-iras"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "minimum-payment",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-reduce-debt",
+      "value": {
+        "chunks": [
+          3
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-reduce-debt"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "minimum-payment",
+      "rel": "MENTIONED_IN",
+      "dst": "unfcu-50-30-20",
+      "value": {
+        "chunks": [
+          5
+        ]
+      },
+      "evidence": {
+        "source": "unfcu-50-30-20"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "mutual-fund",
+      "rel": "MENTIONED_IN",
+      "dst": "fdic-deposit-insurance",
+      "value": {
+        "chunks": [
+          4
+        ]
+      },
+      "evidence": {
+        "source": "fdic-deposit-insurance"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "mutual-fund",
+      "rel": "MENTIONED_IN",
+      "dst": "investor-asset-allocation",
+      "value": {
+        "chunks": [
+          3
+        ]
+      },
+      "evidence": {
+        "source": "investor-asset-allocation"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "pre-tax-contribution",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-comparison-chart",
+      "value": {
+        "chunks": [
+          0,
+          1
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "required-distribution",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-comparison-chart",
+      "value": {
+        "chunks": [
+          0
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "retirement-account",
+      "rel": "MENTIONED_IN",
+      "dst": "fdic-deposit-insurance",
+      "value": {
+        "chunks": [
+          5
+        ]
+      },
+      "evidence": {
+        "source": "fdic-deposit-insurance"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "retirement-account",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-ira-contribution-limits",
+      "value": {
+        "chunks": [
+          1,
+          4,
+          5
+        ]
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "retirement-account",
+      "rel": "MENTIONED_IN",
+      "dst": "unfcu-50-30-20",
+      "value": {
+        "chunks": [
+          5
+        ]
+      },
+      "evidence": {
+        "source": "unfcu-50-30-20"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "risk-tolerance",
+      "rel": "MENTIONED_IN",
+      "dst": "investor-asset-allocation",
+      "value": {
+        "chunks": [
+          1
+        ]
+      },
+      "evidence": {
+        "source": "investor-asset-allocation"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "rollover",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-ira-contribution-limits",
+      "value": {
+        "chunks": [
+          0,
+          3,
+          7
+        ]
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "roth-401k",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-comparison-chart",
+      "value": {
+        "chunks": [
+          0,
+          1
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "roth-ira",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-ira-contribution-limits",
+      "value": {
+        "chunks": [
+          0,
+          2,
+          3,
+          5,
+          6
+        ]
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "roth-ira",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-comparison-chart",
+      "value": {
+        "chunks": [
+          0,
+          1
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "roth-ira",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-iras",
+      "value": {
+        "chunks": [
+          0,
+          1,
+          2
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-iras"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "roth-ira",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-traditional-and-roth-iras",
+      "value": {
+        "chunks": [
+          0,
+          5
+        ]
+      },
+      "evidence": {
+        "source": "irs-traditional-and-roth-iras"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "savings-account",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-emergency-fund",
+      "value": {
+        "chunks": [
+          9,
+          10
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-emergency-fund"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "savings-account",
+      "rel": "MENTIONED_IN",
+      "dst": "fdic-deposit-insurance",
+      "value": {
+        "chunks": [
+          3,
+          5
+        ]
+      },
+      "evidence": {
+        "source": "fdic-deposit-insurance"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "savings-account",
+      "rel": "MENTIONED_IN",
+      "dst": "unfcu-50-30-20",
+      "value": {
+        "chunks": [
+          6
+        ]
+      },
+      "evidence": {
+        "source": "unfcu-50-30-20"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "simple-401k",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-401k-contribution-limits",
+      "value": {
+        "chunks": [
+          2,
+          4,
+          7
+        ]
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "stocks",
+      "rel": "MENTIONED_IN",
+      "dst": "fdic-deposit-insurance",
+      "value": {
+        "chunks": [
+          4
+        ]
+      },
+      "evidence": {
+        "source": "fdic-deposit-insurance"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "stocks",
+      "rel": "MENTIONED_IN",
+      "dst": "investor-asset-allocation",
+      "value": {
+        "chunks": [
+          1,
+          3
+        ]
+      },
+      "evidence": {
+        "source": "investor-asset-allocation"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "student-loan",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-reduce-debt",
+      "value": {
+        "chunks": [
+          2
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-reduce-debt"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "student-loan",
+      "rel": "MENTIONED_IN",
+      "dst": "cfpb-student-loans",
+      "value": {
+        "chunks": [
+          0,
+          1,
+          3,
+          5
+        ]
+      },
+      "evidence": {
+        "source": "cfpb-student-loans"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "traditional-ira",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-ira-contribution-limits",
+      "value": {
+        "chunks": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          6,
+          7
+        ]
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "traditional-ira",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-iras",
+      "value": {
+        "chunks": [
+          0
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-iras"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "traditional-ira",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-traditional-and-roth-iras",
+      "value": {
+        "chunks": [
+          8,
+          10
+        ]
+      },
+      "evidence": {
+        "source": "irs-traditional-and-roth-iras"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "withdrawals",
+      "rel": "MENTIONED_IN",
+      "dst": "fdic-deposit-insurance",
+      "value": {
+        "chunks": [
+          3
+        ]
+      },
+      "evidence": {
+        "source": "fdic-deposit-insurance"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "withdrawals",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-401k-contribution-limits",
+      "value": {
+        "chunks": [
+          6
+        ]
+      },
+      "evidence": {
+        "source": "irs-401k-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "withdrawals",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-ira-contribution-limits",
+      "value": {
+        "chunks": [
+          7
+        ]
+      },
+      "evidence": {
+        "source": "irs-ira-contribution-limits"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "withdrawals",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-comparison-chart",
+      "value": {
+        "chunks": [
+          0,
+          1
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-comparison-chart"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "withdrawals",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-roth-iras",
+      "value": {
+        "chunks": [
+          0,
+          2
+        ]
+      },
+      "evidence": {
+        "source": "irs-roth-iras"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    },
+    {
+      "src": "withdrawals",
+      "rel": "MENTIONED_IN",
+      "dst": "irs-traditional-and-roth-iras",
+      "value": {
+        "chunks": [
+          8,
+          9,
+          10,
+          11
+        ]
+      },
+      "evidence": {
+        "source": "irs-traditional-and-roth-iras"
+      },
+      "valid_from": "2000-01-01",
+      "valid_to": null
+    }
+  ]
+}

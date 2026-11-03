@@ -1,0 +1,101 @@
+[
+  {
+    "src": "ira",
+    "rel": "HAS_LIMIT",
+    "dst": "contribution-limit",
+    "year": 2026,
+    "cents": 750000
+  },
+  {
+    "src": "ira",
+    "rel": "HAS_LIMIT",
+    "dst": "contribution-limit",
+    "year": 2025,
+    "cents": 700000
+  },
+  {
+    "src": "ira",
+    "rel": "HAS_LIMIT",
+    "dst": "contribution-limit",
+    "year": 2024,
+    "cents": 700000
+  },
+  {
+    "src": "ira",
+    "rel": "HAS_LIMIT",
+    "dst": "contribution-limit",
+    "year": 2023,
+    "cents": 650000
+  },
+  {
+    "src": "401k",
+    "rel": "HAS_LIMIT",
+    "dst": "contribution-limit",
+    "year": 2026,
+    "cents": 2450000
+  },
+  {
+    "src": "401k",
+    "rel": "HAS_LIMIT",
+    "dst": "contribution-limit",
+    "year": 2024,
+    "cents": 2300000
+  },
+  {
+    "src": "401k",
+    "rel": "HAS_LIMIT",
+    "dst": "contribution-limit",
+    "year": 2023,
+    "cents": 2250000
+  },
+  {
+    "src": "401k",
+    "rel": "HAS_LIMIT",
+    "dst": "contribution-limit",
+    "year": 2022,
+    "cents": 2050000
+  },
+  {
+    "src": "401k",
+    "rel": "HAS_LIMIT",
+    "dst": "contribution-limit",
+    "year": 2021,
+    "cents": 1950000
+  },
+  {
+    "src": "simple-401k",
+    "rel": "HAS_LIMIT",
+    "dst": "contribution-limit",
+    "year": 2026,
+    "cents": 1700000
+  },
+  {
+    "src": "catch-up-contribution",
+    "rel": "HAS_LIMIT",
+    "dst": "contribution-limit",
+    "year": 2026,
+    "cents": 800000
+  },
+  {
+    "src": "fdic-insurance",
+    "rel": "HAS_RULE",
+    "dst": "deposit-insurance-limit",
+    "text_contains": "250,000"
+  },
+  {
+    "src": "roth-ira",
+    "rel": "IS_A",
+    "dst": "ira"
+  },
+  {
+    "src": "roth-ira",
+    "rel": "HAS_RULE",
+    "dst": "after-tax-contribution"
+  },
+  {
+    "src": "debt-avalanche",
+    "rel": "ALTERNATIVE_TO",
+    "dst": "debt-snowball",
+    "either_way": true
+  }
+]
