@@ -38,6 +38,13 @@ async function typeExtra(value: string) {
 }
 
 describe("DebtPlanCompare", () => {
+  test("shows the suggested extra without changing the input", async () => {
+    vi.useFakeTimers();
+    render(<DebtPlanCompare suggestedExtraCents={23000} fetchPlan={vi.fn(async (extra: number) => response(extra))} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+    expect(screen.getByText("You could add about $230.00.")).toBeTruthy();
+    expect((screen.getByLabelText("Extra per month") as HTMLInputElement).value).toBe("0");
+  });
   test("renders both plans and marks the cheaper one", async () => {
     await draw();
     expect(screen.getByText("Avalanche")).toBeTruthy();

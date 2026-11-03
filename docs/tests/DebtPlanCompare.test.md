@@ -61,3 +61,9 @@ npm test -- components/DebtPlanCompare.test.tsx
 **What it does:** After "200" is typed, the dashboard re-renders the card with a new `debtsKey` (a second debt appeared). The card asks for the plan again with 20,000 cents, and the input still reads 200.
 
 **Why it's there:** Found in the final review. Linking a bank, a retry or a sync reloads the dashboard's debts under a card that's already on screen. The plan stayed stale, showing one debt while the table showed two, until the user typed again.
+
+## `shows the suggested extra without changing the input`
+
+**What it does:** Shows the suggested extra without changing the input.
+
+**Why it's there:** Checks the forecast integration while preserving the existing workflow.

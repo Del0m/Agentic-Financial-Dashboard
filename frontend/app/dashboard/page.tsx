@@ -6,6 +6,7 @@ import AccountsTable from "@/components/AccountsTable";
 import BalanceChart from "@/components/BalanceChart";
 import BudgetPaceBar from "@/components/BudgetPaceBar";
 import DebtPlanCompare from "@/components/DebtPlanCompare";
+import ForecastChart from "@/components/ForecastChart";
 import DebtsTable from "@/components/DebtsTable";
 import { goalTitle } from "@/components/GoalCard";
 import NetWorthSummary from "@/components/NetWorthSummary";
@@ -13,8 +14,8 @@ import PlaidLinkButton from "@/components/PlaidLinkButton";
 import RecurringList from "@/components/RecurringList";
 import TransactionsTable from "@/components/TransactionsTable";
 import {
-  correctTransaction, errorMessage, getAlerts, getBudget, getDashboard, getGoals, getRecurring, getTransactions, syncItem, type Budget,
-  type Dashboard, type ExchangeResult, type Goal, type RecurringResponse, type Txn,
+  correctTransaction, errorMessage, getAlerts, getBudget, getDashboard, getForecast, getGoals, getRecurring, getTransactions, setForecastBuffer, syncItem, type Budget,
+  type Dashboard, type ExchangeResult, type Forecast, type Goal, type RecurringResponse, type Txn,
 } from "@/lib/api";
 import { categoryLabel, formatCents, formatDate, formatMonth } from "@/lib/format";
 
@@ -54,6 +55,8 @@ export default function DashboardPage() {
   const [txnError, setTxnError] = useState<string | null>(null);
   const [recurring, setRecurring] = useState<RecurringResponse | null>(null);
   const [recurringError, setRecurringError] = useState<string | null>(null);
+  const [forecast, setForecast] = useState<Forecast | null>(null);
+  const [forecastError, setForecastError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +91,12 @@ export default function DashboardPage() {
         setRecurringError(null);
       })
       .catch((err) => !cancelled && setRecurringError(errorMessage(err)));
+    getForecast()
+      .then((f) => {
+        if (cancelled) return;
+        setForecast(f); setForecastError(null);
+      })
+      .catch((err) => !cancelled && setForecastError(errorMessage(err)));
     return () => {
       cancelled = true;
     };
@@ -295,6 +304,11 @@ export default function DashboardPage() {
               </ul>
             )}
           </Card>
+          <Card title="Cash forecast">
+            {forecastError ? <p className="text-sm text-red-600 dark:text-red-400">Couldn&apos;t load your cash forecast: {forecastError}</p>
+              : !forecast ? <p className="text-sm text-neutral-500">Loading…</p>
+              : <ForecastChart data={forecast} onSaveBuffer={async (cents) => { await setForecastBuffer(cents); load(); }} />}
+          </Card>
           <Card title="Recurring charges">
             {recurringError ? (
               <p className="text-sm text-red-600 dark:text-red-400">Couldn&apos;t load your recurring charges: {recurringError}</p>
@@ -320,7 +334,7 @@ export default function DashboardPage() {
           </Card>
           {data.debts.length > 0 && (
             <Card title="Paying off your debts">
-              <DebtPlanCompare debtsKey={data.debts
+              <DebtPlanCompare suggestedExtraCents={forecast?.suggested_extra_cents} debtsKey={data.debts
                 .map((d) => `${d.account_id}:${d.balance_cents}:${d.apr}:${d.min_payment_cents}`).join("|")} />
             </Card>
           )}

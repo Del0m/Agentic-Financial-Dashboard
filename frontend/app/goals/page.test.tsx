@@ -28,7 +28,7 @@ function goal(id: number, over: Partial<Goal> = {}): Goal {
 
 function run(over: Partial<GoalRun> = {}): GoalRun {
   return { run_id: 7, status: "ok", outcome: null, reason: null, goal_ids: [], waiting_for: [], attempts: 1,
-           issues: [], error: null, ...over };
+           issues: [], error: null, surplus_source: null, ...over };
 }
 
 // starts a run and lets the page poll through every scripted status, 2 s apart
@@ -55,6 +55,15 @@ afterEach(() => {
 });
 
 describe("Goals page", () => {
+  test.each([
+    ["forecast", "Based on your cash-flow forecast."],
+    ["measured", "Based on your last 3 months (no paycheck pattern found yet)."],
+  ] as const)("says which surplus a run used: %s", async (source, text) => {
+    render(<GoalsPage />);
+    await screen.findByText("Because 1");
+    await generateThrough(run({ status: "ok", surplus_source: source }));
+    expect(await screen.findByText(text)).toBeTruthy();
+  });
   test("Generate polls until the run settles, then lists the proposal", async () => {
     render(<GoalsPage />);
     await screen.findByText("Because 1");
@@ -86,7 +95,7 @@ describe("Goals page", () => {
   });
 
   test.each([
-    ["no_surplus", "No money left over in a typical month"],
+    ["no_surplus", "No money left over"],
     ["nothing_offered", "cover every kind"],
     ["no_affordable_goals", "under $1"],
   ])("outcome %s says why there's no proposal", async (outcome, words) => {

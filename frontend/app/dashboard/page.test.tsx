@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import DashboardPage from "@/app/dashboard/page";
 import {
-  ApiError, getAlerts, getBudget, getDashboard, getGoals, getRecurring, getTransactions, type Budget, type Dashboard, type Goal,
+  ApiError, getAlerts, getBudget, getDashboard, getForecast, getGoals, getRecurring, getTransactions, type Budget, type Dashboard, type Goal,
 } from "@/lib/api";
 
 vi.mock("@/lib/api", async (importOriginal) => ({
@@ -13,11 +13,13 @@ vi.mock("@/lib/api", async (importOriginal) => ({
   getTransactions: vi.fn(),
   getGoals: vi.fn(),
   getRecurring: vi.fn(),
+  getForecast: vi.fn(),
 }));
 // these draw charts, open Plaid or call the planner; none of it matters here
 vi.mock("@/components/BalanceChart", () => ({ default: () => null }));
 vi.mock("@/components/PlaidLinkButton", () => ({ default: () => null }));
 vi.mock("@/components/DebtPlanCompare", () => ({ default: () => null }));
+vi.mock("@/components/ForecastChart", () => ({ default: () => null }));
 
 const goalsMock = vi.mocked(getGoals);
 const budgetMock = vi.mocked(getBudget);
@@ -49,6 +51,9 @@ beforeEach(() => {
   vi.mocked(getTransactions).mockResolvedValue([]);
   goalsMock.mockResolvedValue([]);
   vi.mocked(getRecurring).mockResolvedValue({ as_of: null, streams: [] });
+  vi.mocked(getForecast).mockResolvedValue({ today: "2026-10-10", status: "no_history", start_cents: 10000,
+    buffer_cents: 10000, horizon_days: 0, income: "none", days: [], events: [], dip: null,
+    monthly_surplus_cents: null, surplus_source: "measured", suggested_extra_cents: null, notes: [] });
 });
 
 afterEach(() => {
@@ -62,6 +67,18 @@ async function goalsCard() {
 }
 
 describe("Dashboard goals", () => {
+  test("shows the Cash forecast card", async () => {
+    render(<DashboardPage />);
+    expect(await screen.findByRole("heading", { name: "Cash forecast" })).toBeTruthy();
+  });
+
+  test("keeps a forecast failure inside its card", async () => {
+    vi.mocked(getForecast).mockRejectedValue(new Error("offline"));
+    render(<DashboardPage />);
+    expect(await screen.findByText("Couldn't load your cash forecast: offline")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Recurring charges" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Goals" })).toBeTruthy();
+  });
   test("shows the Recurring charges card", async () => {
     render(<DashboardPage />);
     expect(await screen.findByRole("heading", { name: "Recurring charges" })).toBeTruthy();
