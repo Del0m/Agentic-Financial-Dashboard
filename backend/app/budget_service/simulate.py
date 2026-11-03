@@ -85,7 +85,7 @@ def advance_days(session_factory, user_id: str, days: int, *, model: Optional[Ba
                  on_day: Optional[Callable[[dict], None]] = None) -> dict:
     sim = _sim(session_factory, user_id)
     users = _profiles()
-    every = users.PROFILES + users.PLANTED + users.GOAL_USERS + users.RECURRING_USERS
+    every = users.PROFILES + users.PLANTED + users.GOAL_USERS + users.RECURRING_USERS + users.FORECAST_USERS
     profile = next(p for p in every if p.id == sim["profile"])
     # the whole generated history once, grouped by day, instead of regenerating it for every simulated day
     by_day: dict[date, list] = {}

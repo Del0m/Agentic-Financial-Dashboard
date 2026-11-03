@@ -274,3 +274,12 @@ RECURRING_USERS = (
                      0.2, (1, 3), (300, 4500))),
             today=date(2026, 10, 20), start=date(2026, 1, 1), end=date(2026, 10, 31), run_date=date(2026, 10, 20)),
 )
+
+FORECAST_USERS = (
+    Profile("forecast-dip", "rent two days before payday, with a moving checking balance", 31,
+            (Monthly("RENT_AND_UTILITIES", "Landlord", 150000, day=13),
+             Monthly("INCOME", "Employer", -220000, day=15), Monthly("ENTERTAINMENT", "Streamly", 1549, day=5),
+             Monthly("PERSONAL_CARE", "FitClub Gym", 4000, day=3), GROCER,
+             Weekly("TRANSPORTATION", "Fuel", 4000, weekday=0)), today=date(2026, 10, 10),
+            start=date(2026, 6, 1), end=date(2026, 11, 30), run_date=date(2026, 10, 10), opening_cents=190000),
+)
