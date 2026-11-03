@@ -29,7 +29,7 @@ def test_run_once_captures_everything(tmp_path):
 
     assert isinstance(rec, RunRecord)
     assert (rec.scenario_id, rec.run, rec.error) == ("debt-highest-apr", 2, None)
-    assert rec.answer == "Pay the Platinum Card first."
+    assert rec.answer.startswith("Pay the Platinum Card first.\n\n")
     assert rec.tool_calls == [{"name": "get_debts", "args": {}}]
     assert "Platinum Card" in rec.tool_results[0] and "24.99" in rec.tool_results[0]
     assert rec.sources == [FakeKB.RESULT]

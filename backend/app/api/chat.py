@@ -13,7 +13,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from pydantic import BaseModel, Field, StringConstraints
 from .. import config
-from ..agents.chat_graph import build_chat_graph
+from ..agents.chat_graph import DISCLAIMER, build_chat_graph
 from ..agents.tools import make_tools
 from ..db.models import User
 from ..db.session import SessionLocal
@@ -122,6 +122,9 @@ def _turn_events(user: User, req: ChatRequest):
                 for m in payload["tools"]["messages"]:
                     yield format_event("tool_result", {"id": m.tool_call_id, "name": m.name,
                                                        "ok": not str(m.content).startswith("error:")})
+            # the closing line the graph added; an answer that didn't stream is sent whole below, with it included
+            elif payload.get("finish") and streamed:
+                yield format_event("token", {"text": f"\n\n{DISCLAIMER}"})
         if not streamed:
             last = graph.get_state(cfg).values["messages"][-1]
             # a model that doesn't stream still answers; one with nothing to say gets told so

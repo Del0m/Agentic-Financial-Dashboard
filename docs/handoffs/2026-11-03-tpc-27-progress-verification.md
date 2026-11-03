@@ -8,6 +8,7 @@ This covers the work so far on branch `TPC-27`, which is stacked on `TPC-26`: th
 | `c146758` | TPC-48 fix |
 | `8bab89a` | TPC-45 fix |
 | `98052f6` | TPC-47 fix and `--skip-tag` |
+| `aaccb22` | Forecast summary, post-fix baseline results and this handoff |
 
 ## Post-fix baseline
 
@@ -28,7 +29,7 @@ Four scenarios fail in this pass:
 
 | Scenario | Why | Status |
 |---|---|---|
-| `cash-before-payday` | Left out the bill name. **It passed on Nov 3** | Fixed after this baseline, uncommitted. See below |
+| `cash-before-payday` | Left out the bill name. **It passed on Nov 3** | Fixed after this baseline. See below |
 | `budget-seasonal-holidays`, `budget-seasonal-back-to-school` | Wrong cause | Expected. TPC-46 waits for the graph |
 | `abstain-roth-2030` | States a limit for 2030 | Expected. TPC-49 waits for the graph |
 
@@ -46,7 +47,17 @@ Each answer should say the balance could run short, reaching $50.00 below the $1
 
 The fix came after the baseline, so the table above doesn't include it. Prompts changed again, so the final run still has to cover every chat scenario.
 
-**Still open: the disclaimer.** Some answers leave out "This is general information, not financial advice." No scenario checks for that line, so it doesn't affect the pass rates. It was missing from 3 of 22 chat answers on Nov 3, 5 of 22 in the post-fix baseline, and 2 of 3 `cash-before-payday` answers after this fix. So this problem predates these changes, and they may have made it worse. One pass is too small to be sure.
+## The disclaimer is now added by code
+
+Answers sometimes left out "This is general information, not financial advice." It was missing from 3 of 22 chat answers on Nov 3, 5 of 22 in the post-fix baseline, and 2 of 3 `cash-before-payday` answers after the forecast fix. A new `finish` node in the chat graph now adds it when it's missing, and `POST /chat` streams the added line.
+
+This came after the baseline too, and it adds text to some answers, so similarity and judge scores may shift slightly in the final run. To see it, ask anything in the chat UI and check that the answer ends with the line, or run:
+
+```bash
+venv/bin/python eval/run_eval.py --only spending-food-30d --runs 1
+```
+
+The run file's `answer` ends with the disclaimer. `docs/diagrams/chat-flow.puml` doesn't show the new node yet.
 
 ## Checks
 
@@ -58,7 +69,7 @@ Run these from the repo root unless a step says otherwise. Steps 3 to 6 need Oll
    cd backend && ../venv/bin/python -m pytest -q -k "not live"
    ```
 
-   Expect 1,493 passed and 18 deselected.
+   Expect 1,497 passed and 18 deselected.
 
 2. **The rules came before any graph code.** This shows they were committed in `f452af7`:
 
@@ -122,7 +133,7 @@ Run these from the repo root unless a step says otherwise. Steps 3 to 6 need Oll
 
 ## Not done
 
-- **Uncommitted:** this file, the forecast summary fix and `eval/results/2026-11-03/qwen2.5_14b-postfix/`. `eval/results/2026-11-03/qwen2.5_14b-2` to `-14` are debugging runs. They're uncommitted too, and can be deleted.
+- **Uncommitted:** the disclaimer change and this file's update. `eval/results/2026-11-03/qwen2.5_14b-2` to `-16` are debugging runs. They're uncommitted too, and can be deleted.
 - **Also untracked, left alone:** `concepts_brief.md`, `design_draft.md` and `docs/superpowers/plans/2026-11-03-tpc-35-temporal-store.md`. The last one belongs to the TPC-35 work.
 - **Temporal scenarios:** 6 of about 12 exist, and the rest need budget and advice data in the loader. They must be committed before any TPC-36 to TPC-39 code.
 - **Phase 3:** switches, new metrics and `run_benchmark.py` aren't started. Only `--skip-tag` and the loader fields exist, and the new fields aren't scored yet.

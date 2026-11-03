@@ -12,6 +12,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from sqlalchemy import select
 
+from app.agents.chat_graph import DISCLAIMER
 from app import config
 from app.agents import chat_graph
 from app.api import chat
@@ -24,6 +25,7 @@ from tests.fakes import FakeKB, ScriptedChatModel, ollama_has, tool_call
 
 QUESTION = "Which debt should I pay first?"
 ANSWER = "Pay the credit card first."
+ANSWERED = f"{ANSWER}\n\n{DISCLAIMER}"      # the graph adds the closing line the model left out
 SOURCE = {"title": FakeKB.RESULT["title"], "section": FakeKB.RESULT["section"], "url": FakeKB.RESULT["source_url"]}
 
 
@@ -95,7 +97,7 @@ def test_turn_streams_tools_then_tokens_then_done(api, model):
     assert events[0][1] == {"sources": [SOURCE]}
     assert events[1][1] == {"id": "c1", "name": "get_debts", "args": {}}
     assert events[2][1] == {"id": "c1", "name": "get_debts", "ok": True}
-    assert "".join(d["text"] for e, d in events if e == "token") == ANSWER
+    assert "".join(d["text"] for e, d in events if e == "token") == ANSWERED
 
 
 # the browser shows which tools ran, never what they returned
@@ -163,7 +165,7 @@ def test_token_with_blank_lines_is_one_event(api, model):
 
     events = read_events(ask(api).text)
 
-    assert "".join(d["text"] for e, d in events if e == "token") == "a\n\nb"
+    assert "".join(d["text"] for e, d in events if e == "token") == f"a\n\nb\n\n{DISCLAIMER}"
     assert types(events)[-1] == "done"
 
 
@@ -173,7 +175,7 @@ def test_history_grouped_after_turn(api, model):
 
     assert api.get("/chat/t1").json() == [
         {"role": "user", "text": QUESTION, "tools": []},
-        {"role": "assistant", "text": ANSWER, "tools": [{"name": "get_debts", "args": {}, "ok": True}],
+        {"role": "assistant", "text": ANSWERED, "tools": [{"name": "get_debts", "args": {}, "ok": True}],
          "sources": [SOURCE]},
     ]
 
@@ -197,7 +199,7 @@ def test_text_before_tool_call_not_in_history(api, model):
     events = read_events(ask(api).text)
 
     assert types(events).index("token") < types(events).index("tool_call")   # the client drops it
-    assert api.get("/chat/t1").json()[1]["text"] == ANSWER
+    assert api.get("/chat/t1").json()[1]["text"] == ANSWERED
 
 
 def test_unknown_thread_history_empty(api):

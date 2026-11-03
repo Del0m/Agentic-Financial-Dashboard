@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from app import config
 from datetime import date
 
-from app.agents.chat_graph import MAX_TOOL_ROUNDS, SYSTEM_PROMPT, build_chat_graph
+from app.agents.chat_graph import DISCLAIMER, MAX_TOOL_ROUNDS, SYSTEM_PROMPT, build_chat_graph
 from tests.fakes import ScriptedChatModel, ollama_has, tool_call
 
 
@@ -99,7 +99,7 @@ def test_no_tool_call_returns_answer():
 
     graph = run(model)
 
-    assert final(graph).content == "hi there"
+    assert final(graph).content == f"hi there\n\n{DISCLAIMER}"
     assert isinstance(model.seen[0][0], SystemMessage) and model.seen[0][0].content == SYSTEM_PROMPT
     assert not any(isinstance(m, SystemMessage) for m in graph.get_state(CONFIG).values["messages"])
 
@@ -112,7 +112,7 @@ def test_tool_call_round_trips():
     sent = model.seen[1][-1]
     assert isinstance(sent, ToolMessage)
     assert (sent.tool_call_id, sent.content) == ("c1", "24")
-    assert final(graph).content == "It's 24."
+    assert final(graph).content == f"It's 24.\n\n{DISCLAIMER}"
 
 
 # small models invent tool names; that reaches the model as an error, not a crash
@@ -173,7 +173,7 @@ def test_round_cap_then_answer_without_tools():
     assert len(model.seen) == 7
     assert all(t is not None for t in model.tools_seen[:6])
     assert model.tools_seen[6] is None
-    assert final(graph).content == "best answer I have"
+    assert final(graph).content == f"best answer I have\n\n{DISCLAIMER}"
 
 
 def test_tool_rounds_reset_each_turn():
@@ -196,7 +196,7 @@ def test_memory_across_turns():
     graph.invoke({"messages": [HumanMessage("second question")], "tool_rounds": 0}, CONFIG)
 
     contents = [m.content for m in model.seen[-1]]
-    assert "first question" in contents and "first answer" in contents
+    assert "first question" in contents and f"first answer\n\n{DISCLAIMER}" in contents
 
 
 def test_pseudonym_kept_in_state():
@@ -339,3 +339,17 @@ def test_date_line_spells_out_the_last_30_days():
 def test_prompt_says_personal_questions_need_the_lookup_despite_guidance():
     assert "needs the lookup even when the guidance below covers the topic" in SYSTEM_PROMPT
     assert "name the debt with the highest APR" in SYSTEM_PROMPT and "the user has no debts" in SYSTEM_PROMPT
+
+
+# code adds the closing line when the model drops it, once, and never to an empty answer
+@pytest.mark.parametrize("reply, expected", [
+    ("Pay the card.", f"Pay the card.\n\n{DISCLAIMER}"),
+    (f"Pay the card.\n\n{DISCLAIMER}", f"Pay the card.\n\n{DISCLAIMER}"),
+    ("Pay the card. This is NOT financial advice.", "Pay the card. This is NOT financial advice."),
+    ("", ""),
+])
+def test_final_answer_always_carries_the_disclaimer(reply, expected):
+    state = build_chat_graph([], model=ScriptedChatModel(replies=[AIMessage(reply)])).invoke(
+        {"messages": [HumanMessage("hi")], "tool_rounds": 0})
+    assert state["messages"][-1].content == expected
+    assert len(state["messages"]) == 2      # replaced, not added as a second answer

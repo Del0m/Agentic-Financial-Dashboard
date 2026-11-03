@@ -177,3 +177,9 @@ Run them from `backend/`:
 **What it does:** The prompt says a question about the user's own debts needs a lookup even when guidance covers the topic, and says what to answer when there are no debts.
 
 **Why it's there:** TPC-47. With debt guidance in the prompt, the model answered from it and skipped the lookup. The live proof is the three `debt-*` scenarios.
+
+## `test_final_answer_always_carries_the_disclaimer`
+
+**What it does:** An answer without "not financial advice" gets the closing line added once, in the same message. An answer that already has it, in any case, is unchanged, and an empty answer stays empty.
+
+**Why it's there:** The prompt asks for this line, but it was missing from 5 of 22 chat answers in the post-fix baseline. A required line shouldn't depend on the model.

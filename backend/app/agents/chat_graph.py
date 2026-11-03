@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from typing import Annotated, Callable, Optional
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, MessagesState, StateGraph
@@ -28,6 +28,8 @@ SYSTEM_PROMPT = (
     'say which year. Keep answers short and concrete. End with one line: "This is general information, '
     'not financial advice."'
 )
+DISCLAIMER = "This is general information, not financial advice."
+DISCLAIMER_MARK = "not financial advice"
 # a model that keeps calling tools gets one last call without them, so the user still gets an answer
 MAX_TOOL_ROUNDS = 6
 
@@ -106,7 +108,16 @@ def build_chat_graph(tools: list[BaseTool], *, retrieve: Optional[Callable[[str]
         }
 
     def route(state: ChatState) -> str:
-        return "tools" if getattr(state["messages"][-1], "tool_calls", None) else END
+        return "tools" if getattr(state["messages"][-1], "tool_calls", None) else "finish"
+
+    # small models drop the closing line on some answers, and this one isn't optional. the same id replaces the
+    # message, so history and the eval see what the user saw. an empty answer stays empty, for the caller to report
+    def finish(state: ChatState) -> Optional[dict]:
+        last = state["messages"][-1]
+        text = last.content if isinstance(last.content, str) else ""
+        if not text.strip() or DISCLAIMER_MARK in text.lower():
+            return None
+        return {"messages": [AIMessage(f"{text.rstrip()}\n\n{DISCLAIMER}", id=last.id)]}
 
     graph = StateGraph(ChatState)
     graph.add_node("retrieve", retrieve_guidance)
@@ -114,6 +125,8 @@ def build_chat_graph(tools: list[BaseTool], *, retrieve: Optional[Callable[[str]
     graph.add_node("tools", run_tools)
     graph.add_edge(START, "retrieve")
     graph.add_edge("retrieve", "agent")
-    graph.add_conditional_edges("agent", route, ["tools", END])
+    graph.add_node("finish", finish)
+    graph.add_conditional_edges("agent", route, ["tools", "finish"])
     graph.add_edge("tools", "agent")
+    graph.add_edge("finish", END)
     return graph.compile(checkpointer=checkpointer)
