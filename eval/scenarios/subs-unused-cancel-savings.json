@@ -1,7 +1,8 @@
 {
   "id": "subs-unused-cancel-savings",
   "tags": [
-    "unused_subscription"
+    "unused_subscription",
+    "graph_suited"
   ],
   "question": "I never use Clipflix anymore. How much would I save each month if I cancelled it?",
   "user": {
@@ -71,6 +72,10 @@
     ],
     "tools": [
       "get_recurring"
+    ],
+    "allowed_tools": [
+      "get_recurring",
+      "get_spending"
     ]
   }
 }

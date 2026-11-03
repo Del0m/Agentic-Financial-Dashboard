@@ -205,6 +205,30 @@ The committed count includes cash-before-payday, which checks get_cash_forecast 
 
 ## `test_committed_scenarios_cover_the_ticket`
 
-**What it does:** Checks that there are 30-50 scenarios, each with a golden answer and a tag, that every ticket category has one, that the mix is 22 chat, 12 budget and 6 goal, and that 4 are abstain scenarios.
+**What it does:** Checks that there are 30-50 scenarios, each with a golden answer and a tag, that every ticket category has one, that the mix is 28 chat, 12 budget and 6 goal, and that 4 are abstain scenarios.
 
 **Why it's there:** This is the ticket's done-when, as a test.
+
+## `test_tool_rules_load`, `test_allowed_tools_must_include_the_required_ones`, `test_allowed_tools_must_be_real_tools`, `test_tools_none_cant_be_set_with_required_tools`
+
+**What they do:** A scenario can list tools a model may call, or say no tool fits. An allowed list that leaves out a required tool, names a tool that doesn't exist, or is set alongside `tools_none` fails the load.
+
+**Why they're there:** TPC-27 scores tool choice. A rule that can't be met would look like the agent choosing badly.
+
+## `test_temporal_check_needs_a_right_answer`
+
+**What it does:** A temporal check with no right answer fails the load.
+
+**Why it's there:** An empty list would pass every answer.
+
+## `test_a_pinned_scenario_seeds_from_its_own_date`
+
+**What it does:** A scenario with its own `today` seeds its transactions back from that date and sets the gateway's clock to it, whatever date the caller passes.
+
+**Why it's there:** A golden answer naming a month would otherwise stop being true as the real date moves.
+
+## `test_every_chat_scenario_has_one_group`
+
+**What it does:** Every chat scenario has exactly one of `temporal`, `graph_suited` and `graph_unsuited` in its tags.
+
+**Why it's there:** The ablation reports by group, and `eval/preregistration.md` fixes the groups before any result exists.

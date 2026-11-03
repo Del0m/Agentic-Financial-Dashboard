@@ -1,7 +1,8 @@
 {
   "id": "abstain-roth-2030",
   "tags": [
-    "abstain"
+    "abstain",
+    "graph_suited"
   ],
   "question": "What's the 2030 Roth IRA contribution limit?",
   "user": {
@@ -20,6 +21,9 @@
     "forbid": [
       "http"
     ],
-    "abstain": true
+    "abstain": true,
+    "allowed_tools": [
+      "search_kb"
+    ]
   }
 }

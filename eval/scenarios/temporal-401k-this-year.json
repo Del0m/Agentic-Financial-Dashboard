@@ -1,0 +1,53 @@
+{
+  "id": "temporal-401k-this-year",
+  "author": "claude",
+  "today": "2026-11-06",
+  "tags": [
+    "temporal"
+  ],
+  "question": "What's the 401(k) employee contribution limit this year?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2400.0
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 3,
+        "amount": 42.1,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Chipotle"
+      }
+    ]
+  },
+  "golden_answer": "The 401(k) employee contribution limit is $24,500 in 2026. This is general information, not financial advice.",
+  "expect": {
+    "facts": [
+      {
+        "number": 24500,
+        "tol": 0
+      }
+    ],
+    "forbid": [
+      "http"
+    ],
+    "tools": [],
+    "allowed_tools": [
+      "search_kb"
+    ],
+    "sources": [],
+    "temporal": {
+      "right": [
+        "2026"
+      ],
+      "wrong": [
+        "23,000"
+      ]
+    }
+  }
+}

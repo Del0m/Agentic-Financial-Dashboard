@@ -1,7 +1,8 @@
 {
   "id": "abstain-shop-never-visited",
   "tags": [
-    "abstain"
+    "abstain",
+    "temporal"
   ],
   "question": "How much did I spend at Costco last year?",
   "user": {
@@ -35,6 +36,10 @@
     "forbid": [
       "http"
     ],
-    "abstain": true
+    "abstain": true,
+    "allowed_tools": [
+      "get_spending",
+      "get_history"
+    ]
   }
 }

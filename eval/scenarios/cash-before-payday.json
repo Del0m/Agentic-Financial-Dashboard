@@ -1,17 +1,86 @@
 {
-  "id": "cash-before-payday", "tags": ["cash_flow"],
+  "id": "cash-before-payday",
+  "tags": [
+    "cash_flow",
+    "graph_unsuited"
+  ],
   "question": "Will I run short before payday?",
   "user": {
-    "accounts": [{"name": "Everyday Checking", "type": "depository", "subtype": "checking", "balance": 1550}],
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 1550
+      }
+    ],
     "transactions": [
-      {"account": "Everyday Checking", "days_ago": 88, "amount": 1500, "category": "RENT_AND_UTILITIES", "merchant": "Landlord"},
-      {"account": "Everyday Checking", "days_ago": 58, "amount": 1500, "category": "RENT_AND_UTILITIES", "merchant": "Landlord"},
-      {"account": "Everyday Checking", "days_ago": 28, "amount": 1500, "category": "RENT_AND_UTILITIES", "merchant": "Landlord"},
-      {"account": "Everyday Checking", "days_ago": 86, "amount": -4200, "category": "INCOME", "merchant": "Employer"},
-      {"account": "Everyday Checking", "days_ago": 56, "amount": -4200, "category": "INCOME", "merchant": "Employer"},
-      {"account": "Everyday Checking", "days_ago": 26, "amount": -4200, "category": "INCOME", "merchant": "Employer"}
+      {
+        "account": "Everyday Checking",
+        "days_ago": 88,
+        "amount": 1500,
+        "category": "RENT_AND_UTILITIES",
+        "merchant": "Landlord"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 58,
+        "amount": 1500,
+        "category": "RENT_AND_UTILITIES",
+        "merchant": "Landlord"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 28,
+        "amount": 1500,
+        "category": "RENT_AND_UTILITIES",
+        "merchant": "Landlord"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 86,
+        "amount": -4200,
+        "category": "INCOME",
+        "merchant": "Employer"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 56,
+        "amount": -4200,
+        "category": "INCOME",
+        "merchant": "Employer"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 26,
+        "amount": -4200,
+        "category": "INCOME",
+        "merchant": "Employer"
+      }
     ]
   },
   "golden_answer": "Landlord is due before your paycheck. Your typical range reaches $50, below your $100 buffer. This is general information, not financial advice.",
-  "expect": {"facts": [{"text": "Landlord"}, {"number": 50, "tol": 0.01}], "tools": ["get_cash_forecast"], "forbid": ["http"]}
+  "expect": {
+    "facts": [
+      {
+        "text": "Landlord"
+      },
+      {
+        "number": 50,
+        "tol": 0.01
+      }
+    ],
+    "tools": [
+      "get_cash_forecast"
+    ],
+    "forbid": [
+      "http"
+    ],
+    "allowed_tools": [
+      "get_cash_forecast",
+      "get_accounts",
+      "get_spending",
+      "get_recurring"
+    ]
+  }
 }

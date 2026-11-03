@@ -1,5 +1,10 @@
 {
-  "id": "debt-plan-extra-200", "tags": ["high_interest_debt"],
+  "id": "debt-plan-extra-200",
+  "tags": [
+    "high_interest_debt",
+    "graph_unsuited",
+    "debt_plan"
+  ],
   "question": "How fast am I debt-free if I add $200 a month?",
   "user": {
     "accounts": [
@@ -62,6 +67,12 @@
     ],
     "tools": [
       "plan_debt_payoff"
+    ],
+    "allowed_tools": [
+      "get_debts",
+      "plan_debt_payoff",
+      "get_accounts",
+      "search_kb"
     ]
   }
 }

@@ -121,7 +121,7 @@ def test_only_unknown_id_rejected(tmp_path):
 
 
 def test_committed_scenarios_load():
-    assert len(load_scenarios(REPO / "eval" / "scenarios")) == 40
+    assert len(load_scenarios(REPO / "eval" / "scenarios")) == 46
 
 
 # the payoff scenario's facts are the planner's numbers (tpc-32); months and interest don't depend on the start date
@@ -302,6 +302,48 @@ def test_committed_scenarios_cover_the_ticket():
     assert {"high_interest_debt", "unused_subscription", "one_time", "recurring", "seasonal", "no_overspend_control",
             "goal_affordability"} <= tags
     kinds = [s.kind for s in scenarios]
-    assert (kinds.count("chat"), kinds.count("budget"), kinds.count("goal")) == (22, 12, 6)
+    assert (kinds.count("chat"), kinds.count("budget"), kinds.count("goal")) == (28, 12, 6)
     assert len([s for s in scenarios if "abstain" in s.tags and s.expect.abstain]) == 4
     assert all(s.tags for s in scenarios)
+
+
+def test_tool_rules_load(tmp_path):
+    def edit(d):
+        d["expect"]["allowed_tools"] = ["get_debts", "search_kb"]
+    s = load_scenario(write(tmp_path, edit))
+    assert s.expect.allowed_tools == ("get_debts", "search_kb")
+    assert s.expect.tools_none is False
+
+
+def test_allowed_tools_must_include_the_required_ones(tmp_path):
+    rejected(write(tmp_path, lambda d: d["expect"].update(allowed_tools=["search_kb"])), "allowed_tools")
+
+
+def test_allowed_tools_must_be_real_tools(tmp_path):
+    rejected(write(tmp_path, lambda d: d["expect"].update(allowed_tools=["get_debts", "get_debt"])), "allowed_tools")
+
+
+def test_tools_none_cant_be_set_with_required_tools(tmp_path):
+    rejected(write(tmp_path, lambda d: d["expect"].update(tools_none=True)), "tools_none")
+
+
+def test_temporal_check_needs_a_right_answer(tmp_path):
+    rejected(write(tmp_path, lambda d: d["expect"].update(temporal={"right": []})), "temporal.right")
+
+
+def test_a_pinned_scenario_seeds_from_its_own_date(tmp_path):
+    from app.budget_service.daily import sim_today
+    s = load_scenario(write(tmp_path, lambda d: d.update(today="2026-11-06", author="claude")))
+    assert (s.today, s.author) == (date(2026, 11, 6), "claude")
+    with temp_db() as Session, Session() as session:
+        user_id = seed(session, s, TODAY)
+        assert sim_today(session, user_id) == date(2026, 11, 6)
+        days = {t.date for t in session.scalars(select(Transaction))}
+    assert date(2026, 11, 2) in days     # days_ago 4 counts back from the pinned date, not from the caller's
+
+
+def test_every_chat_scenario_has_one_group():
+    groups = {"temporal", "graph_suited", "graph_unsuited"}
+    for s in load_scenarios(REPO / "eval" / "scenarios"):
+        if s.kind == "chat":
+            assert len(groups & set(s.tags)) == 1, s.id

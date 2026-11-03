@@ -14,7 +14,7 @@ from app.agents.tools import PFC_CATEGORIES, VALID_CATEGORIES
 from app.budget_engine.goals import GOAL_KINDS
 from app.budget_engine.signals import RANK
 from app.db.base import Base
-from app.db.models import Liability
+from app.db.models import Liability, User
 from eval.budget_users import profile_by_id
 from tests.factories import add_account, add_txn, add_user
 
@@ -26,6 +26,9 @@ OVERSPEND_ACTIONS = get_args(Action.model_fields["action"].annotation)
 SIGNAL_KINDS = tuple(RANK)
 # the goal graph's finished endings; "error" and "busy" are never a golden answer
 GOAL_STATUSES = ("ok", "no_surplus", "nothing_offered", "no_affordable_goals")
+# get_history arrives with tpc-39; scenarios name it now because they're written before the graph exists
+TOOL_NAMES = ("get_accounts", "get_debts", "get_spending", "get_recurring", "get_cash_forecast", "plan_debt_payoff",
+              "search_kb", "get_history")
 
 # scenario files -> validated dataclasses -> rows in a throwaway db (spec: tpc-16 scenario format, tpc-26 kinds).
 # every problem names the file and field, so a typo fails loudly instead of scoring a silent 0
@@ -46,6 +49,13 @@ class Fact:
         return self.text if self.text is not None else f"{self.number:g}±{self.tol:g}"
 
 
+# the right year or date range appears, and a wrong one doesn't (tpc-27, architecture 6b.5)
+@dataclass(frozen=True)
+class TemporalCheck:
+    right: tuple[str, ...]
+    wrong: tuple[str, ...] = ()
+
+
 @dataclass(frozen=True)
 class Expect:
     facts: list[Fact]
@@ -53,6 +63,9 @@ class Expect:
     tools: list[str]
     sources: list[str]
     abstain: bool = False       # passes only by saying the data isn't there, with no dollar amount (tpc-26)
+    allowed_tools: Optional[tuple[str, ...]] = None     # tools beyond these are a tool-choice fail; None = not checked
+    tools_none: bool = False    # no tool fits, so any call is a tool-choice fail
+    temporal: Optional[TemporalCheck] = None
 
 
 @dataclass(frozen=True)
@@ -65,6 +78,8 @@ class Scenario:
     path: Path
     tags: tuple[str, ...] = ()
     kind: str = "chat"
+    today: Optional[date] = None    # a scenario about dates pins its own, so its golden answer can't drift
+    author: Optional[str] = None    # who wrote it, disclosed in the paper (tpc-27)
 
 
 @dataclass(frozen=True)
@@ -239,9 +254,31 @@ def _load_chat(path: Path, d: dict, sid: str, golden: str, tags: tuple[str, ...]
     facts = [] if abstain else _require(path, exp, "facts", list, "expect.")
     if not abstain and not facts:
         _fail(path, "expect.facts", "must not be empty")
+    tools = _strings(path, exp, "tools")
+    tools_none = exp.get("tools_none", False)
+    if not isinstance(tools_none, bool):
+        _fail(path, "expect.tools_none", "must be true or false")
+    # both at once can't be scored: one demands a call, the other fails on any
+    if tools_none and (tools or "allowed_tools" in exp):
+        _fail(path, "expect.tools_none", "can't be set with tools or allowed_tools")
+    allowed = None
+    if "allowed_tools" in exp:
+        allowed = _choices(path, "expect.allowed_tools", _strings(path, exp, "allowed_tools"), TOOL_NAMES)
+        if not set(tools) <= set(allowed):
+            _fail(path, "expect.allowed_tools", "must include every tool in expect.tools")
+    temporal = None
+    if "temporal" in exp:
+        raw = _require(path, exp, "temporal", dict, "expect.")
+        right = tuple(_strings(path, raw, "right"))
+        if not right:
+            _fail(path, "expect.temporal.right", "must not be empty")
+        temporal = TemporalCheck(right, tuple(_strings(path, raw, "wrong")))
     expect = Expect(facts=[_fact(path, i, f) for i, f in enumerate(facts)], forbid=_strings(path, exp, "forbid"),
-                    tools=_strings(path, exp, "tools"), sources=_strings(path, exp, "sources"), abstain=abstain)
-    return Scenario(id=sid, question=question, user=user, golden_answer=golden, expect=expect, path=path, tags=tags)
+                    tools=tools, sources=_strings(path, exp, "sources"), abstain=abstain,
+                    allowed_tools=allowed, tools_none=tools_none, temporal=temporal)
+    return Scenario(id=sid, question=question, user=user, golden_answer=golden, expect=expect, path=path, tags=tags,
+                    today=_date(path, d, "today") if "today" in d else None,
+                    author=_require(path, d, "author", str) if "author" in d else None)
 
 
 def _optional_dict(path: Path, exp: dict, key: str) -> dict:
@@ -357,6 +394,10 @@ def _cents(dollars: float) -> int:
 def seed(session: Session, scenario: Scenario, today: date) -> str:
     user_id = f"eval-{scenario.id}"
     item = add_user(session, user_id, f"{scenario.id}@eval.local")
+    if scenario.today is not None:
+        today = scenario.today
+        # the gateway's clock reads this, so the prompt's date and the tools' windows agree with the scenario
+        session.get(User, user_id).prefs_json = {"sim": {"date": today.isoformat()}}
     accounts = {}
     for a in scenario.user["accounts"]:
         liability = None

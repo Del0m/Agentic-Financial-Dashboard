@@ -1,7 +1,8 @@
 {
   "id": "subs-several-listed",
   "tags": [
-    "unused_subscription"
+    "unused_subscription",
+    "graph_suited"
   ],
   "question": "Which subscriptions am I paying for, and how much is each?",
   "user": {
@@ -109,6 +110,10 @@
     ],
     "tools": [
       "get_recurring"
+    ],
+    "allowed_tools": [
+      "get_recurring",
+      "get_spending"
     ]
   }
 }
