@@ -510,6 +510,12 @@ kg_edges   id, user_id (null = guidance), src_id, rel, dst_id, value_json,
 
 **Two clocks, on purpose.** Valid time says when something was true in the world: the gym cost $35 from March to August. Transaction time says when the system believed it. The second clock matters when a fact is corrected after the fact, for example when the user recategorizes July's purchases in October. The old edge is *expired*, not deleted, and the corrected one is recorded. That lets the agent replay "what did I know on the day I raised that alert?", and lets the eval score a past decision against what the agent knew at the time. Nothing in `kg_edges` is ever deleted.
 
+TPC-35 uses calendar-date valid intervals and aware-UTC transaction intervals, both half-open: the start is included and the end is excluded. `expired_at IS NULL` means a current belief, even when its valid interval has already ended. Closing a valid interval also creates a replacement version; editing the original `valid_to` would rewrite what the system believed before learning of the closure. A real change therefore retains three rows: the original belief, its replacement with a bounded valid interval, and the new value. Current queries see the latter two. A backfill records when the application actually learned the facts; it does not invent historical recording times.
+
+Shared nodes need a separate partial unique index on `(kind, key)` where `user_id IS NULL`, in addition to owned-node uniqueness. Partial edge indexes enforce one current open assertion and one current interval start per relationship key; `CATEGORIZED_AS` keys on the merchant and relation rather than destination. The store validates bounded overlaps while holding a database write lock on the source node. Foreign keys and interval checks protect stored history. User operations read owned facts plus shared guidance and validate both endpoints; shared maintenance is an explicit separate scope.
+
+Node identity (owner, kind, key) is stable. Labels and properties describe current display metadata; facts needed for historical replay belong on versioned edges. The complete implementation and test contract is in [the TPC-35 plan](superpowers/plans/2026-11-03-tpc-35-temporal-store.md).
+
 Node kinds: `user`, `institution`, `account`, `merchant`, `category`, `stream`, `advice` (user half); `concept`, `source` (guidance half). Merchant keys use the same trimmed, casefolded name as `category_rules`.
 
 **User relations** (projected by code):
@@ -538,26 +544,30 @@ Node kinds: `user`, `institution`, `account`, `merchant`, `category`, `stream`, 
 
 ### 6b.2 Building and querying (`app/kg/`)
 
-- **`store.py`:** `assert_edge(src, rel, dst, value, valid_from, valid_to=None, source, evidence, correct=False)`.
-  - If the same current edge already has the same value, nothing happens, so projecting twice is safe.
-  - If the value differs, the open edge is closed at the new `valid_from` and a new edge opens: the world changed.
-  - With `correct=True`, the old edge gets `expired_at = now` and its replacement keeps the original valid time: we were wrong.
-  - `CATEGORIZED_AS` allows one open category per merchant; the other relations allow one open edge per (src, rel, dst).
+- **`store.py`:** `upsert_node`, `assert_edge`, and `close_edge` receive a caller-owned SQLAlchemy session and explicit `user_id` scope (`None` for shared maintenance). They flush but never commit the caller's transaction.
+  - An exact assertion retry compares the relationship, valid interval, value, source, and evidence and is a no-op. Reordered JSON object keys do not change equality. An unchanged later observation of an open fact is also a no-op; equal bounded observations in different months remain separate facts.
+  - A real change must follow the existing interval's start. Atomically expire the original belief, insert its bounded replacement, and open the new value at the change date. All replacement rows use one transaction timestamp.
+  - With `correct=True`, `target_edge_id` identifies a current-belief assertion, including a bounded historical one. Expire it and insert a corrected replacement retaining the exact original valid bounds. Stale targets and interval-boundary edits are rejected.
+  - `close_edge` expires and replaces an open assertion with a bounded version. An identical close against the current bounded replacement is a no-op; an expired target requires reloading.
+  - Changes and backfill proceed chronologically. Exact historical retries and targeted corrections are supported; ambiguous overlaps, new backdated inserts, and same-date competing changes are rejected rather than split automatically.
+  - `CATEGORIZED_AS` allows one open category per merchant; the other relations allow one open edge per (src, rel, dst). Owned writes require an owned source and an owned or shared destination, never another user's node. Only `concept` and `source` nodes are shared; other kinds are owned. Shared writes use shared endpoints only.
 - **`project.py`:** pure functions from DB rows to edge assertions, unit-tested like `budget_engine/`.
   - The current month is re-projected on every run.
   - Closed months are projected once by close, with the final actuals.
   - A transaction whose category changes retroactively re-projects its month with `correct=True`.
-- **`query.py`:** each query takes the user, an `as_of` date (default: the user's today, simulated or real), and an optional `known_at` for transaction time.
+- **`query.py`:** database queries take a session and explicit user scope. Snapshot and neighborhood queries use `on_date` (default: the user's today, simulated or real); range queries take explicit `[start, end)` windows. `known_at` selects the belief at an aware-UTC instant; omitting it selects current-belief rows. Recording timestamps always use real UTC, independently of simulation dates.
 
   | Query | Returns |
   |---|---|
-  | `as_of(user, date, known_at=None)` | the graph as it was valid on that date |
-  | `history(node, rel=None)` | that node's edges in time order |
-  | `months_active(merchant, window)` | the months the merchant had spending |
-  | `same_month_last_year(category)` | that category's merchants and spending a year earlier |
-  | `changes(user, start, end)` | edges opened or closed in the window |
-  | `neighborhood(nodes, as_of, hops=1, limit=25)` | the nodes' neighbours, at most `limit` edges |
-  | `triples(edges)` | one line per edge, e.g. `Roth IRA —HAS_LIMIT→ annual contribution: $7,000 (tax year 2025) [irs-ira-contribution-limits]` |
+  | `as_of(session, user_id=..., on_date=..., known_at=None)` | visible edges and their endpoint nodes at the requested valid date and knowledge time |
+  | `history(session, user_id=..., node_id=..., rel=None, known_at=None, audit=False)` | time-ordered intervals; audit mode explicitly includes retained expired versions |
+  | `months_active(session, user_id=..., merchant_id=..., start=..., end=..., known_at=None)` | distinct month starts in the window with positive net spending |
+  | `same_month_last_year(session, user_id=..., category=..., on_date=..., known_at=None)` | spending edges from the prior calendar year's same month, using the category recorded in each fact |
+  | `changes(session, user_id=..., start=..., end=..., known_at=None)` | edges whose valid start or end falls in the window; recording a correction is not itself a real-world change |
+  | `neighborhood(session, user_id=..., node_ids=..., on_date=..., known_at=None, hops=1, limit=25)` | deterministic traversal in both directions, scoped at every hop, with an explicit truncation indicator |
+  | `triples(snapshot)` | safe readable lines from scoped nodes/edges, including money, validity, and selected provenance |
+
+The store/query foundation is independent of agent prompts. The projection, agent integration, and extraction steps below are subsequent tickets; an empty migrated graph is valid until those producers populate it.
 
 - **When the user half updates:**
   - A new node, `update_graph`, runs in the budget graph between `update_totals` and `detect_overspend`. It is deterministic and incremental.

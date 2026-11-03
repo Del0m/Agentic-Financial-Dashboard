@@ -1,6 +1,6 @@
 from datetime import date as Date, datetime, timezone
-from typing import Literal, Optional
-from sqlalchemy import DateTime, JSON, Double, Enum, Float, ForeignKey, Index, UniqueConstraint
+from typing import Any, Literal, Optional
+from sqlalchemy import CheckConstraint, DateTime, JSON, Double, Enum, Float, ForeignKey, Index, UniqueConstraint, event, inspect, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
@@ -271,3 +271,66 @@ class UserRunClaim(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
     owner: Mapped[str]
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class KGNode(Base):
+    """Stable graph identity; labels and props describe the current display only."""
+
+    __tablename__ = "kg_nodes"
+    __table_args__ = (
+        UniqueConstraint("user_id", "kind", "key", name="uq_kg_nodes_user_kind_key"),
+        Index("uq_kg_nodes_shared_kind_key", "kind", "key", unique=True,
+              sqlite_where=text("user_id IS NULL"), postgresql_where=text("user_id IS NULL")),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[Optional[str]] = mapped_column(ForeignKey("users.id"))
+    kind: Mapped[str]
+    key: Mapped[str]
+    label: Mapped[Optional[str]]
+    props_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class KGEdge(Base):
+    """Retained assertions with half-open valid and UTC transaction intervals."""
+
+    __tablename__ = "kg_edges"
+    __table_args__ = (
+        CheckConstraint("valid_to IS NULL OR valid_to > valid_from", name="ck_kg_edges_valid_interval"),
+        CheckConstraint("expired_at IS NULL OR expired_at > recorded_at", name="ck_kg_edges_transaction_interval"),
+        Index("ix_kg_edges_user_rel_src", "user_id", "rel", "src_id"),
+        Index("ix_kg_edges_user_dst", "user_id", "dst_id"),
+        Index("ix_kg_edges_user_valid_from", "user_id", "valid_from"),
+        Index("uq_kg_edges_current_open", "src_id", "rel", "dst_id", unique=True,
+              sqlite_where=text("expired_at IS NULL AND valid_to IS NULL AND rel != 'CATEGORIZED_AS'"),
+              postgresql_where=text("expired_at IS NULL AND valid_to IS NULL AND rel != 'CATEGORIZED_AS'")),
+        Index("uq_kg_edges_category_current_open", "src_id", "rel", unique=True,
+              sqlite_where=text("expired_at IS NULL AND valid_to IS NULL AND rel = 'CATEGORIZED_AS'"),
+              postgresql_where=text("expired_at IS NULL AND valid_to IS NULL AND rel = 'CATEGORIZED_AS'")),
+        Index("uq_kg_edges_current_start", "src_id", "rel", "dst_id", "valid_from", unique=True,
+              sqlite_where=text("expired_at IS NULL AND rel != 'CATEGORIZED_AS'"),
+              postgresql_where=text("expired_at IS NULL AND rel != 'CATEGORIZED_AS'")),
+        Index("uq_kg_edges_category_current_start", "src_id", "rel", "valid_from", unique=True,
+              sqlite_where=text("expired_at IS NULL AND rel = 'CATEGORIZED_AS'"),
+              postgresql_where=text("expired_at IS NULL AND rel = 'CATEGORIZED_AS'")),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[Optional[str]] = mapped_column(ForeignKey("users.id"))
+    src_id: Mapped[int] = mapped_column(ForeignKey("kg_nodes.id"))
+    rel: Mapped[str]
+    dst_id: Mapped[int] = mapped_column(ForeignKey("kg_nodes.id"))
+    value_json: Mapped[Any] = mapped_column(JSON, nullable=True)
+    valid_from: Mapped[Date]
+    valid_to: Mapped[Optional[Date]]
+    recorded_at: Mapped[datetime] = mapped_column(default=utcnow)
+    expired_at: Mapped[Optional[datetime]]
+    source: Mapped[str] = mapped_column(default="projection")
+    evidence_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+@event.listens_for(KGNode, "before_update")
+def _protect_kg_node_identity(mapper, connection, node):
+    state = inspect(node)
+    if any(state.attrs[name].history.has_changes() for name in ("user_id", "kind", "key")):
+        raise ValueError("graph node ownership, kind, and key are immutable")

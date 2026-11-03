@@ -40,3 +40,50 @@ Run them from `backend/`:
 **What it does:** Low balance signal upgrade and downgrade.
 
 **Why it's there:** Pins the forecast signal guard, privacy boundary or reversible migration behavior.
+
+
+## TPC-35 temporal knowledge graph (`f6a2b8c4d901`)
+
+`kg_schema` runs each direct-constraint case against both an Alembic-upgraded
+SQLite file and an independently metadata-created SQLite file. Each database
+lives under pytest's `tmp_path`; SQLite foreign keys are enabled on every test
+connection. No application database or running service is used.
+
+- `test_kg_upgrade_downgrade_and_metadata_parity` upgrades from the previous head
+  (`d5f9a3b2c7e4`), preserves an existing user and category rule, compares KG metadata with the
+  migrated schema, checks every index's columns, uniqueness and partial predicate,
+  inserts real graph nodes and an edge, downgrades the populated KG revision,
+  and upgrades again. It verifies the recreated graph tables are empty and the
+  existing application data survives both operations.
+- `test_kg_foreign_keys_and_interval_checks` bypasses store validation and checks
+  nonexistent users/endpoints, empty or reversed valid intervals, and empty or
+  reversed transaction intervals.
+- `test_kg_node_identity_unique_with_nullable_owner` checks both owned identity
+  uniqueness and the shared partial unique index, where a normal SQL unique
+  constraint would permit duplicate null owners. It also checks the node-user FK.
+- `test_kg_current_cardinality_and_interval_start_constraints` checks open-edge
+  cardinality and duplicate bounded interval starts. `CATEGORIZED_AS` enforces
+  these across different destinations; other relations use the full triple.
+  Expired versions and adjacent bounded intervals remain insertable.
+- `test_kg_foreign_keys_preserve_history` checks that deleting a referenced node
+  or user fails instead of cascading through history.
+- `test_kg_utc_mapping_and_immutable_node_identity` checks both UTC column types,
+  normalizes an offset timestamp on roundtrip, rejects a naive timestamp, rejects
+  ORM changes to ownership/kind/key, and permits current display metadata updates.
+- `test_kg_postgres_ddl_matches_metadata_and_predicates` renders the new migration
+  offline and compares both tables and all indexes with PostgreSQL ORM DDL,
+  including timezone-aware timestamps and partial predicates. It verifies the
+  downgrade drops edges before nodes.
+
+Run from `backend/` with the project's Python environment:
+
+```bash
+../venv/bin/python -m pytest tests/test_migrations.py -q
+```
+
+Verified on November 3, 2026: **36 passed**, including the existing migration
+cases. PostgreSQL coverage is offline SQL rendering only; no PostgreSQL server
+was used. Interval overlaps beyond duplicate starts/open cardinality and ownership
+compatibility between graph endpoints are store invariants, covered in the KG
+store tests. Node identity immutability is an ORM guard; direct SQL writers remain
+responsible for preserving that identity.
