@@ -159,19 +159,21 @@ For execution, use the [README quickstart](../README.md#quickstart) and [demo wa
 
 ## 6. Delivery status and gaps
 
-Jira snapshot: November 3, 2026. An implemented path does not imply its ticket is Done, and some statuses lag the code. At this snapshot, TPC-25, TPC-33, TPC-31 and TPC-26 are on branches not yet merged to `main`.
+Jira snapshot: November 3, 2026. An implemented path does not imply its ticket is Done: a ticket is Done when its done-when holds and its work is on `main`. At this snapshot, TPC-25, TPC-33, TPC-31 and TPC-26 are in review on branches not yet merged to `main`.
 
 | Work | Jira status | What can be claimed |
 |---|---|---|
 | [TPC-21](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-21) scheduling and simulation | Done | Scheduler and catch-up built; autonomy remains opt-in. |
 | [TPC-22](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-22) period close | Done | Implemented deterministic boundary; no model reasoning. |
-| [TPC-23](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-23), [TPC-24](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-24), [TPC-25](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-25) goals, validation, approval | In Progress | These paths exist in code; delivery status remains In Progress. |
-| [TPC-32](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-32) debt planning | In Progress | `plan_debt_payoff` is a chat tool. |
-| [TPC-33](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-33) recurring charges | To Do | Detector, stored streams, signals, API, dashboard card and `get_recurring` exist in code; the status lags. Real Plaid comparison remains unverified. |
+| [TPC-23](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-23), [TPC-24](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-24) goal proposal and validation | Done | On `main`. The code allows one retry (two model calls), where the ticket says up to three. |
+| [TPC-25](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-25) goal approval | In Progress | Implemented; in review. |
+| [TPC-32](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-32) debt planning | In Progress | On `main`, and `plan_debt_payoff` is a chat tool. One done-when isn't met: the chat answer leaves out total interest ([TPC-48](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-48)). |
+| [TPC-42](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-42) one-command setup | In Progress | On `main`. Following the README on another computer hasn't been done yet. |
+| [TPC-33](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-33) recurring charges | In Progress | Detector, stored streams, signals, API, dashboard card and `get_recurring` are implemented; in review. Real Plaid comparison remains unverified. |
 | [TPC-31](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-31) cash forecast | In Progress | Forecast, low-balance signal, dashboard card and `get_cash_forecast` exist in code. |
 | [TPC-16](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-16) initial chat evaluation | Done | The original five-scenario harness, now extended. |
 | [TPC-26](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-26) golden scenarios | In Progress | 40 scenarios across chat, budget and goal, with one baseline pass on one model. |
-| [TPC-6](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-6), [TPC-27](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-27), [TPC-28](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-28) full metrics and charts | To Do | The three-run model comparison and its charts have not been run. |
+| [TPC-27](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-27), [TPC-28](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-28) full metrics and charts | To Do | The three-run model comparison and its charts have not been run. Their epic, [TPC-6](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-6), is In Progress. |
 | [TPC-45](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-45) to [TPC-49](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-49) agent problems the baseline found | To Do | Open and unfixed; see section 7. |
 | [TPC-34](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-34)–[TPC-39](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-39) temporal graph and GraphRAG | To Do | Not implemented as agent memory/retrieval. The repository's graphify analysis is a development aid, not runtime agent memory. |
 | [TPC-40](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-40) graph ablations | To Do | Planned comparisons; existing expected-tool checks should not be described as future work. |
