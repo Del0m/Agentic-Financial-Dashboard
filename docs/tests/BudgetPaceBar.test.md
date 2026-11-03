@@ -50,3 +50,9 @@ npm test -- components/BudgetPaceBar.test.tsx
 **What it does:** A line named "Groceries" is labelled "Groceries", and its meter is "Groceries spent".
 
 **Why it's there:** Lines carry the user's name (TPC-22), not Plaid's raw category key; the reserved keys show as "Savings" and "Free".
+
+## `a goal line shows its monthly amount and no meter`
+
+**What it does:** A line in the `goal` group (an accepted "Debt payoff" goal, $583.00) shows its name and "$583.00/mo". It has no meter, and no "$0.00 of $583.00".
+
+**Why it's there:** Nothing reliably measures what was paid toward a goal: card payments aren't spending, and a transfer can't be tied to a goal. A pace bar would sit at $0 all month and read as a failure (TPC-25).

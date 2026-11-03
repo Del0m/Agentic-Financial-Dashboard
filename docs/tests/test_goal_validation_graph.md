@@ -78,7 +78,7 @@ Uses the TPC-23 synthetic profile and in-memory database; scripted replies requi
 
 ## `test_api_reflects_correction_preservation_and_withdrawal`
 
-**What it does:** Reads GET /goals after exhausted retries, a successful correction, and an impossible-cap withdrawal.
+**What it does:** Reads GET /goals after exhausted retries, a successful correction, and an impossible-cap withdrawal. It points the routes' session factory (`budget_hooks`) at the test database, because `GET /goals` reads the hooks since TPC-25.
 
 **Why it's there:** The storage policy must be visible through the existing API.
 
@@ -87,3 +87,9 @@ Uses the TPC-23 synthetic profile and in-memory database; scripted replies requi
 **What it does:** Five parameterized real-model runs at a $48.59 cap print outcome, calls, total, and dates. Each must produce a valid proposal; skipped if the configured model is unavailable.
 
 **Why it's there:** Measures real-model usefulness separately from deterministic safety.
+
+## `test_new_goal_cannot_spend_accepted_money`
+
+**What it does:** With a $583 accepted goal the cap is $194.40. A scripted $194.41 proposal is rejected as `over_cap` on both calls, the run is an `error`, and nothing is stored.
+
+**Why it's there:** Validation checks the cap net of accepted goals, so a retry can't spend their money either (TPC-25).

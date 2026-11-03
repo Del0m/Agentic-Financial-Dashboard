@@ -178,3 +178,33 @@ def test_late_charge_unlike_the_bill_still_counts():
 def test_flexible_late_spending_not_moved():
     r = one([flex("FOOD_AND_DRINK", 30000)], [t(2026, 10, 30, 30000)], date(2026, 10, 31))
     assert r.spent_cents == 30000
+
+
+# a guard: this already passes before goal lines are netted, because a fixed line with no transactions reports nothing
+def test_goal_line_has_no_spending_pace_or_flag():
+    line = BudgetLine("GOAL_DEBT_PAYOFF", "fixed", 58300, "goal")
+    r = evaluate([line], [Txn(date(2026, 12, 3), 90000, "LOAN_PAYMENTS")], date(2026, 12, 20))
+    goal = next(x for x in r if x.category == "GOAL_DEBT_PAYOFF")
+    assert (goal.spent_cents, goal.pace, goal.flagged, goal.group) == (0, None, False, "goal")
+
+
+def test_goal_paid_to_a_loan_is_not_overspending():
+    lines = [BudgetLine("LOAN_PAYMENTS", "fixed", 21000, "needs"), BudgetLine("GOAL_DEBT_PAYOFF", "fixed", 58300, "goal")]
+    r = evaluate(lines, [Txn(date(2026, 12, 3), 79300, "LOAN_PAYMENTS")], date(2026, 12, 20))
+    loan = next(x for x in r if x.category == "LOAN_PAYMENTS")
+    assert (loan.spent_cents, loan.flagged) == (21000, False)
+
+
+def test_goal_paid_to_an_unlined_loan_stays_out_of_free():
+    lines = [BudgetLine("FREE", "flexible", 10000, "free"), BudgetLine("GOAL_DEBT_PAYOFF", "fixed", 58300, "goal")]
+    r = evaluate(lines, [Txn(date(2026, 12, 3), 58300, "LOAN_PAYMENTS")], date(2026, 12, 20))
+    free = next(x for x in r if x.category == "FREE")
+    assert (free.spent_cents, free.flagged) == (0, False)
+
+
+# the goal went to a card, so the loan payment is the usual one and still counts in full
+def test_loan_payment_without_the_goal_in_it_is_unchanged():
+    lines = [BudgetLine("LOAN_PAYMENTS", "fixed", 21000, "needs"), BudgetLine("GOAL_DEBT_PAYOFF", "fixed", 20000, "goal")]
+    r = evaluate(lines, [Txn(date(2026, 12, 3), 21000, "LOAN_PAYMENTS")], date(2026, 12, 20))
+    loan = next(x for x in r if x.category == "LOAN_PAYMENTS")
+    assert (loan.spent_cents, loan.flagged) == (21000, False)

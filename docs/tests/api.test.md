@@ -102,3 +102,21 @@ npm test -- lib/api.test.ts
 **What it does:** `debtPlan(20000)` posts `{"extra_monthly_cents":20000,"include_mortgage":false}` to `/api/debt-plan` and returns the parsed plan.
 
 **Why it's there:** It pins the route and the body that `POST /debt-plan` (TPC-32) expects.
+
+## Goal calls (TPC-25)
+
+## `each call hits its route with the right method and body`
+
+**What it does:** It checks every goal call's URL, method and body:
+- `GET /api/goals`, and `?status=current` when asked;
+- `POST /api/goals/generate` with `{"date":"2026-11-02"}`, or `{}` with no date;
+- `GET /api/goals/runs/9`;
+- `POST /api/goals/3/accept` and `POST /api/goals/4/dismiss`.
+
+**Why it's there:** These are the routes and field names the goals API expects. A typo would only show up as a 404 in the browser.
+
+## `formatMonth names the month in UTC, whatever the timezone`
+
+**What it does:** `formatMonth("2026-12-01")` is "December 2026" and `formatMonth("2027-01-01")` is "January 2027".
+
+**Why it's there:** A goal's start date is the 1st of a month, and a plain `new Date("2026-12-01")` is midnight UTC, which is still November on a US clock. The Goals page and dashboard would say a goal joins the budget a month early.

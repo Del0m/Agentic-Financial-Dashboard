@@ -7,7 +7,7 @@ from app.api import budget_hooks
 from app.api import transactions as txn_api
 from app.budget_service.close import close_due
 from app.budget_service.initialize import initialize_budget
-from app.db.models import Account, BudgetPeriod, CategoryRule, Transaction
+from app.db.models import Account, BudgetLine, BudgetPeriod, CategoryRule, Transaction
 from eval.budget_users import PLANTED, seed_profile
 from tests.factories import add_account, add_txn, add_user
 
@@ -146,3 +146,18 @@ def test_other_users_txn_404(api, db):
         theirs = s.query(Transaction).filter_by(user_id="u2").one().id
     r = api.patch(f"/transactions/{theirs}", json={"category": "FREE"})
     assert (r.status_code, r.json()["detail"]) == (404, "Not found.")
+
+
+# a goal line has no spending to hold, so it isn't a place to put a purchase
+def test_a_goal_line_is_not_a_correction_target(api, db):
+    seed(db)
+    with db() as s:
+        period = s.query(BudgetPeriod).filter_by(status="open").one()
+        s.add(BudgetLine(period_id=period.id, category="GOAL_DEBT_PAYOFF", name="Debt payoff", group="goal",
+                         kind="fixed", limit_cents=58300, source="init"))
+        s.commit()
+    tid = txn_id(db, "ElectroMart")
+    r = api.patch(f"/transactions/{tid}", json={"category": "GOAL_DEBT_PAYOFF"})
+    assert (r.status_code, r.json()["detail"]) == (422, "Pick one of your budget lines.")
+    with db() as s:
+        assert s.get(Transaction, tid).user_category is None

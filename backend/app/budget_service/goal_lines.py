@@ -1,0 +1,51 @@
+from datetime import date
+from typing import Optional
+
+from sqlalchemy import or_, select, update
+from sqlalchemy.orm import Session
+
+from app.budget_engine.goals import CommittedGoal
+from app.db.models import AgentRun, Goal, utcnow
+
+# the goals a budget has to know about (tpc-25). close and the first budget read them here, and so does the goal
+# graph, so this module can't import app.agents
+
+
+def committed_goals(session: Session, user_id: str) -> list[CommittedGoal]:
+    rows = session.scalars(select(Goal).where(Goal.user_id == user_id, Goal.status == "accepted")
+                           .order_by(Goal.priority, Goal.id))
+    return [CommittedGoal(g.id, g.kind, g.monthly_cents, g.start_date, g.target_date) for g in rows]
+
+
+# proposals a budget for `month` has passed by: the surplus behind them is stale, and a row with no start can't be
+# accepted at all
+def stale_proposals(session: Session, user_id: str, month: date) -> list[int]:
+    return list(session.scalars(select(Goal.id).where(
+        Goal.user_id == user_id, Goal.status == "proposed", or_(Goal.start_date.is_(None), Goal.start_date <= month))
+        .order_by(Goal.id)))
+
+
+# the goal runs paused on these goals are over: they become expired, except the run named by keep. the caller commits.
+# returns the runs' ids, for a caller that can reach their checkpoints
+def expire_paused_runs(session: Session, goals: list[Goal], *, keep: Optional[int] = None) -> list[int]:
+    runs = session.scalars(select(AgentRun).where(
+        AgentRun.id.in_({g.run_id for g in goals if g.run_id not in (None, keep)}),
+        AgentRun.graph == "goals", AgentRun.status == "awaiting_user")).all()
+    for run in runs:
+        waited = sorted(g.id for g in goals if g.run_id == run.id)
+        run.status, run.finished_at = "expired", utcnow()
+        run.summary_json = {**(run.summary_json or {}), "expired_goal_ids": waited}
+    return sorted(run.id for run in runs)
+
+
+# marks the goals superseded and the goal runs paused on them expired; the caller commits. one conditional write, so
+# a user who answered in the meantime keeps their answer even if they clicked after the caller listed the ids.
+# returns the ids actually expired
+def expire_goal_proposals(session: Session, goal_ids: list[int]) -> list[int]:
+    if not goal_ids:
+        return []
+    expired = sorted(session.scalars(update(Goal).where(Goal.id.in_(goal_ids), Goal.status == "proposed")
+                                     .values(status="superseded").returning(Goal.id)))
+    if expired:
+        expire_paused_runs(session, list(session.scalars(select(Goal).where(Goal.id.in_(expired)))))
+    return expired

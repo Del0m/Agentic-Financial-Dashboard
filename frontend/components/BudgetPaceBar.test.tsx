@@ -55,4 +55,14 @@ describe("BudgetPaceBar", () => {
     expect(screen.getByText("Groceries")).toBeTruthy();
     expect(screen.getByRole("meter", { name: "Groceries spent" })).toBeTruthy();
   });
+
+  test("a goal line shows its monthly amount and no meter", () => {
+    render(<BudgetPaceBar line={line({ category: "GOAL_DEBT_PAYOFF", name: "Debt payoff", group: "goal",
+                                        limit_cents: 58300, spent_cents: 0, pace: null })}
+                          daysElapsed={20} daysInPeriod={31} />);
+    expect(screen.getByText("Debt payoff")).toBeTruthy();
+    expect(screen.getByText("$583.00/mo")).toBeTruthy();
+    expect(screen.queryByRole("meter")).toBeNull();
+    expect(screen.queryByText(/of \$/)).toBeNull();
+  });
 });

@@ -144,3 +144,27 @@ Run them from `backend/`:
 **What it does:** A $300 grocery run on Oct 30 counts as October's on Oct 31.
 
 **Why it's there:** The early-bill rule is for fixed lines only. Moving flexible spending would hide real overspending at the end of a month.
+
+## `test_goal_line_has_no_spending_pace_or_flag`
+
+**What it does:** A fixed `goal` line of $583 with a $900 loan payment in the month reports $0 spent, no pace, no flag, and group `goal`.
+
+**Why it's there:** Nothing reliably measures contributions to a goal, so its line shows the planned amount and never judges spending. This is a guard: it passed before TPC-25's pace change and must keep passing.
+
+## `test_goal_paid_to_a_loan_is_not_overspending`
+
+**What it does:** A $210 loan line and a $583 debt goal, with $793 paid to `LOAN_PAYMENTS`. The loan line reports $210 spent and isn't flagged.
+
+**Why it's there:** The goal's payment landed in the loan category. Without netting it, the loan line looked $583 over its limit.
+
+## `test_goal_paid_to_an_unlined_loan_stays_out_of_free`
+
+**What it does:** A Free line and a $583 debt goal, with $583 paid to `LOAN_PAYMENTS` and no loan line. Free reports $0 spent and isn't flagged.
+
+**Why it's there:** Spending with no line is absorbed by Free. The goal's payment must not eat the room it was already taken out of.
+
+## `test_loan_payment_without_the_goal_in_it_is_unchanged`
+
+**What it does:** A $210 loan line and a $200 debt goal, with only the usual $210 paid to the loan. The loan line reports $210 spent.
+
+**Why it's there:** The goal went to a card, whose payments aren't in `LOAN_PAYMENTS`, so nothing is subtracted from the loan.

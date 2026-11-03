@@ -496,3 +496,78 @@ def test_card_minimums_can_leave_no_surplus(db):
     fake = ScriptedChatModel(replies=[])
     state = run_goals(db, UID, TODAY, model=fake)
     assert (state["status"], state["surplus_cents"], fake.seen) == ("no_surplus", -4500, [])
+
+
+def test_persist_stores_the_plan_start(user):
+    run_goals(user, UID, TODAY, model=model(g("savings", 10000)))
+    assert stored(user)[0].start_date == START
+
+
+# --- accepted goals (tpc-25) ---
+
+# an accepted row written directly: deciding on goals through a service comes later. close needs both dates
+def accept(db, kind, monthly_cents, months=12):
+    with db() as s:
+        s.add(Goal(user_id=UID, kind=kind, priority=1, monthly_cents=monthly_cents,
+                   target_cents=monthly_cents * months, start_date=START, target_date=date(2027, 11, 1),
+                   rationale="x", status="accepted"))
+        s.commit()
+
+
+def test_cap_excludes_accepted_goals(user):
+    accept(user, "debt_payoff", 58300)
+    r = run_goals(user, UID, TODAY, model=model(g("emergency_fund", 19440)))
+    assert (r["cap_cents"], r["committed_cents"], r["status"]) == (19440, 58300, "ok")
+
+
+def test_accepted_kind_is_not_offered(user):
+    accept(user, "debt_payoff", 1000)
+    r = run_goals(user, UID, TODAY, model=model(g("savings", 1000)))
+    assert "debt_payoff" not in r["offered"]
+
+
+def test_accepted_goals_fill_the_cap_stops_without_a_model_call(user):
+    accept(user, "debt_payoff", 77700)      # 40 cents left
+    r = run_goals(user, UID, TODAY, model=ScriptedChatModel(replies=[]))
+    assert (r["status"], r["reason"], r.get("attempts", 0)) == ("no_affordable_goals", "cap_below_minimum", 0)
+    assert stored(user, "accepted")      # accepted goals are never withdrawn
+
+
+def test_accepted_goals_past_the_cap_clamp_to_zero(user):
+    accept(user, "debt_payoff", 80000)
+    assert run_goals(user, UID, TODAY, model=ScriptedChatModel(replies=[]))["cap_cents"] == 0
+
+
+def test_goal_accepted_during_the_run_stops_it_writing(user, monkeypatch):
+    run_goals(user, UID, TODAY, model=model(g("savings", 5000)))      # an earlier proposal is standing
+    real = goal_graph.invoke_structured
+
+    # the user accepts a debt goal after the facts were read and before the run persists
+    def accepting(*args, **kwargs):
+        accept(user, "debt_payoff", 58300)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(goal_graph, "invoke_structured", accepting)
+    r = run_goals(user, UID, TODAY, model=model(g("emergency_fund", 77740)))
+    assert (r["status"], r["reason"], r["goal_ids"]) == ("error", "goals_changed", [])
+    assert [x.kind for x in stored(user, "accepted")] == ["debt_payoff"]
+    assert not [x for x in stored(user) if x.kind == "emergency_fund"]      # nothing written
+    assert [x.kind for x in stored(user)] == ["savings"]      # the earlier proposal still stands
+    assert run_row(user, r["run_id"]).status == "error"
+
+
+def test_every_kind_accepted_says_so(user, capsys):
+    for kind in ("debt_payoff", "emergency_fund", "savings"):
+        accept(user, kind, 1000)
+    fake = ScriptedChatModel(replies=[])
+    assert cli(user, fake=fake) == 0
+    assert fake.seen == [] and "goals you've accepted cover every kind" in capsys.readouterr().out
+
+
+# a finished run with nothing to propose supersedes proposed rows only
+def test_withdraw_leaves_accepted_goals(db):
+    red_user(db)
+    accept(db, "debt_payoff", 1000)
+    state = run_goals(db, UID, TODAY, model=ScriptedChatModel(replies=[]))
+    assert (state["status"], state["withdrawn"]) == ("no_surplus", 1)
+    assert len(stored(db, "accepted")) == 1 and stored(db) == []

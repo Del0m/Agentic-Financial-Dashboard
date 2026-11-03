@@ -319,3 +319,9 @@ The budget graph's `diagnose` step asks the LLM why one category is overspent. T
 ## TPC-24 correction coverage
 
 The graph can supply an explicit debt snapshot to the goals context; default callers still load debts through the gateway. `tests/test_goal_validation_graph.py` covers the outgoing correction context and audit record, stable facts/pseudonym, rejected-allocation allowlist, excluded rationale/raw output, and debt snapshot consistency. See [the test descriptions](test_goal_validation_graph.md).
+
+## `test_goals_context_reports_committed_money_only_when_some`
+
+**What it does:** Facts with `committed_cents=58300` give `already_committed` of 583.0 in the goals payload. Facts with the default leave the key out.
+
+**Why it's there:** The model should know why the cap is smaller than the surplus suggests, and a payload with a zero for a user with no accepted goals is noise (TPC-25).

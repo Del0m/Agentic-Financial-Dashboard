@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from app.budget_service import initialize
 from app.budget_service.initialize import initialize_budget, load_txns, resolve_category
 from app.budget_service.settings import set_user_style, user_style
-from app.db.models import Account, Alert, BudgetLine, BudgetPeriod, CategoryRule
+from app.db.models import Account, AgentRun, Alert, BudgetLine, BudgetPeriod, CategoryRule, Goal
 from tests.factories import add_account, add_txn, add_user
 
 
@@ -404,3 +404,163 @@ def test_quiet_month_before_window_does_not_erase_older_history(db):
         assert period.fit_json["window"] == ["2026-07-01", "2026-08-01", "2026-09-01"]
         assert food.fit_json["monthly_totals"] == [30000, 45000, 50000]
         assert food.limit_cents == 47250
+
+
+# --- goals in the first budget (tpc-25) ---
+
+NOV1 = date(2026, 11, 1)
+OCT1 = date(2026, 10, 1)
+LINES_CENTS = 150000 + 47250 + 26250        # history()'s rent, food and travel limits
+INCOME = 420000
+
+
+def add_goal(s, status="accepted", start=OCT1, run_status=None, cents=58300):
+    run_id = None
+    if run_status:
+        run = AgentRun(user_id="u1", graph="goals", status=run_status)
+        s.add(run)
+        s.flush()
+        run_id = run.id
+    goal = Goal(user_id="u1", run_id=run_id, kind="debt_payoff", priority=1, monthly_cents=cents,
+                target_cents=cents * 6, target_date=date(2027, 6, 1), start_date=start, rationale="Because.",
+                status=status)
+    s.add(goal)
+    s.flush()
+    return goal
+
+
+def paid_user(s, income=INCOME):
+    acct = user(s)
+    history(s, acct)
+    for m in (7, 8, 9):
+        add_txn(s, acct, -income, "INCOME", merchant="Employer", day=date(2026, m, 15))
+    return acct
+
+
+def test_first_budget_includes_goal_already_started(db):
+    with db() as s:
+        paid_user(s)
+        add_goal(s)
+        s.commit()
+        pid = initialize_budget(s, "u1", TODAY).id
+    with db() as s:
+        p = s.get(BudgetPeriod, pid)
+        lines = {ln.category: ln for ln in p.lines}
+        line = lines["GOAL_DEBT_PAYOFF"]
+        assert (line.name, line.group, line.kind, line.limit_cents, line.source, line.fit_json) == (
+            "Debt payoff", "goal", "fixed", 58300, "user", {"rule": "goal"})
+        assert lines["FREE"].limit_cents == INCOME - LINES_CENTS - 58300
+        assert lines["FREE"].limit_cents == 138200
+        assert lines["RENT_AND_UTILITIES"].limit_cents == 150000
+        assert p.total_cents == INCOME
+        assert s.query(Alert).count() == 0       # it fits, so there's nothing to tell the user
+
+
+# the total rises rather than cutting a line, and the user is told, as at close
+def test_first_budget_goal_over_income_raises_alert(db):
+    with db() as s:
+        paid_user(s)
+        add_goal(s, cents=250000)
+        s.commit()
+        pid = initialize_budget(s, "u1", TODAY).id
+    with db() as s:
+        p = s.get(BudgetPeriod, pid)
+        lines = {ln.category: ln for ln in p.lines}
+        assert (lines["GOAL_DEBT_PAYOFF"].limit_cents, lines["FREE"].limit_cents) == (250000, 0)
+        assert lines["RENT_AND_UTILITIES"].limit_cents == 150000
+        assert p.total_cents == LINES_CENTS + 250000 == 473500
+        [alert] = s.query(Alert).all()
+        assert (alert.user_id, alert.period_id, alert.kind, alert.category, alert.severity, alert.cause, alert.action,
+                alert.status) == ("u1", pid, "over_income", None, "medium", None, "alert", "pending_user")
+        assert alert.message == ("Your budget lines add up to $4,735.00, $535.00 more than your typical income of "
+                                 "$4,200.00.")
+
+
+# the style reports lines over income here too, but a first budget with no goals has never written that as an alert
+def test_first_budget_without_goals_writes_no_alert(db):
+    with db() as s:
+        paid_user(s, income=100000)
+        s.commit()
+        p = initialize_budget(s, "u1", TODAY)
+        assert p.total_cents == LINES_CENTS and p.income_cents == 100000
+    with db() as s:
+        assert s.query(Alert).count() == 0
+
+
+# another run opened the month first: the alert goes with the budget that lost
+def test_first_budget_lost_race_writes_no_alert(db, monkeypatch):
+    with db() as s:
+        paid_user(s)
+        add_goal(s, cents=250000)
+        s.add(period())
+        s.commit()
+        real, calls = initialize._latest_period, []
+
+        def racy(session, user_id):
+            calls.append(user_id)
+            return None if len(calls) == 1 else real(session, user_id)
+
+        monkeypatch.setattr(initialize, "_latest_period", racy)
+        initialize_budget(s, "u1", TODAY)
+    with db() as s:
+        assert s.query(Alert).count() == 0
+    assert counts(db) == (1, 0)
+
+
+def test_first_budget_leaves_out_goal_starting_later(db):
+    with db() as s:
+        paid_user(s)
+        goal = add_goal(s, start=NOV1)
+        s.commit()
+        p = initialize_budget(s, "u1", TODAY)
+        lines = {ln.category: ln for ln in p.lines}
+        assert "GOAL_DEBT_PAYOFF" not in lines
+        assert lines["FREE"].limit_cents == INCOME - LINES_CENTS
+        assert goal.status == "accepted"
+
+
+def test_first_budget_expires_a_stale_proposal(db):
+    with db() as s:
+        paid_user(s)
+        stale, later = add_goal(s, "proposed", run_status="awaiting_user"), add_goal(s, "proposed", start=NOV1)
+        s.commit()
+        stale_id, later_id, run_id = stale.id, later.id, stale.run_id
+        p = initialize_budget(s, "u1", TODAY)
+        assert "GOAL_DEBT_PAYOFF" not in {ln.category for ln in p.lines}
+    # read back in a fresh session: the expiry went in the same commit as the budget
+    with db() as s:
+        assert (s.get(Goal, stale_id).status, s.get(Goal, later_id).status) == ("superseded", "proposed")
+        run = s.get(AgentRun, run_id)
+        assert (run.status, run.summary_json["expired_goal_ids"]) == ("expired", [stale_id])
+        assert run.finished_at is not None
+
+
+# nothing to fit: no budget opened, so nothing retires the proposal yet
+def test_no_first_budget_leaves_the_proposal(db):
+    with db() as s:
+        user(s)
+        goal_id = add_goal(s, "proposed").id
+        s.commit()
+        assert initialize_budget(s, "u1", TODAY) is None
+    with db() as s:
+        assert s.get(Goal, goal_id).status == "proposed"
+
+
+# another run opened the month first: its commit stands and ours, expiry included, rolls back
+def test_first_budget_lost_race_keeps_the_proposal(db, monkeypatch):
+    with db() as s:
+        paid_user(s)
+        goal_id = add_goal(s, "proposed").id
+        s.add(period())
+        s.commit()
+        real, calls = initialize._latest_period, []
+
+        def racy(session, user_id):
+            calls.append(user_id)
+            return None if len(calls) == 1 else real(session, user_id)
+
+        monkeypatch.setattr(initialize, "_latest_period", racy)
+        initialize_budget(s, "u1", TODAY)
+    with db() as s:
+        assert s.get(Goal, goal_id).status == "proposed"
+    assert counts(db) == (1, 0)

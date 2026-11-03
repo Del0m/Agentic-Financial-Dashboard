@@ -42,7 +42,7 @@ Start with the [AI agent pipelines](agent-pipelines.md) for the budget decision 
 | [`budget-agent-loop.puml`](diagrams/budget-agent-loop.puml) | Current budget graph, arithmetic, exits, and approval branch |
 | [`approval-lifecycle.puml`](diagrams/approval-lifecycle.puml) | Saved decisions, checkpoint resume, and planned application at close |
 | [`data-model.puml`](diagrams/data-model.puml) | Current application tables and separate checkpoint stores |
-| [`remaining-lifecycle.puml`](diagrams/remaining-lifecycle.puml) | Planned scheduling, recurring charges, forecast, goals, and rollover |
+| [`remaining-lifecycle.puml`](diagrams/remaining-lifecycle.puml) | Scheduling, recurring charges, forecast, goals, and rollover; goals and their approval are built (TPC-25), the rest is planned |
 | [`evaluation-flow.puml`](diagrams/evaluation-flow.puml) | Current evaluations and missing longitudinal validation |
 
 To re-render after editing:
@@ -98,7 +98,9 @@ Refer to `system-design.png` while reading.
   - **Pending** alerts have Accept / Dismiss; decided ones are listed under **History**.
   - A budget proposal shows the limit the user would accept, and says when a paused run is waiting on it.
   - Decisions are written back as the advice's outcome, which is the agent's memory.
-- **Goals:** proposed goals with Accept / Dismiss (M4).
+- **Goals** (`/goals`, TPC-25): a **Generate goals** button with a status line (it polls the run every 2 s), the proposal as cards with Accept / Dismiss, and accepted goals with a Stop button.
+  - The dashboard has a **Goals** card listing accepted goals and the month each joins the budget ("From December 2026"), and a Goals link in the header with the proposal count. A failure stays inside the card.
+  - A goal line on the Budget card reads "Debt payoff $583.00/mo" with no meter, and the transaction picker doesn't offer goal lines.
 - **Recurring charges:** subscriptions and bills the agent found, with frequency, typical amount, next expected date and a badge for new or price-increased ones.
 - **Cash-flow forecast:** projected checking balance per day to the next paycheck, as a line with a low/high band, the buffer as a reference line, and markers on the days bills land.
 - **Debt payoff:** avalanche vs snowball side by side (months to debt-free, total interest, payoff order), with an "extra per month" input that recomputes both.
@@ -119,7 +121,7 @@ Four graphs, sharing one tool set:
 | **Chat Agent** | User message | Retrieve guidance for the question, then a ReAct loop: LLM ↔ tools until it answers (at most 6 tool rounds, then one last call without tools) |
 | **Budget Agent** | Daily schedule | Fixed pipeline with one LLM branch (diagnose + decide). Also detects recurring charges and forecasts cash flow (section 6a). See `budget-agent-loop.png` |
 | **Period-Close Agent** | Period end (and the first daily run after it) | No LLM: `load_period → expire_proposals → gather → adapt → persist`, looping while another month is due. Compares budget vs actual, applies accepted proposals, smooths the rest, applies the budget style and opens the next period (section 6.5, TPC-22) |
-| **Goal Agent** | User request (a CLI today, TPC-23; from the app and after period close later) | `load_facts → propose → validate_candidate → persist`, with at most one `correction → propose` loop: code measures the surplus, the LLM picks goals within it, code computes targets and dates with the debt-payoff planner. The user approves via `interrupt()` (TPC-25). Section 6a.5 |
+| **Goal Agent** | User request: the Goals page's Generate button (TPC-25) or the CLI (TPC-23). Running it after period close is later | `load_facts → propose → validate_candidate → persist → forget_facts → await_approval`, with at most one `correction → propose` loop: code measures the surplus, the LLM picks goals within it, code computes targets and dates with the debt-payoff planner. The run then pauses on `interrupt()` while the user accepts or dismisses each goal; an accepted goal becomes a budget line at the next close. Section 6a.5 |
 
 **Deterministic Budget Engine:** plain Python functions for totals, pace, thresholds and budget fitting, plus recurring-stream detection, the cash-flow forecast and the debt-payoff simulation (section 6a). The LLM never does arithmetic that matters. This is a core design rule: it makes the system testable and keeps the benchmarks meaningful.
 
@@ -149,7 +151,7 @@ transactions     id, user_id, account_id, plaid_txn_id (unique), date, amount_ce
 budget_periods   id, user_id, start_date, end_date, status (open|closed), fit_json,
                  income_cents, total_cents, created_at
                  unique (user_id, start_date)
-budget_lines     id, period_id, category, name, group (needs|wants|saving|free),
+budget_lines     id, period_id, category, name, group (needs|wants|saving|free|goal),
                  kind (fixed|flexible), limit_cents,
                  spent_cents, last_pace, source (init|adapted|user), fit_json
                  unique (period_id, category)
@@ -160,9 +162,10 @@ alerts           id, user_id, period_id, kind (overspend|new_subscription|price_
                  stream_id, message, status (pending_user|accepted|dismissed), created_at
 advice_log       id, user_id, run_id, category, advice_text, created_at, outcome
 goals            id, user_id, run_id, kind (debt_payoff|savings|emergency_fund), priority, monthly_cents,
-                 target_cents, target_date (none when the goal outlasts the planner's 600 months),
-                 strategy (avalanche|snowball, debt_payoff only), rationale,
-                 status (proposed|superseded|accepted|dismissed), created_at
+                 target_cents, target_date (new rows always have one; accept refuses a null),
+                 start_date (the plan's first month; nullable, because rows from before TPC-25
+                 have none and can't be accepted), strategy (avalanche|snowball, debt_payoff only),
+                 rationale, status (proposed|superseded|accepted|dismissed|completed), created_at
 recurring_streams id, user_id, direction (in|out), merchant_key, merchant_name, category,
                  frequency (weekly|biweekly|semi_monthly|monthly|annual), typical_cents,
                  last_cents, amount_varies, first_date, last_date, next_date,
@@ -323,7 +326,7 @@ This is `budget_engine/close.py` (`close_period`):
 2. **`expire_proposals`:** `adjust_next_budget` alerts still `pending_user` on that period (written in step 5).
 3. **`gather`:** the month's actuals per line (free's is the spending without a line, saving's the transfers to savings), accepted proposals (the latest per category wins), income as of the new month and the user's style.
 4. **`adapt`:** `close_period` over needs, wants and saving lines, a saving line added if the month had transfers and the period had none, then `apply_style`.
-5. **`persist`:** one commit: expired alerts `dismissed` (advice `ignored`, paused runs `expired`), the old period `closed`, the next one opened with each line's name and group carried and `fit_json = {old_cents, actual_cents, rule}` (`source="user"` for an accepted value), style alerts on the new period, and an `ok` run whose summary lists every line.
+5. **`persist`:** one commit: a line for each accepted goal whose plan covers the new month (section 6a.5), completed goals marked `completed` (each with a `goal_ended` alert on the new period), expired goal proposals `superseded`, expired alerts `dismissed` (advice `ignored`, paused runs `expired`), the old period `closed`, the next one opened with each line's name and group carried and `fit_json = {old_cents, actual_cents, rule}` (`source="user"` for an accepted value), style alerts on the new period, and an `ok` run whose summary lists every line.
 
 Then it loops, so missed months close one at a time from their own actuals. The `(user_id, start_date)` constraint makes a rerun or a race write nothing; any other failure rolls the month back and records an `error` run, and the next run retries. Every daily run (scheduler, button, simulated day) calls `close_due` first.
 
@@ -434,9 +437,9 @@ The chat agent gets three tools: `get_recurring`, `get_cash_forecast` and `plan_
 
 ---
 
-### 6a.5 Goal graph (Milestone 4, TPC-23/24)
+### 6a.5 Goal graph (Milestone 4, TPC-23/24/25)
 
-`agents/goal_graph.py`, a LangGraph graph with no checkpointer until approval arrives (TPC-25): `load_facts → propose → validate_candidate → persist`, with at most one `correction → propose` loop. Run it with `python -m app.agents.goal_graph --user <id>`.
+`agents/goal_graph.py`, a LangGraph graph: `load_facts → propose → validate_candidate → persist`, with at most one `correction → propose` loop. With a checkpointer (the app, TPC-25) it continues `→ forget_facts → await_approval` and pauses for the user; without one (the CLI) it ends at `persist`. Run it from the CLI with `python -m app.agents.goal_graph --user <id>`.
 
 **The surplus** (`budget_engine/goals.py`) is measured, not planned: the median over the last 3 complete months of income − spending − transfers to savings, with the same month window as `fit`, minus the minimums on cards with a balance. A card payment isn't spending, because it pays for purchases already counted, so nothing else takes a card's minimum out; a loan's payment is spending, so it's already out. The budget's Free line also has to cover spending with no line, so using it would double-count that money. TPC-31's `monthly_surplus_cents` replaces this figure when it lands. With no surplus, the run stops before calling the model.
 
@@ -458,6 +461,30 @@ A run marks the user's earlier `proposed` goals `superseded` in one commit with 
 - Asked for cents with facts in dollars, the model copied the prompt's example ($200) and added $22.14 for the emergency fund, finishing in 2050. Asking for dollars, and saying that money left over does nothing, fixed it.
 - In 1 run of 25 it left out the strategy. Dropping the goal put the emergency fund first; the prompt's default applies now.
 - The note first went through the account-name scrub, whose possessive rule also matches contractions. "it's the emergency fund that matters most" reached the model as "[person]'s the emergency fund..." and `debt_payoff` came first. `scrub_note` only takes capitalised names before a possessive, and the same note now puts the emergency fund first. A lowercase "jane doe's" gets through, the same limit as any bare name in free text.
+
+**As built (TPC-25): approval, and goals as budget lines.** The design and its alternatives are in the [TPC-25 spec](superpowers/specs/2026-11-02-tpc-25-goal-approval-design.md).
+
+- **Generating.** `POST /goals/generate` runs the graph in a background thread, behind the same per-user lock as budget runs, and the Goals page polls `GET /goals/runs/{id}`. The run starts on the first of next month: that is the new `goals.start_date`, which close and the first budget read instead of `created_at`, because `created_at` is the wall clock and wrong for a simulated user.
+- **Pausing.** A run that stored goals goes `forget_facts → await_approval`. `forget_facts` clears the debts, plans, allocations and model text from the state, and the run writes its checkpoint once, at exit (`durability="exit"`), so debt names and balances never reach the checkpoint file; only the aggregate figures the run summary already stores do. `await_approval` loops on `interrupt({"waiting_for": [goal ids]})` until no goal is `proposed`. The run reads `awaiting_user` and holds no lock, and no model is called after the pause. A run with no goals, a `goals_changed` stop or no checkpointer doesn't pause.
+- **Deciding.** `budget_service/goal_decisions.py` `decide_goal` commits the decision, then resumes the run if one is paused, as `decide_alert` does. Each goal is accepted or dismissed on its own. Accepting is one conditional update, so it is refused (409) when the goal is already decided or superseded, has no `start_date` or `target_date`, or another goal of that kind is accepted. Dismissing works on a proposed goal and stops an accepted one. The goal rows are the source of truth: a failed resume or a lost checkpoint loses no click, and a paused run whose goals are all decided is finished from the rows, in two places (after every decision and whenever `GET /goals` loads).
+- **Who sees it.** Goals proposed by the CLI don't pause, but can still be accepted in the app.
+- **The cap now subtracts accepted goals.** New proposals are limited to `max(round(surplus × max_share) − accepted goals' monthly amounts, 0)`, and a kind with an accepted goal isn't offered, so two runs can't commit the same money twice and the budget keeps one line per kind. A run that finds the accepted goals changed while it ran writes nothing (`error`, reason `goals_changed`).
+- **Goal lines.** Close (and the first budget, when none exists) adds one line per accepted goal whose plan covers the new month: the month of `start_date` through the month of `target_date`. The line is in the new `goal` group, in the reserved category `GOAL_DEBT_PAYOFF`, `GOAL_EMERGENCY_FUND` or `GOAL_SAVINGS`, and has a name ("Debt payoff") and the planned amount. It has no spent figure, pace or flag: nothing reliably measures contributions, because card payments aren't spending and a transfer can't be tied to a goal. The month under way never changes, so a goal accepted in November first appears in December's budget. Once the target month has passed, close sets the goal `completed` and drops the line.
+- **Where the money comes from.** Under `caps`, goal lines count as planned, so Free shrinks by exactly the goal and no other line is cut. If the lines pass income, the existing `over_income` alert fires. Under 50/30/20, goal lines come out of the saving target (`saving = max(target − goal lines, 0)`); if goals pass the target and the lines pass income, `_split` raises `over_income`.
+- **Stopping and expiring.** A stopped goal's line ends at the next close. A proposal still `proposed` when the close that opens its start month runs (a December proposal expires when November closes) is `superseded`, and a paused run waiting on it becomes `expired`; a later accept is a 409 ("This proposal expired. Generate goals again."). Both writes are conditional, on `proposed` and `accepted`, so a click made while close runs is never overwritten. Close can't reach the checkpointer, so an expired run's checkpoint stays behind, holding only aggregate figures.
+
+**Double counting.** Three places would count one dollar twice. The first two attribute only the amount above the line's old limit to the goal, `net_of_goal(actual, limit, goal) = actual − min(goal, max(actual − limit, 0))`. Subtracting the whole goal would be wrong: avalanche usually sends a debt goal to a card, whose payments aren't in `LOAN_PAYMENTS`, so a $200 goal would turn an unchanged $210 loan payment into a $10 line and raise `over_limit` every month after.
+1. **Saving line.** A fixed line adopts its actual at close, so a goal's transfer would inflate `SAVINGS_TRANSFER` and be budgeted again by the goal line. `gather_month` nets `saved` against the closed month's emergency-fund and savings goal lines.
+2. **Loan spending.** The same for `LOAN_PAYMENTS` and a `debt_payoff` line, in `gather_month` and in `evaluate`.
+3. **Regeneration.** The cap subtracts accepted goals. **Known limit:** once the user's transfers show up in history, the measured surplus has already fallen, so the amount is subtracted twice and the cap is understated until the goal ends, and for a few months after it, because the surplus is a three-month median that still holds the goal's payments. It errs on the safe side, and TPC-31's forecast replaces this figure.
+
+**Known limits.** The app doesn't track what the user actually pays toward a goal, so a goal line is a plan. A debt goal's line ends on its projected date even if the debt remains. So that the user isn't left to read Free rising as "debt done", the close that completes a goal writes a `goal_ended` alert ("Your Debt payoff goal reached its planned end date, so its $583.00 budget line has ended. Check that it's done, and generate goals again if there's more to do.") on the new period, badged "Goal ended" on the Alerts page. A goal the user stopped gets none.
+
+**Live (TPC-25, `qwen2.5:14b`, 2026-11-02):** simulated `goals-card-24` on a disposable database, through the real app.
+- Generate proposed `debt_payoff` (avalanche) at $583.00 a month, target $21,600.00, February 2029, and `emergency_fund` at $194.40 a month, target $6,851.78, November 2029. Its surplus is $971.75 and the cap $777.40.
+- Accepting the debt goal showed it on the dashboard as "From December 2026", with the header reading Goals (1) for the remaining proposal. The budget didn't change.
+- Advancing 29 days to 2026-12-01 closed November. December's budget has "Debt payoff $583.00/mo" with no meter, Free $589.21, total $4,200.00, and lines summing to $4,200.00. The undecided emergency fund proposal expired.
+- Accepting the goal again gave 409, stopping it gave 200, stopping it again 409, and an unknown goal 404.
 
 ## 6b. Temporal knowledge graph (Milestone 6, TPC-34)
 
@@ -682,8 +709,14 @@ GET  /budget/runs/{id}          -> { status, alert_ids, waiting_for, error }
 PATCH /budget/lines/{id}        { name?, group? } open period only; group only needs <-> wants (TPC-22)
 PUT  /budget/style              { style, targets? } -> { style, targets, effective_from } (next close)
 GET  /alerts?status=pending_user|all ; POST /alerts/{id}/accept | /dismiss   (404 other user's, 409 decided)
-GET  /goals                     -> the user's proposed goals by priority (TPC-23)
-POST /goals/generate ; POST /goals/{id}/accept   (TPC-25)
+GET  /goals?status=proposed|accepted|current -> the user's goals by priority; default proposed (TPC-23's contract),
+                                    current = proposed + accepted. Each has start_date (TPC-25)
+POST /goals/generate            { date? } -> 202 { run_id }; runs in a background thread; 409 if a run is going
+GET  /goals/runs/{id}           -> { run_id, status, outcome, reason, goal_ids, waiting_for, attempts, issues, error }
+POST /goals/{id}/accept         -> the goal; 404 other user's; 409 already decided, superseded ("This proposal
+                                    expired. Generate goals again."), no start_date or target_date, or a goal of
+                                    that kind is accepted
+POST /goals/{id}/dismiss        -> the goal; 404, 409. Works on proposed goals and stops an accepted one
 GET  /recurring                 -> active and stale streams, newest changes first
 GET  /forecast?days=            -> daily expected/low/high balance, scheduled events, buffer, monthly surplus
 POST /debt-plan                 { extra_monthly_cents: 0..100_000_000, include_mortgage? } -> { avalanche, snowball,
@@ -907,7 +940,7 @@ Assignment due **November 9, 2026**; everything is scheduled to finish by **Nove
 1. Goal graph (section 6a.5, TPC-23): measure the monthly surplus from history (the forecast's `monthly_surplus_cents`, section 6a.2, replaces it later), then LLM proposes 1-3 goals within the surplus and the user's stated preferences (`users.prefs_json`, e.g. "don't touch my gym budget").
 2. Debt-payoff planner: `payoff.py`, `POST /debt-plan`, the `plan_debt_payoff` chat tool; `debt_payoff` goals come from it with a chosen strategy (section 6a.3, TPC-32).
 3. Validate: goals must be affordable from surplus and dated; reject and retry otherwise.
-4. `interrupt()` for acceptance; accepted goals become budget lines (e.g. "Debt payoff: $300/mo").
+4. `interrupt()` for acceptance; accepted goals become budget lines (e.g. "Debt payoff: $300/mo"). Done in TPC-25 (section 6a.5).
 - **Learn:** constrained generation, validate-and-retry loops.
 
 ### M5. Benchmarking
@@ -1036,6 +1069,23 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 | 2026-11-02 | The minimums on cards with a balance come out of the goal surplus | The user's choice, from the final review. Goals are on top of the minimums, and card payments aren't spending, so a $300 surplus could leave $205 in hand and TPC-24 would check the same wrong figure. A card paid in full each month loses its minimum too, which errs on the safe side |
 | 2026-11-02 | Goal preferences are structured fields plus a free-text note; goals are only funded from the surplus and never cut a line | The user's choice. Code can enforce `skip_kinds` and `max_share`, and "don't touch my gym budget" holds by construction |
 | 2026-11-02 | The model states monthly amounts in dollars, not cents; a `debt_payoff` with no strategy means avalanche | Live: asked for cents with facts in dollars, `qwen2.5:14b` copied the prompt's example and left most of the cap unused. It also left the strategy out of 1 run in 25, and dropping that goal put the emergency fund first |
+| 2026-11-02 | Each goal is accepted or dismissed on its own | A proposal can hold three goals and the user may want only the first. Every accepted set fits, because the whole proposal fit the cap. All-or-nothing would make the user reject a debt plan over a savings line they don't want |
+| 2026-11-02 | An accepted goal joins the budget at the next close, or in the first budget if none exists yet; the month under way never changes | The ticket says "next month's budget", and budget styles already apply this way. Adding a line to the open month would cut Free mid-month |
+| 2026-11-02 | A goal line shows the planned amount, with no spent figure, pace or flag | Nothing reliably measures contributions: card payments aren't spending and a transfer can't be tied to a goal, so "$0 of $583" would be wrong |
+| 2026-11-02 | An accepted goal can be stopped with `POST /goals/{id}/dismiss`; its line ends at the next close | Otherwise one wrong click commits money for years, with no way back |
+| 2026-11-02 | A goal proposal expires at the close that opens its start month (a December proposal expires when November closes), or when a first budget opens on it | The surplus behind a proposal goes stale, so accept never has to recheck affordability. It matches alerts expiring with their month. Expiring a month later would put accepted goals in the budget a month after their plan starts. The spec's earlier wording ("close of its start month") was wrong and is corrected |
+| 2026-11-02 | New proposals are capped by `max(round(surplus × max_share) − accepted goals' monthly amounts, 0)`, and a kind with an accepted goal isn't offered | Two runs can't commit the same money twice, and one line per kind keeps `(period, category)` unique. Superseding accepted goals on regeneration was rejected |
+| 2026-11-02 | A goal run writes nothing if the accepted goals changed while it ran (`goals_changed`), and accept is refused while a goal of that kind is accepted or when either date is null | A decision takes no lock, so a user can accept during a model call. Without this the cap is committed twice, and two lines of one kind make every later close fail with an `IntegrityError`. A null `target_date` would make every later close record an error run |
+| 2026-11-02 | In 50/30/20, goal lines come out of the saving target: `saving = max(target − goal lines, 0)`; `caps` needs no new rule | Paying down debt and building savings are what the 20% is for. Under `caps`, goal lines count as planned, so Free shrinks by exactly the goal. If the lines pass income, `over_income` fires |
+| 2026-11-02 | Goal lines use a `goal` group and the reserved categories `GOAL_DEBT_PAYOFF`, `GOAL_EMERGENCY_FUND`, `GOAL_SAVINGS` | Groups are plain strings, so no migration. Close, pace and the transaction picker need one check to treat them apart |
+| 2026-11-02 | Only the amount above a line's old limit is attributed to a goal (`net_of_goal`), for saving transfers and loan payments | Subtracting the whole goal would cancel the goal's effect on Free when avalanche sends it to a card, whose payments aren't in `LOAN_PAYMENTS` |
+| 2026-11-02 | Rows are the source of truth for goals, as for alerts; `interrupt()` tracks the run, and a decision commits before any resume | A failed resume or a lost checkpoint never loses a click, and close reads rows, so a paused run can't block a budget |
+| 2026-11-02 | Paused goal checkpoints hold no debt names, balances or model text: a `forget_facts` node clears them and the run writes its checkpoint once, at exit | Debt names and balances would otherwise sit in the checkpoint file. Tested on langgraph 1.2.18: with the default durability the secret reached disk, with `exit` it didn't, and resuming twice still worked. Aggregate figures stay, since `AgentRun.summary_json` holds them anyway |
+| 2026-11-02 | Goals generated by the CLI don't pause, but can be accepted in the app | The CLI has no checkpointer. `decide_goal` only resumes a run if one is paused |
+| 2026-11-02 | Add `goals.start_date` (nullable); a row without one can't be accepted | `created_at` is the wall clock, which is wrong for a simulated user, and close needs the plan's real first month. Rows from before TPC-25 may be over the cap or undated, and TPC-24 says they aren't certified |
+| 2026-11-02 | Close completes an accepted goal once its target month has passed (status `completed`, no more line) | Free comes back and the kind can be offered again. Status is a plain string, so no migration |
+| 2026-11-02 | Each goal that close completes raises a `goal_ended` alert (medium, no category, `pending_user`) saying the plan reached its end date; the completing write is conditional on `accepted`, as expiry is on `proposed` | Nothing tracks contributions, so Free rising when a line ends could read as "debt done". A click made during close, between the read and the write, must not be overwritten, and a goal the user stopped gets no alert |
+| 2026-11-02 | Accepting a `superseded` goal raises `GoalExpired` (a `GoalAlreadyDecided`), answered 409 "This proposal expired. Generate goals again."; a decision commits even if the checkpointer can't open | The user never decided an expired proposal, and the spec guarantees a decision commits before any resume |
 | | | |
 
 ---

@@ -45,3 +45,9 @@ npm test -- components/TransactionsTable.test.tsx
 **What it does:** A travel purchase (no travel line) shows the picker set to Free.
 
 **Why it's there:** Spending without its own line counts against the free line.
+
+## `goal lines aren't offered as a category`
+
+**What it does:** With a "Debt payoff" line in the `goal` group among the lines, the picker still lists only Groceries, Shopping and Free.
+
+**Why it's there:** A goal line has no spending to hold, and `PATCH /transactions/{id}` refuses it with a 422 (TPC-25). The picker shouldn't offer a choice that can only fail.

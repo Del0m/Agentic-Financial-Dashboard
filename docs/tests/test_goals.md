@@ -119,3 +119,21 @@ Run them from `backend/`:
 **What it does:** Of six debts, only the two cards with a balance and a minimum count, including one with no APR on file: $120 in all. A paid-off card, a card with no minimum, a student loan and a mortgage don't.
 
 **Why it's there:** A minimum is owed whether or not the planner can plan the card. Loan payments are spending already, so counting them would take them out twice.
+
+## `test_budgeted_from_start_through_target_month`
+
+**What it does:** A goal starting 2026-12-01 with a target date of 2027-11-01 is budgeted in December 2026 and November 2027, not in November 2026 or December 2027. It is `finished_before` December 2027 but not November 2027.
+
+**Why it's there:** An accepted goal (TPC-25) is a budget line from its start month through the month of its target date, then it ends and Free comes back.
+
+## `test_target_month_counts_whatever_the_day`
+
+**What it does:** A goal whose target date is the 17th of March is budgeted for all of March and not in April.
+
+**Why it's there:** Budget periods are calendar months, so the month of the target date is compared, not the day.
+
+## `test_committed_cents_sums_monthly_amounts`
+
+**What it does:** A $100 and a $583 goal commit $683 a month; no goals commit $0.
+
+**Why it's there:** The cap for new proposals subtracts what accepted goals already commit.

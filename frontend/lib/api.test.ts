@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
-  acceptAlert, advanceSim, ApiError, debtPlan, dismissAlert, errorMessage, getAlerts, getBudget, getChatHistory, getRun, getSim,
-  getSimJob, runBudget, streamChat, type ChatEvent,
+  acceptAlert, acceptGoal, advanceSim, ApiError, debtPlan, dismissAlert, dismissGoal, errorMessage, generateGoals, getAlerts,
+  getBudget, getChatHistory, getGoalRun, getGoals, getRun, getSim, getSimJob, runBudget, streamChat, type ChatEvent,
 } from "@/lib/api";
-import { daysToMonthEnd } from "@/lib/format";
+import { daysToMonthEnd, formatMonth } from "@/lib/format";
 
 // a fetch response whose body arrives in the given byte chunks
 function streamed(chunks: Uint8Array[], status = 200) {
@@ -159,5 +159,36 @@ describe("debtPlan", () => {
     expect(f.mock.calls[0][1].method).toBe("POST");
     expect(JSON.parse(f.mock.calls[0][1].body)).toEqual({ extra_monthly_cents: 20000, include_mortgage: false });
     expect(out.avalanche.months).toBe(49);
+  });
+});
+
+describe("goal calls", () => {
+  test("each call hits its route with the right method and body", async () => {
+    const f = vi.fn().mockImplementation(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", f);
+    await getGoals();
+    await getGoals("current");
+    await generateGoals("2026-11-02");
+    await generateGoals();
+    await getGoalRun(9);
+    await acceptGoal(3);
+    await dismissGoal(4);
+    expect(f.mock.calls.map(([url, init]) => [url, init?.method ?? "GET", init?.body ?? null])).toEqual([
+      ["/api/goals", "GET", null],
+      ["/api/goals?status=current", "GET", null],
+      ["/api/goals/generate", "POST", '{"date":"2026-11-02"}'],
+      ["/api/goals/generate", "POST", "{}"],
+      ["/api/goals/runs/9", "GET", null],
+      ["/api/goals/3/accept", "POST", null],
+      ["/api/goals/4/dismiss", "POST", null],
+    ]);
+  });
+});
+
+describe("formatMonth", () => {
+  test("names the month in UTC, whatever the timezone", () => {
+    // new Date("2026-12-01") is midnight UTC, which is still November on a US clock
+    expect(formatMonth("2026-12-01")).toBe("December 2026");
+    expect(formatMonth("2027-01-01")).toBe("January 2027");
   });
 });

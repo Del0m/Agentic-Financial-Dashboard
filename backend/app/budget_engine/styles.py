@@ -30,6 +30,20 @@ class StyleResult:
     fallback: Optional[str]       # "no_income" when 50_30_20 had to run as caps
 
 
+def _money(cents: int) -> str:
+    return f"${cents / 100:,.2f}"
+
+
+# what an alert tells the user about a fact; close and the first budget both write these
+def fact_message(fact: StyleFact) -> str:
+    if fact.kind == "over_income":
+        gap = fact.lines_cents - fact.income_cents
+        return (f"Your budget lines add up to {_money(fact.lines_cents)}, {_money(gap)} more than your typical "
+                f"income of {_money(fact.income_cents)}.")
+    return (f"{fact.group.capitalize()} are {fact.lines_cents / fact.income_cents:.0%} of income, above the "
+            f"{fact.target_pct}% target.")
+
+
 # lines excludes the free line; its limit is always computed here
 def apply_style(style: str, lines: Sequence[BudgetLine], income_cents: Optional[int], fallback_total_cents: int,
                 targets: Mapping[str, int]) -> StyleResult:
@@ -51,14 +65,18 @@ def _caps(lines, income_cents, fallback_total_cents) -> StyleResult:
     return StyleResult({**{ln.category: ln.limit_cents for ln in lines}, FREE: total - planned}, total, facts, None)
 
 
-# income split by group: saving is its target, free is the room left in wants, and a group over its target is
-# reported rather than trimmed
+# income split by group: saving is its target (less any goal lines), free is the room left in wants, and a group
+# over its target is reported rather than trimmed
 def _split(lines, income_cents, targets) -> StyleResult:
     target = {g: round_cents(Decimal(income_cents) * targets[g] / 100) for g in ("needs", "wants", "saving")}
     limits = {ln.category: ln.limit_cents for ln in lines}
-    limits[SAVINGS] = target["saving"]
+    # goals are funded from the 20%; past it they're reported below, never taken from needs or free
+    goal_total = sum(ln.limit_cents for ln in lines if ln.group == "goal")
+    limits[SAVINGS] = max(target["saving"] - goal_total, 0)
     by_group = {g: sum(ln.limit_cents for ln in lines if ln.group == g) for g in ("needs", "wants")}
     limits[FREE] = max(target["wants"] - by_group["wants"], 0)
     facts = tuple(StyleFact("group_over_target", g, by_group[g], income_cents, targets[g])
                   for g in ("needs", "wants") if by_group[g] > target[g])
+    if goal_total > 0 and sum(limits.values()) > income_cents:
+        facts += (StyleFact("over_income", None, sum(limits.values()), income_cents, None),)
     return StyleResult(limits, max(income_cents, sum(limits.values())), facts, None)

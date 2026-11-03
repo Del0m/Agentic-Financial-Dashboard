@@ -23,6 +23,14 @@ SAVINGS = "SAVINGS_TRANSFER"
 FREE = "FREE"
 SAVINGS_DETAILED = "TRANSFER_OUT_SAVINGS"     # plaid's label for a transfer to the user's savings
 
+# an accepted goal's budget line (tpc-25), one reserved category per goal kind, and the plaid category a debt goal's
+# payments can land in
+GOAL_DEBT_PAYOFF = "GOAL_DEBT_PAYOFF"
+GOAL_EMERGENCY_FUND = "GOAL_EMERGENCY_FUND"
+GOAL_SAVINGS = "GOAL_SAVINGS"
+GOAL_CATEGORIES = {"debt_payoff": GOAL_DEBT_PAYOFF, "emergency_fund": GOAL_EMERGENCY_FUND, "savings": GOAL_SAVINGS}
+LOAN_PAYMENTS = "LOAN_PAYMENTS"
+
 
 # not spending: income isn't, a transfer moves money between your own accounts,
 # and a card payment pays for purchases already counted
@@ -76,6 +84,12 @@ def category_totals(txns: Iterable[Txn], start: date, end: date) -> dict[str, in
             totals[t.category] = totals.get(t.category, 0) + t.amount_cents
     # refunds net a category down, but a refund larger than the month's purchases isn't negative spending
     return {cat: max(total, 0) for cat, total in totals.items()}
+
+
+# a goal paid to a loan shows up as loan spending. only what's above the line's old limit is the goal's, so a goal
+# paid to a card (not in LOAN_PAYMENTS) leaves the usual loan payment alone
+def net_of_goal(actual: int, limit: int, goal: int) -> int:
+    return actual - min(goal, max(actual - limit, 0))
 
 
 def month_start(d: date) -> date:

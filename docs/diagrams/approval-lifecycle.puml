@@ -1,5 +1,5 @@
 @startuml
-title An accepted proposal is saved now and applied at period close
+title An accepted proposal or goal is saved now and applied at period close
 skinparam shadowing false
 skinparam defaultFontName SansSerif
 skinparam defaultFontSize 15
@@ -8,8 +8,8 @@ participant "Budget graph" as Graph
 database "App DB" as DB
 database "Budget checkpoint DB" as CP
 actor User
-participant "Decision service + API\nfrontend in progress" as Decisions
-participant "PLANNED\nPeriod-close service" as Close
+participant "Decision service + API" as Decisions
+participant "Period-close service" as Close
 Graph -> DB : Store pending_user alert\n+ linked advice + proposed cents
 Graph -> CP : interrupt(waiting_for alert IDs)
 Graph -> DB : Run status = awaiting_user
@@ -32,12 +32,23 @@ Acceptance does not change today's limit.
 Graph resume records completion;
 the decision service saves alert status.
 end note
-== At period end: planned orchestration ==
-Close -> DB : Load final actuals + accepted proposals
-Close -> Close : Existing pure close_period function:\naccepted number wins; otherwise fixed actual\nor 70% old + 30% actual, clamped +/-15%
-Close -> DB : PLANNED atomic close old period\n+ create next period and lines
+== Goals: the same shape, per goal (TPC-25) ==
+Graph -> DB : Store proposed goals (start_date = next month)\nafter forget_facts clears debts from the state
+Graph -> CP : interrupt(waiting_for goal IDs)
+User -> Decisions : Accept, dismiss, or stop a goal
+Decisions -> DB : Conditional update: proposed -> accepted\n(409 if decided, dated wrongly, or the kind is taken)
+Decisions -> Graph : Resume only if the run is paused
 note over Decisions, Close
-Still specify recovery after failed resume,
-late decisions, and conflicting proposals.
+An undecided proposal expires at the close that opens its start month.
+A goal's line starts at that close and ends the month of its target date.
+end note
+== At period end ==
+Close -> DB : Load final actuals + accepted proposals\n+ accepted goals; expire undecided proposals
+Close -> DB : Add one line per accepted goal (group goal)\nin the next period
+Close -> Close : Existing pure close_period function:\naccepted number wins; otherwise fixed actual\nor 70% old + 30% actual, clamped +/-15%
+Close -> DB : Atomic close old period\n+ create next period and lines
+note over Decisions, Close
+Late decisions get a 409; a failed resume
+is finished from the rows.
 end note
 @enduml

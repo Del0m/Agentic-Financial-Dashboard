@@ -5,9 +5,10 @@ from langchain_core.messages import AIMessage
 
 from app import config
 from app.agents.goal_graph import run_goals
+from app.api import budget_hooks
 from app.db.models import Account
 from tests.fakes import ScriptedChatModel, ollama_has
-from tests.test_goal_graph import (TODAY, UID, audit_in_tmp, cli, g, model, run_row, set_prefs, stored, user)
+from tests.test_goal_graph import (TODAY, UID, accept, audit_in_tmp, cli, g, model, run_row, set_prefs, stored, user)
 
 
 def replies(*proposals):
@@ -171,6 +172,7 @@ def test_cli_failure_explains_exhaustion_and_preservation(user, capsys):
 
 def test_api_reflects_correction_preservation_and_withdrawal(user, client, monkeypatch):
     monkeypatch.setattr(config, 'DEV_USER_EMAIL', 'goals-card-24@eval.local')
+    monkeypatch.setattr(budget_hooks, 'session_factory', user)      # GET /goals reads the hooks now
     old = run_goals(user, UID, TODAY, model=model(g('savings', 5000)))['goal_ids']
     set_prefs(user, {'max_share': 0.05})
     run_goals(user, UID, TODAY, model=replies([g('savings', 5000)], [g('savings', 6000)]))
@@ -198,3 +200,13 @@ def test_live_tight_surplus_trials(user, trial):
     assert 1 <= result['attempts'] <= 2
     assert rows and sum(x.monthly_cents for x in rows) <= 4859
     assert all(x.target_date is not None for x in rows)
+
+
+# the cap is what's left after accepted goals, so a retry can't spend their money either
+def test_new_goal_cannot_spend_accepted_money(user):
+    accept(user, "debt_payoff", 58300)
+    over = model(g("emergency_fund", 19441))
+    over.replies.append(over.replies[0])
+    r = run_goals(user, UID, TODAY, model=over)
+    assert r["status"] == "error" and any(i["code"] == "over_cap" for i in r["validation_issues"])
+    assert stored(user) == []

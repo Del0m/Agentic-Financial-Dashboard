@@ -66,3 +66,33 @@ Run them from `backend/`:
 **What it does:** With no income, 50/30/20 gives exactly the `caps` numbers, with `fallback == "no_income"`.
 
 **Why it's there:** Percentages of an unknown income mean nothing; the close summary says the style fell back.
+
+## `test_caps_goal_line_shrinks_free_by_exactly_its_amount`
+
+**What it does:** Under `caps`, adding a $300 `goal` line to a budget lowers Free by exactly $300; the rent limit and the total are unchanged.
+
+**Why it's there:** Goals are funded from the surplus and never cut another line. `_caps` needs no goal rule, so this guards that it stays that way.
+
+## `test_split_goal_lines_come_out_of_saving_target`
+
+**What it does:** Under 50/30/20 on $4,000 income, a $300 goal line lowers the saving line from $800 to $500.
+
+**Why it's there:** Paying down debt and building savings are what the 20% is for, so goals come out of it rather than on top.
+
+## `test_split_saving_target_never_negative`
+
+**What it does:** A $900 goal against an $800 saving target gives a saving line of $0.
+
+**Why it's there:** A limit below zero makes no sense; the part past the target is reported instead (next test).
+
+## `test_split_goal_past_income_is_reported`
+
+**What it does:** Rent $2,000, travel $1,200 and a $900 goal on $4,000 income: the total rises to $4,100 and the only fact is `over_income` with $4,100 in lines.
+
+**Why it's there:** Code never cuts a line the user didn't ask to cut, so when goals push the lines past income the user is told.
+
+## `test_split_without_goals_is_unchanged`
+
+**What it does:** Rent and entertainment on $4,000 income: saving is $800 and there are no facts.
+
+**Why it's there:** A budget with no goal lines must behave exactly as before.

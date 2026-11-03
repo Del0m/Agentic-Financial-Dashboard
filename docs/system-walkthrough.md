@@ -26,7 +26,8 @@ Evidence: [API registration](../backend/app/main.py), [proxy](../frontend/next.c
 | Advice memory, graph pause/resume, decision service, Budget/Alerts APIs | Backend implemented; TPC-20 in progress | Frontend integration and recovery contract |
 | Daily scheduler | Planned TPC-21 | Due-job policy, user timezone, overlap, missed runs and restart recovery |
 | Period close | Pure adjustment function implemented | TPC-22 orchestration: persist close and open next month atomically |
-| Recurring detection, cash forecast, debt simulation, goals | Planned | Implement functions, tables, tools, UI and evaluations |
+| Debt simulation, goal agent, Goals page (TPC-23 to TPC-25) | Implemented: goals are proposed, accepted or dismissed per goal, and accepted goals become budget lines at the next close | No contribution tracking; the surplus is measured from history until TPC-31's forecast |
+| Recurring detection, cash forecast | Planned | Implement functions, tables, tools, UI and evaluations |
 | Evaluation | Chat and initial-budget harnesses implemented | Longitudinal budget replay and explicit quality gates |
 
 ## 2. Linking and keeping bank data fresh
@@ -97,7 +98,7 @@ Evidence: [approval graph and resume](../backend/app/agents/budget_graph.py), [d
 
 ![Application relationships and checkpoint stores](diagrams/data-model.svg)
 
-The application schema already supports budgets, proposals, advice outcomes and agent run summaries. `advice_log.alert_id` connects a user decision to the advice that produced it. A budget line inherits its user through its period; ownership checks must follow that relationship. Goals and recurring streams in the architecture are planned tables, not present models.
+The application schema already supports budgets, proposals, advice outcomes and agent run summaries. `advice_log.alert_id` connects a user decision to the advice that produced it. A budget line inherits its user through its period; ownership checks must follow that relationship. `goals` is a table (a goal's plan, its start month and its decision); an accepted goal becomes a budget line in the `goal` group at the next close. Recurring streams in the architecture are a planned table, not a present model.
 
 **Operational decisions remain:** backup/restore the app DB, both checkpoint files and the encryption key consistently; choose retention/deletion rules for prompts and conversations; and reconcile incomplete runs after restart. Encrypting access tokens does not encrypt transaction history or checkpoint text. Locks currently assume one API worker; scheduling budget work alongside chat also needs a resource policy for the same local model.
 
@@ -107,7 +108,7 @@ Evidence: [models](../backend/app/db/models.py), [configuration paths](../backen
 
 ![Remaining lifecycle](diagrams/remaining-lifecycle.svg)
 
-This diagram is the target integration, not an implemented pipeline. Recurring streams feed cash flow; cash flow supplies an affordable surplus; debt simulation uses it; goals produce proposals; approvals feed period close. Scheduling and period close are prerequisites for demonstrating autonomous adaptation over several months.
+This diagram is the target integration, and part of it is built: the goal graph, the Goals page and accepted goals reaching period close (TPC-25) work today, with the surplus measured from history. Recurring streams feed cash flow; cash flow will supply the surplus instead; debt simulation uses it; goals produce proposals; approvals feed period close. Scheduling and period close are prerequisites for demonstrating autonomous adaptation over several months.
 
 Three design questions should be resolved before implementing the forecast and detector:
 

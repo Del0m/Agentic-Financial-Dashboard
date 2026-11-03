@@ -82,7 +82,9 @@ def correct_transaction(txn_id: int, edit: TxnEdit, user: User = Depends(get_cur
         open_period = s.scalars(select(BudgetPeriod).where(BudgetPeriod.user_id == user.id,
                                                            BudgetPeriod.status == "open")
                                 .order_by(BudgetPeriod.start_date.desc()).limit(1)).first()
-        if open_period is None or edit.category not in {ln.category for ln in open_period.lines} | {FREE}:
+        # a goal line is a set-aside, not spending, so there's nothing to hold a purchase against
+        if open_period is None or edit.category not in {ln.category for ln in open_period.lines
+                                                         if ln.group != "goal"} | {FREE}:
             raise HTTPException(422, "Pick one of your budget lines.")
         if edit.remember and not (row.merchant_name or "").strip():
             raise HTTPException(422, "This transaction has no merchant to remember.")

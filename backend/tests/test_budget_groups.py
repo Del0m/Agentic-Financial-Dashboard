@@ -15,3 +15,9 @@ def test_default_names():
     assert default_name("ENTERTAINMENT") == "Entertainment"
     assert default_name("SAVINGS_TRANSFER") == "Savings"
     assert default_name("FREE") == "Free"
+
+
+def test_goal_categories_have_group_and_name():
+    assert default_group("GOAL_DEBT_PAYOFF") == "goal" and default_name("GOAL_DEBT_PAYOFF") == "Debt payoff"
+    assert default_group("GOAL_EMERGENCY_FUND") == "goal" and default_name("GOAL_EMERGENCY_FUND") == "Emergency fund"
+    assert default_group("GOAL_SAVINGS") == "goal" and default_name("GOAL_SAVINGS") == "Savings goal"

@@ -71,4 +71,11 @@ describe("AlertCard", () => {
     expect(screen.getByText("Over target")).toBeTruthy();
     expect(screen.getByText("Needs are 58% of income, above the 50% target.")).toBeTruthy();
   });
+
+  test("badges close's goal_ended alert", () => {
+    draw(alert({ kind: "goal_ended", category: null, severity: "medium", cause: null,
+                 message: "Your Debt payoff goal reached its planned end date, so its $583.00 budget line has ended." }));
+    expect(screen.getByText("Goal ended")).toBeTruthy();
+    expect(screen.queryByText("Ahead of pace")).toBeNull();
+  });
 });

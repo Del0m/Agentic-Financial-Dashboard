@@ -111,4 +111,27 @@ The agent can create warnings and spending suggestions without waiting for a use
 
 Implementation: [budget graph](../backend/app/agents/budget_graph.py), [budget pace calculations](../backend/app/budget_engine/pace.py), [diagnosis evidence](../backend/app/budget_engine/diagnose.py), [structured model calls](../backend/app/agents/budget_llm.py).
 
+## Goal agent: propose, validate, wait for the user, then change the budget
+
+The goal agent starts from the Goals page (or the CLI). Code measures what the user has left each month, the model chooses 1-3 goals and their monthly amounts, and code computes every target and date. The user then accepts or dismisses each goal on its own. Nothing is applied to the month under way: an accepted goal becomes a budget line when the next month opens.
+
+```mermaid
+flowchart TD
+    Start["Generate goals<br/>Goals page or CLI"] --> Facts["Measure the monthly surplus and the cap<br/>(accepted goals already use part of it)"]
+    Facts --> Propose["Model picks kinds and monthly amounts"]
+    Propose --> Check{"Validate the whole proposal:<br/>within the cap, dated, kinds unique"}
+    Check -->|Rejected, first time| Propose
+    Check -->|Rejected twice| Keep["Keep the earlier proposal<br/>report why"]
+    Check -->|Valid| Save["Save proposed goals<br/>start on the 1st of next month"]
+    Save --> Forget["Clear debt names and balances<br/>from the checkpoint"]
+    Forget --> Wait["Pause for the user<br/>no model call after this point"]
+    Wait -->|Accept or dismiss each goal| Rows[("Goal rows hold the decision")]
+    Rows --> Close["Next period close adds one budget line<br/>per accepted goal"]
+    Rows -->|Stop an accepted goal| End["Its line ends at the next close"]
+```
+
+The decision is committed before the paused run is resumed, so a failed resume or a lost checkpoint never loses a click; the run is finished from the rows. A proposal nobody answered expires when the close that opens its start month happens. Without a checkpointer (the CLI) the run doesn't pause, and its goals can still be accepted in the app.
+
+Implementation: [goal graph](../backend/app/agents/goal_graph.py), [decisions](../backend/app/budget_service/goal_decisions.py), [goal lines at close](../backend/app/budget_service/goal_lines.py), [goal routes](../backend/app/api/goals.py), [the design](superpowers/specs/2026-11-02-tpc-25-goal-approval-design.md).
+
 For the broader system, rendered diagrams, and missing pieces, see the [system walkthrough and gap checklist](system-walkthrough.md) and the [architecture](architecture.md).

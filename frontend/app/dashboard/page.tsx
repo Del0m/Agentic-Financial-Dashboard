@@ -7,14 +7,15 @@ import BalanceChart from "@/components/BalanceChart";
 import BudgetPaceBar from "@/components/BudgetPaceBar";
 import DebtPlanCompare from "@/components/DebtPlanCompare";
 import DebtsTable from "@/components/DebtsTable";
+import { goalTitle } from "@/components/GoalCard";
 import NetWorthSummary from "@/components/NetWorthSummary";
 import PlaidLinkButton from "@/components/PlaidLinkButton";
 import TransactionsTable from "@/components/TransactionsTable";
 import {
-  correctTransaction, errorMessage, getAlerts, getBudget, getDashboard, getTransactions, syncItem, type Budget,
-  type Dashboard, type ExchangeResult, type Txn,
+  correctTransaction, errorMessage, getAlerts, getBudget, getDashboard, getGoals, getTransactions, syncItem, type Budget,
+  type Dashboard, type ExchangeResult, type Goal, type Txn,
 } from "@/lib/api";
-import { categoryLabel, formatCents, formatDate } from "@/lib/format";
+import { categoryLabel, formatCents, formatDate, formatMonth } from "@/lib/format";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -43,6 +44,10 @@ export default function DashboardPage() {
   const [budget, setBudget] = useState<Budget | null>(null);
   const [budgetError, setBudgetError] = useState<string | null>(null);
   const [pendingAlerts, setPendingAlerts] = useState(0);
+  // the goal agent (tpc-25): accepted goals for the card, and how many proposals wait on the user. like the budget,
+  // a failure stays inside its card
+  const [goals, setGoals] = useState<Goal[] | null>(null);
+  const [goalsError, setGoalsError] = useState<string | null>(null);
   // this month's transactions (tpc-22), with the line each counts against and a picker to correct it
   const [txns, setTxns] = useState<Txn[] | null>(null);
   const [txnError, setTxnError] = useState<string | null>(null);
@@ -56,6 +61,13 @@ export default function DashboardPage() {
         setBudgetError(null);
       })
       .catch((err) => !cancelled && setBudgetError(errorMessage(err)));
+    getGoals("current")
+      .then((g) => {
+        if (cancelled) return;
+        setGoals(g);
+        setGoalsError(null);
+      })
+      .catch((err) => !cancelled && setGoalsError(errorMessage(err)));
     getAlerts("pending_user")
       .then((a) => !cancelled && setPendingAlerts(a.length))
       .catch(() => {}); // the link still works without its count
@@ -133,6 +145,8 @@ export default function DashboardPage() {
     }
   }
 
+  const proposedGoals = goals?.filter((g) => g.status === "proposed").length ?? 0;
+  const acceptedGoals = goals?.filter((g) => g.status === "accepted") ?? [];
   const linked = data !== null && data.accounts.length > 0;
 
   return (
@@ -142,6 +156,9 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <Link href="/alerts" className="text-sm underline underline-offset-2">
             {pendingAlerts > 0 ? `Alerts (${pendingAlerts})` : "Alerts"}
+          </Link>
+          <Link href="/goals" className="text-sm underline underline-offset-2">
+            {proposedGoals > 0 ? `Goals (${proposedGoals})` : "Goals"}
           </Link>
           <Link href="/chat" className="text-sm underline underline-offset-2">
             Chat
@@ -245,6 +262,27 @@ export default function DashboardPage() {
                   </p>
                 )}
               </div>
+            )}
+          </Card>
+          <Card title="Goals">
+            {goalsError ? (
+              <p className="text-sm text-red-600 dark:text-red-400">Couldn&apos;t load your goals: {goalsError}</p>
+            ) : !goals ? (
+              <p className="text-sm text-neutral-500">Loading…</p>
+            ) : acceptedGoals.length === 0 ? (
+              <p className="text-sm text-neutral-500">No active goals right now. Generate some from Goals.</p>
+            ) : (
+              <ul className="space-y-2">
+                {acceptedGoals.map((g) => (
+                  <li key={g.id} className="flex justify-between gap-3 text-sm">
+                    <div>
+                      <p>{goalTitle(g)}</p>
+                      {g.start_date && <p className="text-xs text-neutral-500">From {formatMonth(g.start_date)}</p>}
+                    </div>
+                    <span className="tabular-nums">{formatCents(g.monthly_cents)}/mo</span>
+                  </li>
+                ))}
+              </ul>
             )}
           </Card>
           <Card title="Transactions">

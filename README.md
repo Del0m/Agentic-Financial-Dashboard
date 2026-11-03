@@ -195,7 +195,9 @@ The dashboard's **Paying off your debts** card compares the two usual ways to pa
 
 ## Goals
 
-The goal agent works out what you have left in a typical month, asks the local model for 1-3 goals (debt payoff, emergency fund, savings) that fit within 80% of it, and computes each goal's target and date. High-interest debt comes first. Run it for a user:
+Open **Goals** from the dashboard header. **Generate goals** asks the goal agent to work out what you have left in a typical month, asks the local model for 1-3 goals (debt payoff, emergency fund, savings) that fit within 80% of it, and computes each goal's target and date. High-interest debt comes first. Accept or dismiss each goal on its own. An accepted goal shows on the dashboard's Goals card and joins the budget as a line (for example "Debt payoff: $583.00/mo") when the next month opens; the month under way never changes. **Stop** ends an accepted goal's line at the next close. A proposal you don't answer expires when that month opens, and you can generate again. The API is `POST /goals/generate`, `GET /goals/runs/{id}`, `POST /goals/{id}/accept` and `/dismiss`.
+
+The same agent runs from the command line, which doesn't pause for approval:
 
 ```bash
 cd backend
@@ -203,7 +205,7 @@ cd backend
 ../venv/bin/python -m app.agents.goal_graph --user budget-goals-card-24 --date 2026-11-02
 ```
 
-`--prefs '{"skip_kinds": ["savings"], "max_share": 0.5, "note": "emergency fund matters most"}'` sets your preferences. `GET /goals` returns the current proposal; generating goals from the app and accepting them come next.
+`--prefs '{"skip_kinds": ["savings"], "max_share": 0.5, "note": "emergency fund matters most"}'` sets your preferences. `GET /goals` returns the current proposal (`?status=accepted` or `current` for accepted goals too). Goals proposed on the command line can be accepted in the app. The app doesn't track what you actually pay toward a goal, so a goal line is a plan, not a pace bar. See the [TPC-25 verification handoff](docs/handoffs/2026-11-02-tpc-25-manual-verification.md) to try it by hand.
 
 Goals are validated as a complete proposal before storage: the monthly total must fit the cap, kinds must be offered and unique, and every computed date must be achievable within 600 months. There are at most two model calls, including malformed replies; the correction receives scrubbed feedback. Failed attempts preserve the previous proposal and report why no replacement was generated. A cap below $1 withdraws it without calling the model. See the [TPC-24 verification handoff](docs/handoffs/2026-11-02-tpc-24-manual-verification.md) for deterministic failure checks and a live CLI walkthrough.
 

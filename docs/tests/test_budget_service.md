@@ -194,3 +194,55 @@ Uses the `db` fixture from `conftest.py` (see [test_plaid.md](test_plaid.md#shar
 **What it does:** July's rent is paid on Jun 30, with rent on Aug 1 and Sep 1 and food on Jul 2. The rent line's monthly totals are $1,500 for each month.
 
 **Why it's there:** The other thing the extra month changes. A rent paid in the last 3 days of a month counts for the next one, and until the fix a rent paid just before the window wasn't loaded, so the window's first month showed $0.
+
+## Goals in the first budget (TPC-25)
+
+`paid_user(s, income)` adds a user with `history` and a paycheck ($4,200 by default) in July, August and September, so the fitted lines are rent $1,500, food $472.50 and travel $262.50, and free is $1,965 before any goal. `add_goal(s, status, start, run_status, cents)` adds a debt payoff ($583 by default) through Jun 1 2027, by default accepted and starting Oct 1 2026, optionally with a `goals` run in the given status.
+
+## `test_first_budget_includes_goal_already_started`
+
+**What it does:** An accepted goal starting in the first budget's month. Read back in a fresh session, the budget has a "Debt payoff" line in group `goal`, kind `fixed`, $583, `source="user"`, `fit_json` `{rule: "goal"}`. Free is $1,382 ($1,965 − $583), rent is unchanged, the total is income, and no alert is written.
+
+**Why it's there:** With no period to close, the first budget is the only way this goal joins a budget in its start month.
+
+## `test_first_budget_goal_over_income_raises_alert`
+
+**What it does:** A $2,500 goal on top of $2,235 of lines, with $4,200 of income. Free is $0, rent is unchanged, and the total rises to $4,735. One alert on the new period has kind `over_income`, action `alert`, severity `medium`, status `pending_user`, no category or cause, and says the lines are $535 over income.
+
+**Why it's there:** The spec rejects the total rising silently. Close already raises this alert, and a goal in the first budget has to do the same.
+
+## `test_first_budget_without_goals_writes_no_alert`
+
+**What it does:** No goals, with $1,000 of income against $2,235 of lines. The total rises to $2,235, so `apply_style` does report the lines as over income, and no alert is written.
+
+**Why it's there:** Only a first budget with goal lines writes these alerts. A first budget without goals stays exactly as it was.
+
+## `test_first_budget_lost_race_writes_no_alert`
+
+**What it does:** Another run opened the month first, and this run's budget had an over-income goal. No alert is written, and one period remains with no new lines.
+
+**Why it's there:** The alert needs the period's id, so it comes after a flush inside the `try`. The flush is where a lost race now surfaces, and it must not leave an alert behind.
+
+## `test_first_budget_leaves_out_goal_starting_later`
+
+**What it does:** An accepted goal starting next month. There's no line, free stays $1,965, and the goal stays `accepted`.
+
+**Why it's there:** The first close after this budget adds the line. Adding it now would charge a month the plan doesn't start in.
+
+## `test_first_budget_expires_a_stale_proposal`
+
+**What it does:** A proposal starting in the first budget's month, with a paused `goals` run, and another starting next month. Read back in a fresh session, the first is `superseded` with no line and its run `expired` with `finished_at` and `expired_goal_ids`. The second stays `proposed`.
+
+**Why it's there:** A goal can predate the first budget when the user generated before running a budget check. With no period to close, nothing else would retire it. The fresh session shows the expiry went in the budget's own commit.
+
+## `test_no_first_budget_leaves_the_proposal`
+
+**What it does:** With nothing to fit, `initialize_budget` returns `None` and a stale proposal stays `proposed`.
+
+**Why it's there:** `None` means nothing was written and the next run retries.
+
+## `test_first_budget_lost_race_keeps_the_proposal`
+
+**What it does:** Another run opened the month first. `initialize_budget` returns without error, one period remains with no new lines, and the proposal stays `proposed`.
+
+**Why it's there:** The expiry's queries autoflush, so they have to run before the period joins the session, or the unique constraint would fail outside the `try` around the commit. It also shows the expiry rolls back with the budget.
