@@ -138,6 +138,12 @@ These offline tests use explicit dates and integer cents. Database cases use a f
 
 **Why it's there:** Guards this forecast behavior independently of live data and model wording.
 
+## `test_an_unrelated_loan_is_not_taken_for_a_savings_goal`, `test_a_much_smaller_loan_is_not_taken_for_a_debt_goal`, `test_a_payment_above_the_goal_keeps_the_rest`, `test_one_goal_excuses_only_one_stream`
+
+**What they do:** A stream only counts as a goal's payment if it's the right kind, new since the goal started, and about the goal's amount or more. Only the goal's amount comes off it, and each goal matches one stream.
+
+**Why they're there:** This surplus decides which goals are affordable. An obligation mistaken for a goal payment would fund goals with money already owed.
+
 ## `test_surplus_is_a_flow_and_ignores_the_balance`
 
 **What it does:** Surplus is a flow and ignores the balance, using the explicit fixtures and assertions in the test.

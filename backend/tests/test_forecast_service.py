@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 
@@ -88,6 +88,23 @@ def test_everyday_series_has_90_entries_ending_today_with_zero_days(db):
     with db() as s:
         values=everyday_series(s,uid,TODAY,forecast_accounts(s,uid))
     assert len(values) == 90 and 0 in values
+
+
+def test_everyday_series_covers_only_the_days_with_history(db):
+    with db() as s:
+        acct=add_account(s,add_user(s,"u1","u1@x"),"Checking")
+        for k in range(65):
+            add_txn(s,acct,10000,"FOOD_AND_DRINK",merchant=f"Shop {k}",day=TODAY-timedelta(days=k))
+        s.commit()
+        values=everyday_series(s,"u1",TODAY,forecast_accounts(s,"u1"))
+    assert values == [10000]*65
+
+
+def test_everyday_series_is_empty_with_no_history(db):
+    with db() as s:
+        add_account(s,add_user(s,"u1","u1@x"),"Checking")
+        s.commit()
+        assert everyday_series(s,"u1",TODAY,forecast_accounts(s,"u1")) == []
 
 
 def test_card_obligations_keep_a_null_minimum_null(db):
