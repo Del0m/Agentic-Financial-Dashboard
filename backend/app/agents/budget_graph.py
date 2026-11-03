@@ -5,7 +5,7 @@ import sqlite3
 import sys
 import threading
 from collections import Counter
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import date, timedelta
 from typing import Callable, Optional, TypedDict
 
@@ -17,14 +17,16 @@ from langgraph.types import Command, interrupt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.agents.budget_llm import (_RANK, Action, Diagnosis, decide_messages, decide_signal, diagnose_messages,
-                                  invoke_structured)
+from app.agents.budget_llm import (_RANK, Action, GraphDiagnosis, decide_messages, decide_signal, diagnose_messages,
+                                  diagnosis_schema, invoke_structured)
 from app.agents.budget_checkpoints import BudgetCheckpoints
 from app import config
 from app.agents.llm import get_chat_model
-from app.budget_engine.diagnose import overspend_facts, proposed_limit_cents
+from app.budget_engine.diagnose import OverspendFacts, overspend_facts, proposed_limit_cents
 from app.budget_engine.fit import HISTORY_MONTHS
+from app import config
 from app.kg import project
+from app.kg.facts import cut_was_dismissed, graph_facts
 from app.budget_engine.pace import BudgetLine as EngineLine, PaceResult, evaluate, history_start
 from app.budget_engine.recurring import monthly_cents
 from app.budget_engine.signals import (SIGNAL_CAP, PreviousDip, Signal, cancel_limit, choose, fallback_message,
@@ -118,6 +120,16 @@ def _past_advice(s: Session, user_id: str, period_start: date, category: str) ->
         .limit(5)).all()
     return [{"month": p.start_date.strftime("%B %Y"), "action": a.action, "outcome": adv.outcome}
             for adv, a, p in rows]
+
+
+# never stops a diagnosis: without the graph's facts, the model still has the rest
+def _graph_facts_for(session_factory, user_id: str, facts: OverspendFacts, today: date) -> Optional[dict]:
+    try:
+        with session_factory() as s:
+            return graph_facts(s, user_id, facts.category, [m.merchant for m in facts.merchants], facts.month, today)
+    except Exception as exc:
+        logger.warning("graph facts failed: %s", type(exc).__name__)
+        return None
 
 
 def _label(category: str) -> str:
@@ -332,10 +344,12 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
         for flag in state["flags"]:
             cat = flag["category"]
             f = overspend_facts(PaceResult(**flag), fits.get(cat), txns, history, period.start_date, lined=lined)
+            if config.KG_MODE == "on":
+                f = replace(f, graph_facts=_graph_facts_for(session_factory, state["user_id"], f, today_of(state)))
             facts[cat] = {**asdict(f), "proposed_limit_cents": proposed_limit_cents(f)}
             contexts[cat] = gateway.build_context("diagnose", facts=f, transactions=txns,
                                                   this_month_alerts=memory[cat][0], past_advice=memory[cat][1])
-            d = invoke_structured(model, Diagnosis, diagnose_messages(contexts[cat]), stats=stats)
+            d = invoke_structured(model, diagnosis_schema(), diagnose_messages(contexts[cat]), stats=stats)
             diagnoses[cat] = d.model_dump() if d else None
             failures += d is None
         return {"facts": facts, "contexts": contexts, "diagnoses": diagnoses, "llm_failures": failures,
@@ -349,7 +363,7 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             cat = flag["category"]
             d, f = state["diagnoses"][cat], state["facts"][cat]
             a = invoke_structured(model, Action, decide_messages(
-                state["contexts"][cat], Diagnosis(**d) if d else None, f["projected_cents"],
+                state["contexts"][cat], GraphDiagnosis(**d) if d else None, f["projected_cents"],
                 f["proposed_limit_cents"], _severity(flag["reason"]), state["memory"][cat]), stats=stats)
             fallback = a is None
             if fallback:
@@ -368,6 +382,11 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             escalated = a.action == "no_op" and not any(_RANK.get(e["severity"], 0) >= rank
                                                         for e in state["memory"][cat])
             if escalated:
+                a = Action(action="alert", message=_fallback_message(flag))
+            # the user's spending didn't change, only where it's counted, so a cut or a new limit would be wrong.
+            # and a cut they've dismissed twice isn't proposed a third time (tpc-37)
+            if ((d or {}).get("cause") == "reclassified" and a.action not in ("alert", "no_op")) or (
+                    a.action == "suggest_cuts" and cut_was_dismissed(f.get("graph_facts"))):
                 a = Action(action="alert", message=_fallback_message(flag))
             actions[cat] = {"action": a.action, "message": a.message, "fallback": fallback, "downgraded": downgraded,
                             "escalated": escalated,

@@ -115,7 +115,7 @@ class SchemaReplyModel(BaseChatModel):
     def _generate(self, messages, stop=None, run_manager=None, **kwargs: Any) -> ChatResult:
         self.seen.append(list(messages))
         title = (kwargs.get("format") or {}).get("title")
-        if title == "Diagnosis":
+        if title in ("Diagnosis", "GraphDiagnosis"):
             body = {"cause": self.cause, "evidence": "One purchase explains it."}
         elif title == "SignalAction":
             body = {"action": self.signal_action, "message": "A recurring change needs a look."}

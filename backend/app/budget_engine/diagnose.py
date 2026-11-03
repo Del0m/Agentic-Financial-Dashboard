@@ -50,6 +50,7 @@ class OverspendFacts:
     # what the history months would fit (median x 1.05) without the merchants that started recently; None with no
     # history. a merchant already in the median would otherwise be counted twice in the proposal
     baseline_cents: Optional[int] = None
+    graph_facts: Optional[dict] = None    # what the temporal graph adds (tpc-37); None with KG_MODE off
 
 
 def projected_cents(spent_cents: int, days_elapsed: int, days_in_period: int) -> int:

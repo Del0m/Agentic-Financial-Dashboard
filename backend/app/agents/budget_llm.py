@@ -31,6 +31,23 @@ DIAGNOSE_PROMPT = (
     "one-sentence evidence."
 )
 
+# added only with KG_MODE on, so the prompts with the graph off stay byte-identical
+GRAPH_DIAGNOSE_PROMPT = (
+    "\n\nThe facts also have graph_facts, from up to 13 months of history. Before the causes above, check:\n"
+    "a. reclassified: graph_facts.rule_moves shows a merchant rule moved spending into this category this month, and "
+    "that moved amount explains the overspend. The user's spending didn't change, only where it's counted.\n"
+    "b. recurring: graph_facts.price_changes shows a merchant's regular charge went up, and that explains the "
+    "overspend.\n"
+    "c. seasonal: the merchants were active_same_month_last_year, or same_month_last_year_total is near this month's "
+    "spending, so this is the time of year, whichever month it is. That comes before one_time and before a new-looking "
+    "merchant, because months_active_in_last_13 sees further back than the merchant's pattern.\n"
+    "Otherwise use the causes above."
+)
+GRAPH_DECIDE_PROMPT = (
+    "\n\nThe facts also have graph_facts. For a reclassified cause, choose alert and explain that a rule moved the "
+    "spending, or no_op. Don't choose suggest_cuts if graph_facts.advice_history shows the user dismissed it twice."
+)
+
 DECIDE_PROMPT = (
     "You decide what a budgeting app does about one overspent category.\n"
     "First check memory, before anything else. If there are earlier alerts for this category this month and "
@@ -60,6 +77,12 @@ Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 class Diagnosis(BaseModel):
     cause: Literal["one_time", "seasonal", "recurring"]
+    evidence: Text
+
+
+# with the graph on, a rule that moved spending has its own cause. kept apart so the schema with it off is unchanged
+class GraphDiagnosis(BaseModel):
+    cause: Literal["reclassified", "one_time", "seasonal", "recurring"]
     evidence: Text
 
 
@@ -130,13 +153,18 @@ def _earlier(alerts: Sequence[dict], severity: str) -> str:
 
 
 def diagnose_messages(context: str) -> list:
-    return [SystemMessage(DIAGNOSE_PROMPT), HumanMessage(f"Facts:\n{context}")]
+    prompt = DIAGNOSE_PROMPT + GRAPH_DIAGNOSE_PROMPT if config.KG_MODE == "on" else DIAGNOSE_PROMPT
+    return [SystemMessage(prompt), HumanMessage(f"Facts:\n{context}")]
 
 
 _RANK = {"medium": 1, "high": 2}
 
 
-def decide_messages(context: str, diagnosis: Optional[Diagnosis], projected_cents: int, proposed_cents: int,
+def diagnosis_schema() -> type[BaseModel]:
+    return GraphDiagnosis if config.KG_MODE == "on" else Diagnosis
+
+
+def decide_messages(context: str, diagnosis: Optional[BaseModel], projected_cents: int, proposed_cents: int,
                     severity: str, earlier: Sequence[dict] = ()) -> list:
     cause = f"{diagnosis.cause}: {diagnosis.evidence}" if diagnosis else "unknown (the cause could not be determined)"
     # a holiday month or a one-off says nothing about next month, so only a recurring cause gets a proposal
@@ -144,7 +172,8 @@ def decide_messages(context: str, diagnosis: Optional[Diagnosis], projected_cent
         proposal = f"${proposed_cents / 100:,.2f}"
     else:
         proposal = "none: adjust_next_budget is only for a recurring cause"
-    return [SystemMessage(DECIDE_PROMPT), HumanMessage(
+    prompt = DECIDE_PROMPT + GRAPH_DECIDE_PROMPT if config.KG_MODE == "on" else DECIDE_PROMPT
+    return [SystemMessage(prompt), HumanMessage(
         f"Facts:\n{context}\n\nDiagnosis: {cause}\nSeverity of this flag: {severity}\n"
         f"Earlier alerts for this category this month: {_earlier(earlier, severity)}\n"
         f"Projected spending by month end: ${projected_cents / 100:,.2f}\n"

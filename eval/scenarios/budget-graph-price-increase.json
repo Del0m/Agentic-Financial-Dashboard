@@ -1,0 +1,30 @@
+{
+  "id": "budget-graph-price-increase",
+  "kind": "budget",
+  "author": "claude",
+  "tags": [
+    "needs_graph",
+    "recurring"
+  ],
+  "profile": "stream-price-increase",
+  "start": "2026-10-02",
+  "end": "2026-10-04",
+  "golden_answer": "Entertainment goes over its limit on Oct 3 because Streamly Plus rose from $90 to $135 and will keep charging that. The cause is recurring.",
+  "expect": {
+    "flags": [
+      "ENTERTAINMENT"
+    ],
+    "causes": {
+      "ENTERTAINMENT": "recurring"
+    },
+    "actions": {
+      "ENTERTAINMENT": {
+        "accept": [
+          "adjust_next_budget",
+          "alert"
+        ],
+        "ban": []
+      }
+    }
+  }
+}

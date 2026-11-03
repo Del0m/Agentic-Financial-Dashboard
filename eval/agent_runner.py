@@ -68,7 +68,8 @@ def run_budget_once(scenario: BudgetScenario, *, model, audit_path: Path, run: i
         with temp_db() as Session:
             with Session() as s:
                 user_id = seed_profile(s, profile_by_id(scenario.profile), until=scenario.start)
-            seen = set()
+                # alerts seeded as history aren't this run's decisions
+                seen = set(s.scalars(select(Alert.id).where(Alert.user_id == user_id)))
 
             def on_day(day: dict) -> None:
                 for category in day["flags"]:

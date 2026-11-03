@@ -1,0 +1,32 @@
+{
+  "id": "budget-graph-seasonal-13mo",
+  "kind": "budget",
+  "author": "claude",
+  "tags": [
+    "needs_graph",
+    "seasonal"
+  ],
+  "profile": "overspend-seasonal-13mo",
+  "start": "2026-12-04",
+  "end": "2026-12-06",
+  "golden_answer": "General merchandise runs ahead of pace in December, spread across shops the user also visited last December. The cause is seasonal.",
+  "expect": {
+    "flags": [
+      "GENERAL_MERCHANDISE"
+    ],
+    "causes": {
+      "GENERAL_MERCHANDISE": "seasonal"
+    },
+    "actions": {
+      "GENERAL_MERCHANDISE": {
+        "accept": [
+          "alert",
+          "suggest_cuts"
+        ],
+        "ban": [
+          "adjust_next_budget"
+        ]
+      }
+    }
+  }
+}

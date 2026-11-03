@@ -66,6 +66,22 @@ def _dollars(cents: Optional[int]) -> Optional[float]:
     return None if cents is None else round(cents / 100, 2)
 
 
+# the graph's facts for one category, with the spending allowlist: scrubbed merchants, dollars, no account details
+def _graph_facts(g: dict) -> dict:
+    return {
+        "merchants": [{"merchant": scrub_merchant(m["merchant"]), "months_active_in_last_13": m["months_active"],
+                       "first_seen": m["first_seen"], "active_same_month_last_year": m["active_same_month_last_year"]}
+                      for m in g["merchants"]],
+        "same_month_last_year_total": _dollars(g["same_month_last_year_cents"]),
+        "rule_moves": [{"merchant": scrub_merchant(r["merchant"]), "since": r["since"], "moved": _dollars(r["moved_cents"])}
+                       for r in g["rule_moves"]],
+        "price_changes": [{"merchant": scrub_merchant(p["merchant"]), "from": _dollars(p["from_cents"]),
+                           "to": _dollars(p["to_cents"]), "since": p["since"]} for p in g["price_changes"]],
+        "advice_history": g["advice_history"],
+        "related_guidance": g["related_guidance"],
+    }
+
+
 # written by code: given the bare days, a small model left out the bill or said "you won't run short" (tpc-27)
 def _cash_summary(result, buffer_cents: int, bill: Optional[str]) -> str:
     if not result.days:
@@ -371,7 +387,7 @@ class PrivacyGateway:
                       reverse=True)[:TXN_LIMIT_DIAGNOSE]
         n = len(facts.monthly_totals)
         largest = facts.largest
-        return {
+        data = {
             "category": facts.category, "reason": facts.reason, "kind": facts.kind,
             "month": _month_name(facts.month), "limit": _dollars(facts.limit_cents),
             "spent": _dollars(facts.spent_cents),
@@ -391,6 +407,10 @@ class PrivacyGateway:
             "transactions": [{"date": t.date, "amount": _dollars(t.amount_cents),
                               "merchant": scrub_merchant(t.merchant)} for t in rows],
         }
+        # absent, not empty, with the graph off: the prompt stays byte-identical
+        if facts.graph_facts is not None:
+            data["graph_facts"] = _graph_facts(facts.graph_facts)
+        return data
 
     # append-only record of exactly what left the system; pseudonym only, never the user id
     def _audit(self, purpose: str, params: dict, prompt: str) -> None:

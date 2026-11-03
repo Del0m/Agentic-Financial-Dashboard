@@ -205,7 +205,7 @@ The committed count includes cash-before-payday, which checks get_cash_forecast 
 
 ## `test_committed_scenarios_cover_the_ticket`
 
-**What it does:** Checks that there are 30-50 scenarios before the 12 temporal ones, each with a golden answer and a tag, that every ticket category has one, that the mix is 34 chat, 12 budget and 6 goal, and that 4 are abstain scenarios.
+**What it does:** Checks that there are 30-50 scenarios before the 12 temporal ones, each with a golden answer and a tag, that every ticket category has one, that the mix is 34 chat, 16 budget and 6 goal, and that 4 are abstain scenarios.
 
 **Why it's there:** This is the ticket's done-when, as a test.
 

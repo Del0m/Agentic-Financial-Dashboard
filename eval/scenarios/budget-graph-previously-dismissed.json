@@ -1,0 +1,36 @@
+{
+  "id": "budget-graph-previously-dismissed",
+  "kind": "budget",
+  "author": "claude",
+  "tags": [
+    "needs_graph",
+    "one_time"
+  ],
+  "profile": "previously-dismissed",
+  "start": "2026-10-08",
+  "end": "2026-10-10",
+  "golden_answer": "Food and drink goes over its limit because of one $300 purchase at Party Caterer. The user dismissed a cut to this category in August and September, so it isn't proposed again.",
+  "expect": {
+    "flags": [
+      "FOOD_AND_DRINK"
+    ],
+    "causes": {
+      "FOOD_AND_DRINK": "one_time"
+    },
+    "actions": {
+      "FOOD_AND_DRINK": {
+        "accept": [
+          "alert"
+        ],
+        "ban": [
+          "suggest_cuts"
+        ]
+      }
+    },
+    "message_facts": [
+      {
+        "text": "Party Caterer"
+      }
+    ]
+  }
+}

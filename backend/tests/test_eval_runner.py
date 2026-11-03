@@ -107,3 +107,16 @@ def test_live_debt_highest_apr(tmp_path):
 
     assert rec.error is None
     assert scores["judge"] is not None
+
+
+def test_budget_run_doesnt_score_alerts_seeded_as_history(tmp_path):
+    from eval.agent_runner import run_budget_once
+    from eval.fixtures import load_scenarios
+    from pathlib import Path
+    from tests.fakes import SchemaReplyModel
+    repo = Path(__file__).resolve().parents[2]
+    s = next(x for x in load_scenarios(repo / "eval" / "scenarios") if x.id == "budget-graph-previously-dismissed")
+    rec = run_budget_once(s, model=SchemaReplyModel(), audit_path=tmp_path / "a.jsonl")
+    assert rec.error is None
+    assert all(a["day"] >= "2026-10-09" for a in rec.alerts)
+    assert not any(a["message"].startswith("Food is running hot") for a in rec.alerts)

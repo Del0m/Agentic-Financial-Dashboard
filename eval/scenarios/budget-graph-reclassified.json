@@ -1,0 +1,37 @@
+{
+  "id": "budget-graph-reclassified",
+  "kind": "budget",
+  "author": "claude",
+  "tags": [
+    "needs_graph",
+    "reclassified"
+  ],
+  "profile": "reclassified-by-rule",
+  "start": "2026-10-06",
+  "end": "2026-10-09",
+  "golden_answer": "Food and drink goes over its limit on Oct 8 because a rule moved Lunchbox Co into it. Spending didn't change, only where it's counted, so the cause is reclassified, and the app should explain the move.",
+  "expect": {
+    "flags": [
+      "FOOD_AND_DRINK"
+    ],
+    "causes": {
+      "FOOD_AND_DRINK": "reclassified"
+    },
+    "actions": {
+      "FOOD_AND_DRINK": {
+        "accept": [
+          "alert"
+        ],
+        "ban": [
+          "adjust_next_budget",
+          "suggest_cuts"
+        ]
+      }
+    },
+    "message_facts": [
+      {
+        "text": "Lunchbox"
+      }
+    ]
+  }
+}

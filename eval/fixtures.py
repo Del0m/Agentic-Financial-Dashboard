@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.agents.budget_llm import Action, Diagnosis
+from app.agents.budget_llm import Action, GraphDiagnosis
 from app.agents.tools import PFC_CATEGORIES, VALID_CATEGORIES
 from app.budget_engine.goals import GOAL_KINDS
 from app.budget_engine.signals import RANK
@@ -22,7 +22,7 @@ from tests.factories import add_account, add_txn, add_user
 # sqlite doesn't enforce the enum, so a typo like "credit card" would be stored as-is
 LIABILITY_KINDS = tuple(Liability.__table__.c.kind.type.enums)
 KINDS = ("chat", "budget", "goal")
-CAUSES = get_args(Diagnosis.model_fields["cause"].annotation)
+CAUSES = get_args(GraphDiagnosis.model_fields["cause"].annotation)
 OVERSPEND_ACTIONS = get_args(Action.model_fields["action"].annotation)
 SIGNAL_KINDS = tuple(RANK)
 # the goal graph's finished endings; "error" and "busy" are never a golden answer

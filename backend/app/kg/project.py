@@ -93,8 +93,11 @@ def stream_key(stream: RecurringStream) -> str:
     return f"{stream.direction}|{stream.merchant_key}"
 
 
+# the detector's typical amount lags a step: after one raised charge it's still the old price, while previous_cents
+# already marks the step. the graph has to show the rise on the charge that made it
 def _stream_value(stream: RecurringStream) -> dict:
-    return {"frequency": stream.frequency, "typical_cents": stream.typical_cents}
+    stepped = stream.previous_cents is not None and stream.last_cents != stream.previous_cents
+    return {"frequency": stream.frequency, "typical_cents": stream.last_cents if stepped else stream.typical_cents}
 
 
 # ---- writing ----
@@ -232,6 +235,11 @@ def project_streams(session: Session, user_id: str) -> Result:
         latest_end = max((e.valid_to for e in edges if e.valid_to), default=None)
         if ongoing is None:
             start = s.first_date if not edges else max(s.last_date, latest_end)
+            # first seen on the charge that raised the price, as on a backfill: record the old price too
+            if not edges and value["typical_cents"] != s.typical_cents and s.last_date > s.first_date:
+                assert_edge(session, user_id=user_id, src_id=user.id, rel="SUBSCRIBES", dst_id=stream.id,
+                            value={**value, "typical_cents": s.previous_cents}, valid_from=s.first_date)
+                start = s.last_date
             assert_edge(session, user_id=user_id, src_id=user.id, rel="SUBSCRIBES", dst_id=stream.id, value=value, valid_from=start)
             result.asserted += 1
         elif ongoing.value_json != value and s.last_date > ongoing.valid_from:

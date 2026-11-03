@@ -121,7 +121,7 @@ def test_only_unknown_id_rejected(tmp_path):
 
 
 def test_committed_scenarios_load():
-    assert len(load_scenarios(REPO / "eval" / "scenarios")) == 52
+    assert len(load_scenarios(REPO / "eval" / "scenarios")) == 56
 
 
 # the payoff scenario's facts are the planner's numbers (tpc-32); months and interest don't depend on the start date
@@ -303,7 +303,7 @@ def test_committed_scenarios_cover_the_ticket():
     assert {"high_interest_debt", "unused_subscription", "one_time", "recurring", "seasonal", "no_overspend_control",
             "goal_affordability"} <= tags
     kinds = [s.kind for s in scenarios]
-    assert (kinds.count("chat"), kinds.count("budget"), kinds.count("goal")) == (34, 12, 6)
+    assert (kinds.count("chat"), kinds.count("budget"), kinds.count("goal")) == (34, 16, 6)
     assert len([s for s in scenarios if "abstain" in s.tags and s.expect.abstain]) == 4
     assert all(s.tags for s in scenarios)
 
