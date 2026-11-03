@@ -26,7 +26,7 @@ from app.budget_engine.recurring import monthly_cents
 from app.budget_engine.signals import SIGNAL_CAP, Signal, cancel_limit, choose, fallback_message, rank_signals
 from app.budget_engine.txns import add_months
 from app.budget_service.initialize import initialize_budget, load_txns
-from app.budget_service.recurring import refresh_streams, stored_streams
+from app.budget_service.recurring import muted_stream_ids, refresh_streams, stored_streams
 from app.db.models import AdviceLog, AgentRun, Alert, BudgetPeriod, PlaidItem, utcnow
 from app.plaid_service.sync import sync_item
 from app.privacy.gateway import PrivacyGateway
@@ -201,7 +201,10 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
 
     def _decide_signals(state: BudgetState) -> dict:
         actions, failures, error = {}, state.get("llm_failures", 0), state.get("signals_error")
-        for i, signal in enumerate(rank_signals([Signal(**s) for s in state.get("signals", [])])):
+        with session_factory() as s:
+            muted = muted_stream_ids(s, state["user_id"])
+        signals = [Signal(**s) for s in state.get("signals", []) if s["stream_id"] not in muted]
+        for i, signal in enumerate(rank_signals(signals)):
             action, message, proposed = "alert", fallback_message(signal), None
             fallback = True
             try:
@@ -236,7 +239,8 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
                 fallback = True
             actions[signal.key] = {"action": action, "message": message, "fallback": fallback,
                                    "proposed_limit_cents": proposed}
-        return {"signal_actions": actions, "signals_error": error, "llm_failures": failures}
+        return {"signals": [asdict(s) for s in signals], "signal_actions": actions,
+                "signals_error": error, "llm_failures": failures}
 
     def decide_signals(state: BudgetState) -> dict:
         try:

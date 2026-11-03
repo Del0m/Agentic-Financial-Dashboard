@@ -10,6 +10,8 @@ from app.budget_engine.fit import HISTORY_MONTHS, fit_budget
 from app.budget_engine.goals import budgeted_in, finished_before
 from app.budget_engine.groups import default_group, default_name
 from app.budget_engine.pace import BudgetLine as EngineLine
+from app.budget_engine.recurring import monthly_cents
+from app.budget_engine.signals import cancel_limit
 from app.budget_engine.styles import apply_style, fact_message
 from app.budget_engine.txns import (EARLY_DAYS, FREE, GOAL_CATEGORIES, GOAL_DEBT_PAYOFF, GOAL_EMERGENCY_FUND,
                                     GOAL_SAVINGS, LOAN_PAYMENTS, SAVINGS, add_months, category_totals, month_end,
@@ -17,7 +19,7 @@ from app.budget_engine.txns import (EARLY_DAYS, FREE, GOAL_CATEGORIES, GOAL_DEBT
 from app.budget_service.goal_lines import committed_goals, expire_goal_proposals, stale_proposals
 from app.budget_service.initialize import history_start, load_txns
 from app.budget_service.settings import user_style
-from app.db.models import AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, Goal, utcnow
+from app.db.models import AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, Goal, RecurringStream, utcnow
 
 # period close (tpc-22, architecture 6.5): the db side of the close graph. gather reads the closed month,
 # adapt is pure (close_period for each line, then the user's style), and persist writes the whole month in
@@ -101,6 +103,27 @@ def gather_month(session: Session, period_id: int) -> dict:
             Alert.proposed_limit_cents.is_not(None)).order_by(Alert.id)):
         accepted[alert.category] = alert.proposed_limit_cents       # the latest answer wins
 
+    # pending cancellations survive close. consume each accepted stream once, including an answer to an older month
+    consumed = {outcome["stream_id"] for summary in session.scalars(select(AgentRun.summary_json).where(
+        AgentRun.user_id == period.user_id, AgentRun.graph == "close", AgentRun.status == "ok"))
+        for outcome in (summary or {}).get("cancel_outcomes", [])}
+    cancel_outcomes = []
+    for alert, stream in session.execute(select(Alert, RecurringStream).join(
+            RecurringStream, Alert.stream_id == RecurringStream.id).where(
+            Alert.user_id == period.user_id, RecurringStream.user_id == period.user_id,
+            Alert.action == "suggest_cancel", Alert.status == "accepted").order_by(Alert.id)):
+        if stream.id in consumed:
+            continue
+        consumed.add(stream.id)
+        category = stream.category
+        old = accepted.get(category, limits.get(category))
+        new = None if old is None else cancel_limit(old, monthly_cents(stream.typical_cents, stream.frequency))
+        outcome = "no_line" if old is None else "nonpositive" if new is None else "applied"
+        if new is not None:
+            accepted[category] = new
+        cancel_outcomes.append({"alert_id": alert.id, "stream_id": stream.id, "category": category,
+                                "old_cents": old, "new_cents": new, "outcome": outcome})
+
     new_start = end + timedelta(days=1)
     # a month further back than it fits, so the window's edge doesn't look like the start of the history
     history = load_txns(session, period.user_id, add_months(new_start, -HISTORY_MONTHS - 1), end)
@@ -119,7 +142,7 @@ def gather_month(session: Session, period_id: int) -> dict:
         "lines": [{"category": ln.category, "name": ln.name, "group": ln.group, "kind": ln.kind,
                    "limit_cents": ln.limit_cents, "actual_cents": actual(ln)} for ln in period.lines],
         "saved_cents": saved, "free_actual_cents": free_actual, "unbudgeted": sorted(c for c in unlined if c != FREE),
-        "accepted": accepted, "goals": goals,
+        "accepted": accepted, "goals": goals, "cancel_outcomes": cancel_outcomes,
         "finished_goal_ids": [g.id for g in committed if finished_before(g, new_start)],
         "expired_goal_ids": stale_proposals(session, period.user_id, new_start),
         "income_cents": fit.income_cents, "fallback_total_cents": fit.spending_total_cents,
@@ -225,6 +248,7 @@ def persist_month(session_factory, period_id: int, gathered: dict, adapted: dict
             "finished_goal_ids": sorted(g.id for g in finished), "income_cents": gathered["income_cents"],
             "total_cents": adapted["total_cents"], "free_cents": adapted["free_cents"], "style": gathered["style"],
             "alert_ids": [a.id for a in alerts], "unbudgeted": gathered["unbudgeted"],
+            "cancel_outcomes": gathered.get("cancel_outcomes", []),
         }
         if adapted["style_fallback"]:
             summary["style_fallback"] = adapted["style_fallback"]

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.budget_engine.recurring import INCOME, METERED_UTILITIES, RTxn, Stream, detect
 from app.budget_engine.txns import Txn, spending
 from app.budget_service.initialize import category_rules, history_start, resolve_category
-from app.db.models import RecurringStream, Transaction
+from app.db.models import Alert, RecurringStream, Transaction
 
 # the detector's streams, stored and compared with the previous run (tpc-33). nothing here commits; the caller does
 
@@ -41,6 +41,12 @@ def current_streams(session: Session, user_id: str, today: date) -> list[Stream]
 def stored_streams(session: Session, user_id: str) -> list[RecurringStream]:
     return list(session.scalars(select(RecurringStream).where(RecurringStream.user_id == user_id)
                                 .order_by(RecurringStream.id)))
+
+
+def muted_stream_ids(session: Session, user_id: str) -> set[int]:
+    return set(session.scalars(select(Alert.stream_id).where(
+        Alert.user_id == user_id, Alert.action == "suggest_cancel", Alert.status == "accepted",
+        Alert.stream_id.is_not(None))))
 
 
 # income, transfers, savings and card payments aren't things a user subscribes to
@@ -103,4 +109,5 @@ def refresh_streams(session: Session, user_id: str, today: date, run_id: Optiona
             if _is_pay(row):
                 changes.append(StreamChange("income_change", row.id, row.last_cents, today.isoformat()))
     session.flush()
-    return changes
+    muted = muted_stream_ids(session, user_id)
+    return [c for c in changes if c.stream_id not in muted]
