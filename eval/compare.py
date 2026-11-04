@@ -90,12 +90,33 @@ def compare(with_folder: Path, without_folder: Path, metric: str, tags: dict[str
     passed, family = METRICS[metric]
     with_cfg, with_runs = load_runs(with_folder)
     without_cfg, without_runs = load_runs(without_folder)
-    for field in ("commit", "scenario_hash"):
-        if with_cfg.get(field) != without_cfg.get(field):
-            raise NotComparable(f"{field} differs: {with_cfg.get(field)} vs {without_cfg.get(field)}")
-    shared = sorted(s for s in set(with_runs) & set(without_runs) if _wanted(_kind(with_runs[s]), family))
-    if not shared:
+    if with_cfg.get("commit") != without_cfg.get("commit"):
+        raise NotComparable(f"commit differs: {with_cfg.get('commit')} vs {without_cfg.get('commit')}")
+    kinds = ({_kind(items) for items in with_runs.values()} &
+             {_kind(items) for items in without_runs.values()})
+    kinds = sorted(kind for kind in kinds if _wanted(kind, family))
+    if not kinds:
         raise NotComparable("no scenarios in common for this metric")
+    shared = []
+    for kind in kinds:
+        with_ids = {sid for sid, items in with_runs.items() if _kind(items) == kind}
+        without_ids = {sid for sid, items in without_runs.items() if _kind(items) == kind}
+        if with_ids != without_ids:
+            raise NotComparable(f"{kind} scenario sets differ: only with={sorted(with_ids - without_ids)}, "
+                                f"only without={sorted(without_ids - with_ids)}")
+        shared.extend(with_ids)
+    with_hashes, without_hashes = (cfg.get("scenario_hashes_by_kind") for cfg in (with_cfg, without_cfg))
+    if with_hashes is not None and without_hashes is not None:
+        for kind in kinds:
+            if not with_hashes.get(kind) or not without_hashes.get(kind):
+                raise NotComparable(f"scenario_hashes_by_kind missing {kind}")
+            if with_hashes[kind] != without_hashes[kind]:
+                raise NotComparable(f"{kind} scenario_hash differs: {with_hashes[kind]} vs {without_hashes[kind]}")
+    elif not with_cfg.get("scenario_hash") or with_cfg.get("scenario_hash") != without_cfg.get("scenario_hash"):
+        # Old results have only a whole-run hash; never infer missing provenance from today's scenario files.
+        raise NotComparable("scenario_hash differs or is missing; subset comparisons need runs with "
+                            "scenario_hashes_by_kind")
+    shared.sort()
     rows = []
     for sid in shared:
         a, b = scenario_passes(with_runs[sid], passed), scenario_passes(without_runs[sid], passed)
@@ -113,7 +134,7 @@ def compare(with_folder: Path, without_folder: Path, metric: str, tags: dict[str
     out = {"with": with_folder.name, "without": without_folder.name, "metric": metric, "commit": with_cfg.get("commit"),
            "groups": groups, "scenarios": rows}
     if metric == "retries":
-        rates = fire_rates(with_runs)
+        rates = fire_rates({sid: with_runs[sid] for sid in shared})
         out["fire_rates"] = rates
         out["uninformative"] = {name: rate is None or rate < MIN_FIRE_RATE for name, rate in rates.items()}
     return out

@@ -9,13 +9,17 @@ from eval import run_benchmark as bench
 from eval import sample_answers as sample
 
 
-def write_folder(folder: Path, results: dict, commit="abc", kind="chat", scenario_hash="h"):
+def write_folder(folder: Path, results: dict, commit="abc", kind="chat", scenario_hash="h", scenario_hashes_by_kind=None):
     folder.mkdir(parents=True)
-    (folder / "config.json").write_text(json.dumps({"commit": commit, "scenario_hash": scenario_hash, "finished_at": "t"}))
+    cfg = {"commit": commit, "scenario_hash": scenario_hash, "finished_at": "t"}
+    if scenario_hashes_by_kind is not None:
+        cfg["scenario_hashes_by_kind"] = scenario_hashes_by_kind
+    (folder / "config.json").write_text(json.dumps(cfg))
     for sid, passes in results.items():
+        scenario_kind = kind[sid] if isinstance(kind, dict) else kind
         for n, passed in enumerate(passes, 1):
-            scores = {"facts": {"passed": passed}, "judge_passed": passed} if kind == "chat" else {"checks": {}, "passed": passed}
-            record = {"scenario_id": sid, "kind": kind, "answer": "text"}
+            scores = {"facts": {"passed": passed}, "judge_passed": passed} if scenario_kind == "chat" else {"checks": {}, "passed": passed}
+            record = {"scenario_id": sid, "kind": scenario_kind, "answer": "text"}
             (folder / f"{sid}.run{n}.json").write_text(json.dumps({"record": record, "scores": scores}))
 
 
@@ -51,6 +55,66 @@ def test_compare_refuses_folders_that_differ(tmp_path, field):
     write_folder(tmp_path / "wo", {"a": [True]}, **{field: "other"})
     with pytest.raises(cmp.NotComparable, match=field):
         cmp.compare(tmp_path / "w", tmp_path / "wo", "chat", TAGS)
+
+
+def write_subset_pair(tmp_path, kind):
+    baseline, subset = tmp_path / "baseline", tmp_path / "subset"
+    write_folder(baseline, {k: [True] * 3 for k in ("chat", "budget", "goal")},
+                 kind={k: k for k in ("chat", "budget", "goal")}, scenario_hash="all",
+                 scenario_hashes_by_kind={k: f"hash-{k}" for k in ("chat", "budget", "goal")})
+    write_folder(subset, {kind: [False] * 3}, kind=kind, scenario_hash="subset",
+                 scenario_hashes_by_kind={kind: f"hash-{kind}"})
+    return baseline, subset
+
+
+@pytest.mark.parametrize("kind,metric", [("chat", "chat"), ("budget", "budget"),
+                                         ("budget", "retries"), ("goal", "retries")])
+def test_compare_full_baseline_with_matching_kind_subset(tmp_path, kind, metric):
+    baseline, subset = write_subset_pair(tmp_path, kind)
+    result = cmp.compare(baseline, subset, metric, {})
+    assert result["groups"]["all"]["scenarios"] == 1 and result["groups"]["all"]["wins"] == 1
+    assert [row["scenario"] for row in result["scenarios"]] == [kind]
+    assert cmp.compare(subset, baseline, metric, {})["groups"]["all"]["losses"] == 1
+
+
+@pytest.mark.parametrize("change,match", [("commit", "commit"), ("hash", "chat scenario_hash"),
+                                        ("missing_hash", "missing chat"), ("legacy", "subset comparisons")])
+def test_subset_comparison_requires_matching_provenance(tmp_path, change, match):
+    baseline, subset = write_subset_pair(tmp_path, "chat")
+    path = subset / "config.json"
+    cfg = json.loads(path.read_text())
+    if change == "commit":
+        cfg["commit"] = "other"
+    elif change == "hash":
+        cfg["scenario_hashes_by_kind"]["chat"] = "changed"
+    elif change == "missing_hash":
+        cfg["scenario_hashes_by_kind"] = {}
+    else:
+        del cfg["scenario_hashes_by_kind"]
+    path.write_text(json.dumps(cfg))
+    with pytest.raises(cmp.NotComparable, match=match):
+        cmp.compare(baseline, subset, "chat", {})
+
+
+def test_compare_refuses_to_silently_drop_a_missing_scenario(tmp_path):
+    write_folder(tmp_path / "w", {"a": [True], "b": [True]})
+    write_folder(tmp_path / "wo", {"a": [True]})
+    with pytest.raises(cmp.NotComparable, match="chat scenario sets differ"):
+        cmp.compare(tmp_path / "w", tmp_path / "wo", "chat", TAGS)
+
+
+@pytest.mark.parametrize("kind,excluded", [("budget", "goal_correction"), ("goal", "resend")])
+def test_retry_rates_exclude_kinds_outside_the_comparison(tmp_path, kind, excluded):
+    baseline, subset = write_subset_pair(tmp_path, kind)
+    for agent_kind in ("budget", "goal"):
+        path = baseline / f"{agent_kind}.run1.json"
+        item = json.loads(path.read_text())
+        item["record"].update(llm_calls=10, llm_retries=1, attempts=2)
+        path.write_text(json.dumps(item))
+    result = cmp.compare(baseline, subset, "retries", {})
+    included = "resend" if kind == "budget" else "goal_correction"
+    assert result["fire_rates"][included] > 0
+    assert result["fire_rates"][excluded] is None
 
 
 def test_retry_fire_rate_marks_a_mechanism_that_rarely_ran(tmp_path):

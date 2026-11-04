@@ -205,6 +205,8 @@ def main(argv=None) -> int:
     cfg = {"model": args.model, "judge": args.judge, "embeddings": config.OLLAMA_EMBED_MODEL,
            "runs": args.runs, "commit": _git_commit(), "scenarios": [s.id for s in scenarios],
            "scenario_hash": _scenario_hash(scenarios), "ollama_version": _ollama_version(), "label": args.label,
+           "scenario_hashes_by_kind": {kind: _scenario_hash([s for s in scenarios if s.kind == kind])
+                                       for kind in KINDS if any(s.kind == kind for s in scenarios)},
            "retrieval": config.KG_CHAT, "kg_mode": config.KG_MODE, "retries": config.RETRIES_ENABLED,
            "temperature": args.temperature, "seed": args.seed, "today": args.today and args.today.isoformat(),
            "started_at": _now()}

@@ -149,6 +149,29 @@ def test_kind_defaults_to_every_kind(agents):
     assert json.loads((out / "g1.run1.json").read_text())["scores"]["checks"]["model_not_called"] is True
 
 
+def test_kind_hash_matches_full_baseline_and_tracks_scenario_changes(agents):
+    def run_config(*args):
+        assert run_eval.main(["--runs", "1", "--model", "m", *args]) == 0
+        [folder] = (agents / "results").glob(f"*/m-{args[-1]}")
+        return json.loads((folder / "config.json").read_text())
+
+    full = run_config("--label", "full")
+    budget = run_config("--kind", "budget", "--label", "budget")
+    assert set(full["scenario_hashes_by_kind"]) == {"chat", "budget", "goal"}
+    assert set(budget["scenario_hashes_by_kind"]) == {"budget"}
+    assert full["scenario_hash"] != budget["scenario_hash"]
+    assert full["scenario_hashes_by_kind"]["budget"] == budget["scenario_hashes_by_kind"]["budget"]
+
+    path = run_eval.SCENARIOS_DIR / "b1.json"
+    data = json.loads(path.read_text())
+    data["tags"].append("changed")
+    path.write_text(json.dumps(data))
+    changed = run_config("--label", "changed")
+    assert changed["scenario_hashes_by_kind"]["budget"] != full["scenario_hashes_by_kind"]["budget"]
+    for kind in ("chat", "goal"):
+        assert changed["scenario_hashes_by_kind"][kind] == full["scenario_hashes_by_kind"][kind]
+
+
 def test_kind_rejects_an_unknown_value():
     with pytest.raises(SystemExit):
         run_eval.parse_args(["--kind", "close"])

@@ -10,9 +10,20 @@ Tests for the TPC-27 benchmark scripts: `eval/compare.py`, `eval/run_benchmark.p
 
 ## `test_compare_refuses_folders_that_differ`
 
-**What it does:** Folders with a different commit or scenario hash can't be compared.
+**What it does:** Legacy folders with a different commit or whole-run scenario hash can't be compared.
 
 **Why it's there:** A difference could come from the code and not the technology being tested.
+
+## Subset comparisons
+
+`test_compare_full_baseline_with_matching_kind_subset` checks full baselines against chat, budget and goal subsets using
+per-kind hashes, in both comparison directions. `test_subset_comparison_requires_matching_provenance` rejects changed
+commits, changed relevant hashes, missing kind hashes and legacy metadata that cannot prove subset compatibility.
+`test_compare_refuses_to_silently_drop_a_missing_scenario` rejects unequal scenario sets rather than scoring only their
+intersection. `test_retry_rates_exclude_kinds_outside_the_comparison` ensures a budget retry comparison excludes goal calls,
+and a goal retry comparison excludes budget calls.
+
+These checks let the benchmark reuse its full baseline without weakening scenario provenance.
 
 ## `test_retry_fire_rate_marks_a_mechanism_that_rarely_ran`, `test_budget_metric_reads_cause_and_action`
 

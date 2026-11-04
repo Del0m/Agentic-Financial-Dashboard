@@ -86,6 +86,13 @@ The `agents` fixture adds one budget and one goal file to `offline`, and stubs t
 
 **Why it's there:** A typo mustn't quietly run nothing.
 
+## `test_kind_hash_matches_full_baseline_and_tracks_scenario_changes`
+
+**What it does:** Runs an offline full baseline and budget-only condition. Their whole-run hashes differ, but their budget
+hashes match. Changing a budget scenario changes only the budget hash in a subsequent full run.
+
+**Why it's there:** The comparison script needs to verify the relevant scenarios when the baseline contains additional kinds.
+
 ## `test_kind_budget_builds_nothing_only_chat_needs`
 
 **What it does:** `--kind budget` never builds the knowledge base or embeddings, only the agent model, and never runs a chat scenario. The summary has `overall.runs == 0` and no `goal` section, `config.json` lists only that scenario, and the table prints the false-alarm rate.
