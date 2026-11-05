@@ -1,0 +1,40 @@
+{
+  "record": {
+    "scenario_id": "kb-emergency-fund",
+    "run": 1,
+    "answer": "An emergency fund helps cover unexpected expenses like medical bills or car repairs without going into debt. To start, aim to save at least $1,000, then work towards 3-6 months' worth of expenses. Begin by setting a monthly savings goal based on your budget and automate transfers to a savings account.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 7.599016458727419,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": false,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9192557351575661,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 2,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The answer provides general advice but does not incorporate any user-specific information, as no data was looked up."
+    },
+    "judge_passed": false
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "record": {
+    "scenario_id": "temporal-401k-2023",
+    "run": 3,
+    "answer": "The 401(k) employee contribution limit for 2023 was $22,500. This is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 5.45790212508291,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": true,
+    "similarity": 0.9975461045768438,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly addresses the question with the correct information and includes a disclaimer."
+    },
+    "judge_passed": true
+  }
+}

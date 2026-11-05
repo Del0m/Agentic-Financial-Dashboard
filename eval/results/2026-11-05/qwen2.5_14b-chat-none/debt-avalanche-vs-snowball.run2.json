@@ -1,0 +1,58 @@
+{
+  "record": {
+    "scenario_id": "debt-avalanche-vs-snowball",
+    "run": 2,
+    "answer": "Using the avalanche method with an extra $100 a month, you will be debt-free in 33 months, with $2,390.13 in total interest. The extra $100 saves you 36 months and $3,175.45 in interest.\n\nUsing the snowball method with an extra $100 a month, you will be debt-free in 34 months, with $2,547.58 in total interest. The extra $100 saves you 35 months and $3,018.00 in interest.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "plan_debt_payoff",
+        "args": {
+          "extra_monthly": 100,
+          "strategy": "avalanche"
+        }
+      },
+      {
+        "name": "plan_debt_payoff",
+        "args": {
+          "extra_monthly": 100,
+          "strategy": "snowball"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_ba7a\",\"purpose\":\"debt_plan\",\"data\":{\"extra_monthly\":100.0,\"start\":\"2026-12\",\"plans\":[{\"strategy\":\"avalanche\",\"summary\":\"33 months to debt-free, $2,390.13 total interest. The extra saves 36 months and $3,175.45 in interest.\",\"months\":33,\"debt_free\":\"2029-08\",\"total_interest\":2390.13,\"order\":[{\"name\":\"Store Card\",\"paid_off\":\"2029-07\",\"interest\":135.15},{\"name\":\"Rewards Card\",\"paid_off\":\"2029-08\",\"interest\":2254.98}],\"without_extra\":{\"months\":69,\"total_interest\":5565.58},\"difference\":{\"months_sooner\":36,\"interest_saved\":3175.45},\"never\":[]}],\"excluded\":[],\"assumptions\":\"Interest is charged monthly at APR/12; minimum payments are held at today's amounts; not financial advice.\"}}",
+      "{\"user\":\"user_ba7a\",\"purpose\":\"debt_plan\",\"data\":{\"extra_monthly\":100.0,\"start\":\"2026-12\",\"plans\":[{\"strategy\":\"snowball\",\"summary\":\"34 months to debt-free, $2,547.58 total interest. The extra saves 35 months and $3,018.00 in interest.\",\"months\":34,\"debt_free\":\"2029-09\",\"total_interest\":2547.58,\"order\":[{\"name\":\"Store Card\",\"paid_off\":\"2027-06\",\"interest\":29.95},{\"name\":\"Rewards Card\",\"paid_off\":\"2029-09\",\"interest\":2517.63}],\"without_extra\":{\"months\":69,\"total_interest\":5565.58},\"difference\":{\"months_sooner\":35,\"interest_saved\":3018.0},\"never\":[]}],\"excluded\":[],\"assumptions\":\"Interest is charged monthly at APR/12; minimum payments are held at today's amounts; not financial advice.\"}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 13.532779125031084,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": true,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.8901469288451578,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately presents the data provided and includes specific figures and timelines."
+    },
+    "judge_passed": true
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "record": {
+    "scenario_id": "temporal-first-shop",
+    "run": 2,
+    "answer": "I couldn't find any information about your first purchase at Book Nook.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "search_kb",
+        "args": {
+          "query": "first purchase at Book Nook"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"purpose\":\"kb\",\"results\":[{\"title\":\"Budgeting basics: The 50-30-20 rule\",\"section\":\"In summary\",\"source_url\":\"https://www.unfcu.org/guides/the-50-30-20-rule\",\"text\":\"Options to save for the future at UNFCU include savings accounts and share certificates.\\n\\nThe 50-30-20 rule is just one way to consider organizing your budget. To find the perfect fit for your situation, consult a professional financial planner.\"},{\"title\":\"Five Questions to Ask Before You Invest\",\"section\":\"Question 1: Is the seller licensed?\",\"source_url\":\"https://www.investor.gov/introduction-investing/getting-started/five-questions-ask-you-invest\",\"text\":\"Research shows that con-artists are experts at the art of persuasion, often using a variety of influence tactics tailored to the vulnerabilities of their victims. Smart investors check the background of anyone promoting an investment opportunity, even before learning about the opportunity itself.\\n\\nInvestor.gov has a free and simple search tool that allows you to find out if an investment professional is licensed and registered, and if they have a disciplinary history or customer complaints. It’s a great first step toward protecting your money.\"},{\"title\":\"Budgeting basics: The 50-30-20 rule\",\"section\":\"Wants: 30%\",\"source_url\":\"https://www.unfcu.org/guides/the-50-30-20-rule\",\"text\":\"You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\\n\\n- Subscriptions\\n- Supplies for hobbies\\n- Restaurant meals\\n- Vacations\"},{\"title\":\"Credit cards key terms | Consumer Financial Protection Bureau\",\"section\":\"Credit cards key terms\",\"source_url\":\"https://www.consumerfinance.gov/consumer-tools/credit-cards/answers/key-terms/\",\"text\":\"- Annual percentage rate (APR)\\n-\\nThe APR, or annual percentage rate, is the standard way to compare how much loans cost. It lets you compare the cost of loan products on an “apples-to-apples” basis. Your credit card company must disclose the APR before you agree to the use the card.\\n\\nTo calculate the APR, the interest rate and fees are compared to the amount you borrow and calculated over a one-year period. This allows you to compare the costs of a credit card to a six-month installment loan. It is also why APRs are often different from simple interest rates.\\n\\n- Balance transfer\\n-\\nA balance transfer lets you move an outstanding balance from one credit card to another, sometimes for a fee. The fee is usually a certain percentage of the amount you transfer or a fixed amount, whichever is more. Many credit card companies offer zero-percent or low-interest balance transfers to invite you to consolidate your debt on one credit card. The promotional interest rate for most balance transfers lasts for a limited time. After that, the interest rate on your new credit card may rise, increasing your payment amount.\\n\\nIf you’re more than 60 days late on a payment, the credit card company can increase your interest rate on all balances, including the transferred balance.\\n\\n- Cardholder agreement\\n-\\nA cardholder agreement states the terms and conditions that apply to a credit card that is offered to a customer. Among other provisions, the cardholder agreement outlines applicable fees, your liability for unauthorized transactions, and the annual percentage rate (APR) of the card. If you lost your cardholder agreement, you can obtain one on the card issuer’s website or by calling the card issuer. You may also be able to find it listed on the CFPB’s Credit Card Agreement Database.\\n\\n- Credit balance\\n-\\nA credit balance on your billing statement is an amount that the card issuer owes you.\"}]}"
+    ],
+    "graph_facts": [
+      "Charges at Book Nook: first in March 2026, latest in September 2026, in 3 months, $25.00 in the latest month"
+    ],
+    "sources": [
+      {
+        "title": "Five Questions to Ask Before You Invest",
+        "section": "Question 1: Is the seller licensed?",
+        "source_url": "https://www.investor.gov/introduction-investing/getting-started/five-questions-ask-you-invest",
+        "text": "Research shows that con-artists are experts at the art of persuasion, often using a variety of influence tactics tailored to the vulnerabilities of their victims. Smart investors check the background of anyone promoting an investment opportunity, even before learning about the opportunity itself.\n\nInvestor.gov has a free and simple search tool that allows you to find out if an investment professional is licensed and registered, and if they have a disciplinary history or customer complaints. It’s a great first step toward protecting your money."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "In summary",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Options to save for the future at UNFCU include savings accounts and share certificates.\n\nThe 50-30-20 rule is just one way to consider organizing your budget. To find the perfect fit for your situation, consult a professional financial planner."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      },
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "How do I build it?",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "There are different strategies to get your savings started. These strategies cover a range of situations, including if you have a limited ability to save or if your pay tends to fluctuate. It may be that you could use all of these strategies, but if you have a limited ability to save, managing your cash flow or putting away a portion of your tax refund are the easiest ways to get started."
+      }
+    ],
+    "latency_s": 4.924826000351459,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "March"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": false,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.9554849008429502,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant correctly states it cannot find the requested information, which aligns with the lack of relevant data in the provided tool results, but offers no specific details."
+    },
+    "judge_passed": true
+  }
+}

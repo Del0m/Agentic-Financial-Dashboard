@@ -1,0 +1,67 @@
+{
+  "record": {
+    "scenario_id": "budget-graph-previously-dismissed",
+    "run": 1,
+    "flags": {
+      "FOOD_AND_DRINK": "2026-10-09"
+    },
+    "alerts": [
+      {
+        "day": "2026-10-09",
+        "kind": "overspend",
+        "category": "FOOD_AND_DRINK",
+        "cause": "one_time",
+        "action": "alert",
+        "severity": "high",
+        "message": "You spent $300.00 on a one-time expense from Party Caterer, which is unusual for this category.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-10-09",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "delay_spend",
+        "severity": "high",
+        "message": "Low balance: Everyday spending bill due on 2026-10-10 will leave a shortfall of $138.45.",
+        "signal_days": 1
+      },
+      {
+        "day": "2026-10-10",
+        "kind": "overspend",
+        "category": "FOOD_AND_DRINK",
+        "cause": "one_time",
+        "action": "alert",
+        "severity": "high",
+        "message": "You spent $300.00 on a one-time expense from Party Caterer, which is a high-severity flag. Your projected spending for the month is $1,185.47.",
+        "signal_days": null
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 4,
+    "llm_retries": 0,
+    "latency_s": 8.6027404172346,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true,
+      "cause": true,
+      "action": true,
+      "message": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [
+      0
+    ],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 1,
+    "llm_calls": 4,
+    "llm_retries": 0
+  }
+}

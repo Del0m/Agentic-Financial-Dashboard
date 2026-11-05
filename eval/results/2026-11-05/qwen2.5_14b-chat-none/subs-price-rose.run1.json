@@ -1,0 +1,47 @@
+{
+  "record": {
+    "scenario_id": "subs-price-rose",
+    "run": 1,
+    "answer": "Your gym membership at FitClub Gym increased from $40 to $43 last month. The next charge is on December 2, 2026.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_3075\",\"purpose\":\"recurring\",\"data\":{\"streams\":[{\"merchant\":\"FitClub Gym\",\"category\":\"PERSONAL_CARE\",\"frequency\":\"monthly\",\"typical\":40.0,\"last\":43.0,\"previous\":40.0,\"next_date\":\"2026-12-02\"}]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 7.493050416000187,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9348466610384935,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly addresses the question using the provided data, accurately stating the price increase and next charge date."
+    },
+    "judge_passed": true
+  }
+}

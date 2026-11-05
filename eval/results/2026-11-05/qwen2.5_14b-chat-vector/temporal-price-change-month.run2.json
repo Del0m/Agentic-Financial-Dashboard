@@ -1,0 +1,74 @@
+{
+  "record": {
+    "scenario_id": "temporal-price-change-month",
+    "run": 2,
+    "answer": "It looks like I don't have any information about your Streamly subscription from the recurring charges list. To find out when Streamly's price went up, you should check your payment history or contact Streamly's customer support for details on pricing changes.\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_8bca\",\"purpose\":\"recurring\",\"data\":{\"streams\":[]}}"
+    ],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      },
+      {
+        "title": "Asset Allocation and Diversification",
+        "section": "What is asset allocation?",
+        "source_url": "https://www.investor.gov/introduction-investing/getting-started/asset-allocation",
+        "text": "an asset category that is doing poorly may not be easy. But it can be a wise move. By cutting back on current “winners” and/or adding more current “losers,” rebalancing forces you to buy low and sell high.\n\nSome financial experts advise rebalancing at regular intervals, such as every six or 12 months. Others recommend rebalancing when your holdings of an asset class increase or decrease more than a pre-set percentage. In either case, rebalancing tends to work best when done relatively infrequently.\n\nIn a target date fund, the fund’s investment adviser takes care of rebalancing the fund’s asset allocation over time in a way that is typically intended to become more conservative as you approach the target date."
+      },
+      {
+        "title": "Five Questions to Ask Before You Invest",
+        "section": "Question 2: Is the offer and sale of the security registered?",
+        "source_url": "https://www.investor.gov/introduction-investing/getting-started/five-questions-ask-you-invest",
+        "text": "Any offer or sale of securities must be registered with the SEC or exempt from registration. Registration is important because it provides investors with access to key information about the company's management, products, services, and finances.\n\nYou can check whether an investment is registered with the SEC by using the SEC’s EDGAR database or contacting the SEC’s toll-free investor assistance line at (800) 732-0330."
+      },
+      {
+        "title": "Traditional and Roth IRAs | Internal Revenue Service",
+        "section": "How much can I contribute? (updated July 29, 2024)",
+        "source_url": "https://www.irs.gov/retirement-plans/traditional-and-roth-iras",
+        "text": "The most you can contribute to **all **of your traditional and Roth IRAs is the smaller of:\n\n- For 2021, $6,000, or $7,000 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\n- For 2022, $6,000, or $7,000 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\n- For 2023, $6,500, or $7,500 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\n- For 2024, $7,000, or $8,000 if you’re age 50 or older by the end of the year; or your taxable compensation for the year."
+      }
+    ],
+    "latency_s": 14.352618041913956,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "August"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.8760083709685506,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant correctly states it lacks data and suggests appropriate actions, but doesn't offer any specific details."
+    },
+    "judge_passed": true
+  }
+}

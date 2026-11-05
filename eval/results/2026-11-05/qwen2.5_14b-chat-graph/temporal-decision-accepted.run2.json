@@ -1,0 +1,42 @@
+{
+  "record": {
+    "scenario_id": "temporal-decision-accepted",
+    "run": 2,
+    "answer": "Yes, you accepted the proposal to raise your entertainment budget to $200.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [
+      "Advice on October 4, 2026: \"Your new club repeats monthly, so I propose raising the entertainment limit to $200.\" The user's decision: accepted."
+    ],
+    "sources": [],
+    "latency_s": 5.707764583174139,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.9479859355108183,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly and accurately reflects the provided tool results and user decision."
+    },
+    "judge_passed": true
+  }
+}

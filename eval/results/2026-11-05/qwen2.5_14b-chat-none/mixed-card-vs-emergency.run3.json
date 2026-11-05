@@ -1,0 +1,57 @@
+{
+  "record": {
+    "scenario_id": "mixed-card-vs-emergency",
+    "run": 3,
+    "answer": "Based on the information provided, you have a credit card balance of $2600.0 and a savings account balance of $900.0. If your emergency fund is not sufficient to cover at least 3-6 months of expenses, it might be wise to focus on building your emergency fund first. However, if you have other debts or if your expenses are high, you might want to consider paying down your credit card to reduce interest costs. Given your current balances, you could consider allocating some funds to both, ensuring you cover any upcoming expenses while also making progress on your debt.\n\nTo give you a more precise recommendation, I would need to know your monthly expenses and income. Would you like to provide that information? If not, focusing on building your emergency fund to at least $1000-$2000 might be a good start, while also making minimum payments on your credit card. This way, you have a buffer for unexpected expenses and can still manage your debt.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_accounts",
+        "args": {}
+      },
+      {
+        "name": "get_spending",
+        "args": {}
+      },
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_9b0a\",\"purpose\":\"accounts\",\"data\":[{\"name\":\"Everyday Checking\",\"type\":\"depository\",\"subtype\":\"checking\",\"balance\":1450.0,\"available\":null,\"limit\":null},{\"name\":\"[person]'s Savings\",\"type\":\"depository\",\"subtype\":\"savings\",\"balance\":900.0,\"available\":null,\"limit\":null},{\"name\":\"Rewards Card\",\"type\":\"credit\",\"subtype\":\"credit card\",\"balance\":2600.0,\"available\":null,\"limit\":null}]}",
+      "{\"user\":\"user_9b0a\",\"purpose\":\"spending\",\"data\":{}}",
+      "{\"user\":\"user_9b0a\",\"purpose\":\"recurring\",\"data\":{\"streams\":[]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 14.289166791830212,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": false,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": false,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.8685530190043859,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The answer correctly references the user's credit card and savings balances but offers only general advice without recommending a specific action."
+    },
+    "judge_passed": true
+  }
+}

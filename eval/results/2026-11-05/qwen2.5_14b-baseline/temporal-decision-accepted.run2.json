@@ -1,0 +1,67 @@
+{
+  "record": {
+    "scenario_id": "temporal-decision-accepted",
+    "run": 2,
+    "answer": "Yes, you accepted the proposal to raise your entertainment budget to $200. This increase will accommodate your new club subscription that repeats monthly. This is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [
+      "Advice on October 4, 2026: \"Your new club repeats monthly, so I propose raising the entertainment limit to $200.\" The user's decision: accepted."
+    ],
+    "sources": [
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "In brief",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "- Understanding your spending can help you better plan for the future.\n- The 50-30-20 rule organizes spending into needs, wants, and goals.\n\nCreating a budget can help you make confident decisions and enjoy peace of mind. A detailed budget, though, can be complex to manage.\n\nThe 50-30-20 rule splits expenses into just three categories. It also offers recommendations on how much money to use for each. With some basic information, you can get on the road to financial well-being."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Getting started",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Start by taking a look at your paycheck. If taxes are withheld, subtract that amount from your total earnings. Do not subtract other amounts that may be withheld or automatically deducted, like health insurance or retirement contributions. Those will become part of your budget.\n\nThe 50-30-20 rule recommends putting 50% of your money toward needs, 30% toward wants, and 20% toward savings. The savings category also includes money you will need to realize your future goals. Let’s take a closer look at each category."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "In summary",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Options to save for the future at UNFCU include savings accounts and share certificates.\n\nThe 50-30-20 rule is just one way to consider organizing your budget. To find the perfect fit for your situation, consult a professional financial planner."
+      }
+    ],
+    "latency_s": 9.703336749691516,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.9322831291156873,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly confirms the user's action and accurately reflects the tool's proposal and the amount."
+    },
+    "judge_passed": true
+  }
+}

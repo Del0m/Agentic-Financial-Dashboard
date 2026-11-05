@@ -1,0 +1,28 @@
+{
+  "record": {
+    "scenario_id": "goal-respects-skipped-kind",
+    "run": 1,
+    "status": "error",
+    "reason": "validation_failed",
+    "cap_cents": 81600,
+    "surplus_cents": 102000,
+    "offered": [
+      "emergency_fund",
+      "savings"
+    ],
+    "attempts": 2,
+    "plans": [],
+    "latency_s": 7.886506041977555,
+    "error": null,
+    "kind": "goal"
+  },
+  "scores": {
+    "checks": {
+      "status": false,
+      "banned_kinds": true,
+      "under_cap": false
+    },
+    "passed": false,
+    "attempts": 2
+  }
+}

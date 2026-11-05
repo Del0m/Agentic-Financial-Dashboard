@@ -1,0 +1,49 @@
+{
+  "record": {
+    "scenario_id": "temporal-price-change-month",
+    "run": 1,
+    "answer": "It seems there's no information about Streamly in your recurring charges. I can't determine when the price went up based on this. Please provide more details or check another source for the date of the price change.\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_749c\",\"purpose\":\"recurring\",\"data\":{\"streams\":[]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 7.816190290730447,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "August"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.8793284022892949,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant correctly states it cannot find information and avoids inventing data, but offers only general advice."
+    },
+    "judge_passed": true
+  }
+}

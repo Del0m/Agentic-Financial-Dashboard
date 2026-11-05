@@ -1,0 +1,72 @@
+{
+  "record": {
+    "scenario_id": "cash-before-payday",
+    "run": 1,
+    "answer": "Your checking balance ranges from $50.00 to $4,250.00 over the forecast. You could run short: it reaches $50.00 on 2026-11-09, below your $100.00 buffer. The dip comes from your Landlord.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_cash_forecast",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_8930\",\"purpose\":\"cash_flow\",\"data\":{\"status\":\"ok\",\"income\":\"paycheck\",\"buffer\":100.0,\"summary\":\"Your checking balance ranges from $50.00 to $4,250.00 over the forecast. You could run short: it reaches $50.00 on 2026-11-09, below your $100.00 buffer. The dip comes from Landlord.\",\"monthly_surplus\":2700.0,\"assumed_no_income\":false,\"days\":[{\"date\":\"2026-11-07\",\"low\":1550.0,\"expected\":1550.0,\"high\":1550.0},{\"date\":\"2026-11-08\",\"low\":1550.0,\"expected\":1550.0,\"high\":1550.0},{\"date\":\"2026-11-09\",\"low\":50.0,\"expected\":50.0,\"high\":50.0},{\"date\":\"2026-11-10\",\"low\":50.0,\"expected\":50.0,\"high\":50.0},{\"date\":\"2026-11-11\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-12\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-13\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-14\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-15\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-16\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-17\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-18\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-19\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-20\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-21\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-22\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-23\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-24\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-25\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-26\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-27\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-28\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-29\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-30\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-12-01\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-12-02\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-12-03\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-12-04\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-12-05\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-12-06\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0}],\"dip\":{\"date\":\"2026-11-09\",\"shortfall\":50.0,\"bill\":\"Landlord\"}}}"
+    ],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Getting started",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Start by taking a look at your paycheck. If taxes are withheld, subtract that amount from your total earnings. Do not subtract other amounts that may be withheld or automatically deducted, like health insurance or retirement contributions. Those will become part of your budget.\n\nThe 50-30-20 rule recommends putting 50% of your money toward needs, 30% toward wants, and 20% toward savings. The savings category also includes money you will need to realize your future goals. Let’s take a closer look at each category."
+      },
+      {
+        "title": "Traditional and Roth IRAs | Internal Revenue Service",
+        "section": "What is the deadline to make contributions?",
+        "source_url": "https://www.irs.gov/retirement-plans/traditional-and-roth-iras",
+        "text": "Your tax return filing deadline (not including extensions). For example, you can make 2022 IRA contributions until April 18, 2023."
+      },
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Treatment of excess deferrals",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "You have an excess deferral if the total of your elective deferrals to all plans is more than the deferral limit for the year. Notify your plan administrator before April 15 of the following year that you would like the excess deferral amount, adjusted for earnings, to be distributed to you from the plan. The April 15 date is not tied to the due date for your return.\n\n**Excess withdrawn by April 15.** If you exceed the deferral limit for 2020, you must distribute the excess deferrals by April 15, 2021.\n\n- Excess deferrals for 2020 that are withdrawn by April 15, 2021, are includable in your gross income for 2020.\n- Earnings on the excess deferrals are taxed in the year distributed.\n\nThe distribution is not subject to the additional 10% tax on early distributions.\n\n**Excess not withdrawn by April 15.** If you don't take out the excess deferral by April 15, 2021, the excess, though taxable in 2020, is not included in your cost basis in figuring the taxable amount of any eventual distributions from the plan. In effect, an excess deferral left in the plan is taxed twice, once when contributed and again when distributed. Also, if the entire deferral is allowed to stay in the plan, the plan may not be a qualified plan.\n\n**Reporting corrective distributions on Form 1099-R.** Corrective distributions of excess deferrals (including any earnings) are reported to you by the plan on Form 1099-R, Distributions From Pensions, Annuities, Retirement or Profit-Sharing Plans, IRAs, Insurance Contracts, etc."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Savings: 20%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "The remaining 20% of your budget should go toward the future. You may put money in an emergency fund, contribute to a retirement account, or save toward a down payment on a home. Paying down debt beyond the minimum payment amount belongs in this category, too."
+      }
+    ],
+    "latency_s": 9.28763608308509,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.8782158993144838,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 3,
+      "reason": "The answer accurately reflects the tool's data, including the date, shortfall amount, and the source of the dip (Landlord), but lacks specific actionable advice."
+    },
+    "judge_passed": true
+  }
+}

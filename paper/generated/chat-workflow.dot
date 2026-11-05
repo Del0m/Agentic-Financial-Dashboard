@@ -1,0 +1,12 @@
+digraph G {
+rankdir=LR; bgcolor="white"; pad=0.3;
+node [shape=box,style="rounded,filled",fillcolor="#eaf2f8",fontname="Helvetica"];
+edge [fontname="Helvetica",fontsize=10,color="#566573"];
+"start" -> "retrieve";
+"retrieve" -> "graph_retrieve";
+"graph_retrieve" -> "agent";
+"agent" -> "tools" [style=dashed,label="conditional"];
+"agent" -> "finish" [style=dashed,label="conditional"];
+"tools" -> "agent";
+"finish" -> "end";
+}

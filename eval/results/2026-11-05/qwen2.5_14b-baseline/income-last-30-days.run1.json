@@ -1,0 +1,76 @@
+{
+  "record": {
+    "scenario_id": "income-last-30-days",
+    "run": 1,
+    "answer": "Over the last 30 days, you received a total of $3700 as income. This includes two transactions of $1850 each on November 4, 2026, and October 21, 2026.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_spending",
+        "args": {
+          "start_date": "2026-10-07",
+          "end_date": "2026-11-06",
+          "category": "INCOME"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_b782\",\"purpose\":\"spending\",\"data\":{\"category\":\"INCOME\",\"total\":3700.0,\"direction\":\"inflow\",\"count\":2,\"truncated\":false,\"transactions\":[{\"date\":\"2026-11-04\",\"amount\":1850.0,\"merchant\":null},{\"date\":\"2026-10-21\",\"amount\":1850.0,\"merchant\":null}]}}"
+    ],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Overall limit on contributions",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "make a nonelective contribution of $57,000 to his solo 401(k) plan. This $57,000 limit is not reduced by the elective deferrals Greg made under his employer’s plan because the limit on annual additions applies to each plan separately.\n\n**Example 2**: In **Example 1**, if Greg were 52 years old and eligible to make catch-up contributions, he could contribute an additional $6,500 of elective deferrals for 2020. His catch-up contribution could be split between the plans in any proportion he chooses. Or, Greg may contribute the full $6,500 catch-up contribution to his solo 401(k) plan, making a total contribution of $63,500 for 2020. This is because, although he made nonelective contribution to his solo 401(k) plan up to the maximum of $57,000, the $57,000 limit is not reduced by the elective deferral catch-up contributions."
+      },
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Deferral limits for a SIMPLE 401(k) plan",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "The limit on employee elective deferrals to a SIMPLE 401(k) plan is:\n\n- $17,000 in 2026, subject to cost-of-living adjustments."
+      },
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Compensation limit for contributions",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "The amount of your compensation that can be taken into account when determining employer and employee contributions is limited to $360,000 for 2026, subject to cost-of-living adjustments."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Getting started",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Start by taking a look at your paycheck. If taxes are withheld, subtract that amount from your total earnings. Do not subtract other amounts that may be withheld or automatically deducted, like health insurance or retirement contributions. Those will become part of your budget.\n\nThe 50-30-20 rule recommends putting 50% of your money toward needs, 30% toward wants, and 20% toward savings. The savings category also includes money you will need to realize your future goals. Let’s take a closer look at each category."
+      }
+    ],
+    "latency_s": 7.869217792060226,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": true,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9457219987672424,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately summarizes the provided income data, including dates and amounts, and appropriately disclaims financial advice."
+    },
+    "judge_passed": true
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "record": {
+    "scenario_id": "budget-one-time-known-shop",
+    "run": 1,
+    "flags": {
+      "GENERAL_MERCHANDISE": "2026-10-12"
+    },
+    "alerts": [
+      {
+        "day": "2026-10-12",
+        "kind": "overspend",
+        "category": "GENERAL_MERCHANDISE",
+        "cause": "one_time",
+        "action": "alert",
+        "severity": "high",
+        "message": "Unusual purchase detected: a one-time expense of $520 from MegaMart exceeded your General Merchandise budget for October. Your current spending is $640, which is $514 over the budgeted $126. No action is needed for this one-time expense, but please be mindful of your budget for the rest of the month.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-10-13",
+        "kind": "overspend",
+        "category": "GENERAL_MERCHANDISE",
+        "cause": "one_time",
+        "action": "alert",
+        "severity": "high",
+        "message": "Unusual purchase detected: $520 spent at MegaMart on October 12. Your total spending for this category is currently $640, which is $514 over the $126 limit. Please review your expenses.",
+        "signal_days": null
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 4,
+    "llm_retries": 0,
+    "latency_s": 6.177005916833878,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true,
+      "cause": true,
+      "action": true,
+      "flag_by": true,
+      "message": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [
+      0
+    ],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 1,
+    "llm_calls": 4,
+    "llm_retries": 0
+  }
+}

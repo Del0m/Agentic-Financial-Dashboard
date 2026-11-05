@@ -1,0 +1,72 @@
+{
+  "record": {
+    "scenario_id": "temporal-budget-since-august",
+    "run": 2,
+    "answer": "Your food and drink spending was $0 in August, September, and October. There were no transactions in these months for the food and drink category.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_spending",
+        "args": {
+          "category": "FOOD_AND_DRINK",
+          "start_date": "2026-08-01",
+          "end_date": "2026-08-31"
+        }
+      },
+      {
+        "name": "get_spending",
+        "args": {
+          "category": "FOOD_AND_DRINK",
+          "start_date": "2026-09-01",
+          "end_date": "2026-09-30"
+        }
+      },
+      {
+        "name": "get_spending",
+        "args": {
+          "category": "FOOD_AND_DRINK",
+          "start_date": "2026-10-01",
+          "end_date": "2026-10-31"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_fa50\",\"purpose\":\"spending\",\"data\":{\"category\":\"FOOD_AND_DRINK\",\"total\":0.0,\"direction\":\"outflow\",\"count\":0,\"truncated\":false,\"transactions\":[]}}",
+      "{\"user\":\"user_fa50\",\"purpose\":\"spending\",\"data\":{\"category\":\"FOOD_AND_DRINK\",\"total\":0.0,\"direction\":\"outflow\",\"count\":0,\"truncated\":false,\"transactions\":[]}}",
+      "{\"user\":\"user_fa50\",\"purpose\":\"spending\",\"data\":{\"category\":\"FOOD_AND_DRINK\",\"total\":0.0,\"direction\":\"outflow\",\"count\":0,\"truncated\":false,\"transactions\":[]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 12.133133166935295,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 2,
+      "missing": [
+        "300±0",
+        "350±0"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": false,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.9242169139995754,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The answer accurately reflects the provided data, but lacks specificity as it doesn't offer any actionable insights or recommendations."
+    },
+    "judge_passed": true
+  }
+}

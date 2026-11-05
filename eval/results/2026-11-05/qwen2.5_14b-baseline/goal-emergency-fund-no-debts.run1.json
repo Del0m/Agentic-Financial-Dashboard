@@ -1,0 +1,39 @@
+{
+  "record": {
+    "scenario_id": "goal-emergency-fund-no-debts",
+    "run": 1,
+    "status": "ok",
+    "reason": null,
+    "cap_cents": 106400,
+    "surplus_cents": 133000,
+    "offered": [
+      "emergency_fund",
+      "savings"
+    ],
+    "attempts": 1,
+    "plans": [
+      {
+        "kind": "emergency_fund",
+        "priority": 1,
+        "monthly_cents": 106400,
+        "strategy": null,
+        "target_cents": 710020,
+        "target_date": "2027-06-01",
+        "rationale": "Filling the emergency fund gap as quickly as possible within the monthly surplus limit."
+      }
+    ],
+    "latency_s": 2.932983750011772,
+    "error": null,
+    "kind": "goal"
+  },
+  "scores": {
+    "checks": {
+      "status": true,
+      "banned_kinds": true,
+      "required_kinds": true,
+      "under_cap": true
+    },
+    "passed": true,
+    "attempts": 1
+  }
+}

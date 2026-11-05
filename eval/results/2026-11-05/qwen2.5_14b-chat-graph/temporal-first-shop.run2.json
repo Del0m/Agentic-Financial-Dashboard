@@ -1,0 +1,42 @@
+{
+  "record": {
+    "scenario_id": "temporal-first-shop",
+    "run": 2,
+    "answer": "You first shopped at Book Nook in March 2026.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [
+      "Charges at Book Nook: first in March 2026, latest in September 2026, in 3 months, $25.00 in the latest month"
+    ],
+    "sources": [],
+    "latency_s": 5.135624375194311,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": true,
+    "similarity": 0.9610878766003771,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly and accurately addresses the question using the provided data."
+    },
+    "judge_passed": true
+  }
+}

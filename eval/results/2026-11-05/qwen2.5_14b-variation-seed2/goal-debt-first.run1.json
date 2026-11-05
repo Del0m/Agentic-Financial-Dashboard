@@ -1,0 +1,50 @@
+{
+  "record": {
+    "scenario_id": "goal-debt-first",
+    "run": 1,
+    "status": "ok",
+    "reason": null,
+    "cap_cents": 81600,
+    "surplus_cents": 102000,
+    "offered": [
+      "debt_payoff",
+      "emergency_fund",
+      "savings"
+    ],
+    "attempts": 1,
+    "plans": [
+      {
+        "kind": "debt_payoff",
+        "priority": 1,
+        "monthly_cents": 40800,
+        "strategy": "avalanche",
+        "target_cents": 2160000,
+        "target_date": "2029-09-01",
+        "rationale": "Prioritizing debt payoff with an extra $408 monthly to clear high-interest debt first using the avalanche strategy."
+      },
+      {
+        "kind": "savings",
+        "priority": 2,
+        "monthly_cents": 40800,
+        "strategy": null,
+        "target_cents": 489600,
+        "target_date": "2027-11-01",
+        "rationale": "Allocating the remaining surplus to savings after debt repayment."
+      }
+    ],
+    "latency_s": 8.371606166940182,
+    "error": null,
+    "kind": "goal"
+  },
+  "scores": {
+    "checks": {
+      "status": true,
+      "banned_kinds": true,
+      "required_kinds": true,
+      "first_kind": true,
+      "under_cap": true
+    },
+    "passed": true,
+    "attempts": 1
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "record": {
+    "scenario_id": "mixed-card-vs-emergency",
+    "run": 2,
+    "answer": "You have $900 in your savings account, which is designated as your emergency fund. Given that you have a high-interest credit card debt, it might be wise to focus on paying down that debt first to reduce the amount of interest you'll pay. However, having some emergency savings is also important to cover unexpected expenses.\n\nIf you can comfortably cover your expenses and make your minimum credit card payment, you could allocate some funds to both reducing your credit card balance and building up your emergency fund.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_debts",
+        "args": {}
+      },
+      {
+        "name": "get_accounts",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_c68c\",\"purpose\":\"debts\",\"data\":[{\"name\":\"Rewards Card\",\"kind\":\"credit\",\"apr\":22.0,\"balance\":2600.0,\"min_payment\":78.0,\"next_due_date\":\"2026-11-15\"}]}",
+      "{\"user\":\"user_c68c\",\"purpose\":\"accounts\",\"data\":[{\"name\":\"Everyday Checking\",\"type\":\"depository\",\"subtype\":\"checking\",\"balance\":1450.0,\"available\":null,\"limit\":null},{\"name\":\"[person]'s Savings\",\"type\":\"depository\",\"subtype\":\"savings\",\"balance\":900.0,\"available\":null,\"limit\":null},{\"name\":\"Rewards Card\",\"type\":\"credit\",\"subtype\":\"credit card\",\"balance\":2600.0,\"available\":null,\"limit\":null}]}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 14.31632133293897,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 2,
+      "missing": [
+        "2600±1"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.5
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.8851280700307651,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 2,
+      "reason": "The answer correctly references the user's savings and credit card balance, but offers general advice rather than specific actions."
+    },
+    "judge_passed": true
+  }
+}

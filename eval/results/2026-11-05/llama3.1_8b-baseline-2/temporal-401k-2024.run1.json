@@ -1,0 +1,86 @@
+{
+  "record": {
+    "scenario_id": "temporal-401k-2024",
+    "run": 1,
+    "answer": "The 401(k) employee contribution limit in 2024 was $23,000.00.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "search_kb",
+        "args": {
+          "query": "401(k) employee contribution limit 2024"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"purpose\":\"kb\",\"results\":[{\"title\":\"Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service\",\"section\":\"Compensation limit for contributions\",\"source_url\":\"https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits\",\"text\":\"The amount of your compensation that can be taken into account when determining employer and employee contributions is limited to $360,000 for 2026, subject to cost-of-living adjustments.\"},{\"title\":\"Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service\",\"section\":\"Deferral limits for a SIMPLE 401(k) plan\",\"source_url\":\"https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits\",\"text\":\"The limit on employee elective deferrals to a SIMPLE 401(k) plan is:\\n\\n- $17,000 in 2026, subject to cost-of-living adjustments.\"},{\"title\":\"Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service\",\"section\":\"Overall limit on contributions\",\"source_url\":\"https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits\",\"text\":\"Total annual contributions (annual additions) to all of your accounts in plans maintained by one employer (and any related employer) are limited. The limit applies to the total of:\\n\\n- elective deferrals (but not catch-up contributions)\\n- employer matching contributions\\n- employer nonelective contributions\\n- allocations of forfeitures\\n\\nThe annual additions paid to a participant’s account cannot exceed the lesser of:\\n\\n- 100% of the participant's compensation, or\\n- $72,000 in 2026 ($80,000 including catch-up contributions or up to $83,250 for those age 60 to 63), subject to cost-of-living adjustments.\\n\\nHowever, an employer’s deduction for contributions to a defined contribution plan (profit-sharing plan or money purchase pension plan) cannot be more than 25% of the compensation paid (or accrued) during the year to eligible employees participating in the plan (see Employer Deduction in Publication 560, Retirement Plans for Small Business (SEP, SIMPLE, and Qualified Plans).\\n\\nThere are separate, smaller limits for SIMPLE 401(k) plans.\\n\\n**Example 1**: In 2020, Greg, 46, is employed by an employer with a 401(k) plan, and he also works as an independent contractor for an unrelated business and sets up a solo 401(k). Greg contributes the maximum amount to his employer’s 401(k) plan for 2020, $19,500. He would also like to contribute the maximum amount to his solo 401(k) plan. He is not able to make further elective deferrals to his solo 401(k) plan because he has already contributed his personal maximum, $19,500. He would also like to contribute the maximum amount to his solo 401(k) plan.\\n\\nGreg is not able to make further elective salary deferrals to his solo 401(k) plan because he has already contributed his personal maximum, $19,500, to his employer’s plan. However, he has enough earned income from his business to contribute the overall maximum for the year, $57,000. Greg can make a nonelective contribution of $57,000 to his solo 401(k) plan. This $57,000 limit is not reduced by the elective deferrals Greg made under his employer’s plan because the limit on annual additions applies to each plan separately.\"},{\"title\":\"Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service\",\"section\":\"Deferral limits for 401(k) plans\",\"source_url\":\"https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits\",\"text\":\"The limit on employee elective deferrals (for traditional and safe harbor plans)** **is:\\n\\n- $24,500 in 2026, subject to cost-of-living adjustments\\n\\nGenerally, you aggregate all elective deferrals you made to all plans in which you participate to determine if you have exceeded these limits. If a plan participant’s elective deferrals are more than the annual limit, find out how you can correct this plan mistake.\"}]}"
+    ],
+    "graph_facts": [
+      "401(k), annual contribution limit: $23,000.00 for 2024",
+      "Individual retirement account, annual contribution limit: $7,000.00 for 2024",
+      "Designated Roth 401(k), annual contribution limit: $23,000.00 for 2024",
+      "Roth IRA, annual contribution limit: $7,000.00 for 2024",
+      "Individual retirement account, rollover: The IRA contribution limit does not apply to rollover contributions",
+      "Roth IRA, after-tax contribution: Roth IRA contributions are made with after-tax dollars.",
+      "Roth IRA, income limit: Roth IRA contributions might be limited if your income exceeds a certain level.",
+      "Roth IRA: is a Individual retirement account",
+      "Designated Roth 401(k), catch-up contribution: $7,500.00 for 2024",
+      "Roth IRA, catch-up contribution: $1,000.00 for 2024",
+      "Roth IRA, income limit: $240,000.00 for 2024 (married)"
+    ],
+    "sources": [
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Compensation limit for contributions",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "The amount of your compensation that can be taken into account when determining employer and employee contributions is limited to $360,000 for 2026, subject to cost-of-living adjustments."
+      },
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Deferral limits for a SIMPLE 401(k) plan",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "The limit on employee elective deferrals to a SIMPLE 401(k) plan is:\n\n- $17,000 in 2026, subject to cost-of-living adjustments."
+      },
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Overall limit on contributions",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "Total annual contributions (annual additions) to all of your accounts in plans maintained by one employer (and any related employer) are limited. The limit applies to the total of:\n\n- elective deferrals (but not catch-up contributions)\n- employer matching contributions\n- employer nonelective contributions\n- allocations of forfeitures\n\nThe annual additions paid to a participant’s account cannot exceed the lesser of:\n\n- 100% of the participant's compensation, or\n- $72,000 in 2026 ($80,000 including catch-up contributions or up to $83,250 for those age 60 to 63), subject to cost-of-living adjustments.\n\nHowever, an employer’s deduction for contributions to a defined contribution plan (profit-sharing plan or money purchase pension plan) cannot be more than 25% of the compensation paid (or accrued) during the year to eligible employees participating in the plan (see Employer Deduction in Publication 560, Retirement Plans for Small Business (SEP, SIMPLE, and Qualified Plans).\n\nThere are separate, smaller limits for SIMPLE 401(k) plans.\n\n**Example 1**: In 2020, Greg, 46, is employed by an employer with a 401(k) plan, and he also works as an independent contractor for an unrelated business and sets up a solo 401(k). Greg contributes the maximum amount to his employer’s 401(k) plan for 2020, $19,500. He would also like to contribute the maximum amount to his solo 401(k) plan. He is not able to make further elective deferrals to his solo 401(k) plan because he has already contributed his personal maximum, $19,500. He would also like to contribute the maximum amount to his solo 401(k) plan.\n\nGreg is not able to make further elective salary deferrals to his solo 401(k) plan because he has already contributed his personal maximum, $19,500, to his employer’s plan. However, he has enough earned income from his business to contribute the overall maximum for the year, $57,000. Greg can make a nonelective contribution of $57,000 to his solo 401(k) plan. This $57,000 limit is not reduced by the elective deferrals Greg made under his employer’s plan because the limit on annual additions applies to each plan separately."
+      },
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Deferral limits for 401(k) plans",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "The limit on employee elective deferrals (for traditional and safe harbor plans)** **is:\n\n- $24,500 in 2026, subject to cost-of-living adjustments\n\nGenerally, you aggregate all elective deferrals you made to all plans in which you participate to determine if you have exceeded these limits. If a plan participant’s elective deferrals are more than the annual limit, find out how you can correct this plan mistake."
+      }
+    ],
+    "latency_s": 6.503424916882068,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": true,
+    "similarity": 0.99814786770124,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly and accurately states the 401(k) contribution limit from the provided data, and includes a standard disclaimer."
+    },
+    "judge_passed": true
+  }
+}

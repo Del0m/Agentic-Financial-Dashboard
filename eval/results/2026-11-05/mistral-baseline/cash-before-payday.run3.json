@@ -1,0 +1,67 @@
+{
+  "record": {
+    "scenario_id": "cash-before-payday",
+    "run": 3,
+    "answer": " To find out if you will run short before your next payday, let's first calculate your budget based on the 50-30-20 rule.\n\n1. Needs (50%): Subtract your taxes and any other mandatory deductions from your total earnings.\n2. Wants (30%): This is for discretionary spending, such as entertainment, dining out, or hobbies.\n3. Savings (20%): This is for your future goals, including an emergency fund, retirement savings, or a down payment on a home.\n\nOnce you have calculated your budget, compare it to your upcoming expenses to determine if you will have enough money before your next payday. If you find that you will run short, consider adjusting your budget by reducing discretionary spending or increasing your income.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Getting started",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Start by taking a look at your paycheck. If taxes are withheld, subtract that amount from your total earnings. Do not subtract other amounts that may be withheld or automatically deducted, like health insurance or retirement contributions. Those will become part of your budget.\n\nThe 50-30-20 rule recommends putting 50% of your money toward needs, 30% toward wants, and 20% toward savings. The savings category also includes money you will need to realize your future goals. Let’s take a closer look at each category."
+      },
+      {
+        "title": "Traditional and Roth IRAs | Internal Revenue Service",
+        "section": "What is the deadline to make contributions?",
+        "source_url": "https://www.irs.gov/retirement-plans/traditional-and-roth-iras",
+        "text": "Your tax return filing deadline (not including extensions). For example, you can make 2022 IRA contributions until April 18, 2023."
+      },
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Treatment of excess deferrals",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "You have an excess deferral if the total of your elective deferrals to all plans is more than the deferral limit for the year. Notify your plan administrator before April 15 of the following year that you would like the excess deferral amount, adjusted for earnings, to be distributed to you from the plan. The April 15 date is not tied to the due date for your return.\n\n**Excess withdrawn by April 15.** If you exceed the deferral limit for 2020, you must distribute the excess deferrals by April 15, 2021.\n\n- Excess deferrals for 2020 that are withdrawn by April 15, 2021, are includable in your gross income for 2020.\n- Earnings on the excess deferrals are taxed in the year distributed.\n\nThe distribution is not subject to the additional 10% tax on early distributions.\n\n**Excess not withdrawn by April 15.** If you don't take out the excess deferral by April 15, 2021, the excess, though taxable in 2020, is not included in your cost basis in figuring the taxable amount of any eventual distributions from the plan. In effect, an excess deferral left in the plan is taxed twice, once when contributed and again when distributed. Also, if the entire deferral is allowed to stay in the plan, the plan may not be a qualified plan.\n\n**Reporting corrective distributions on Form 1099-R.** Corrective distributions of excess deferrals (including any earnings) are reported to you by the plan on Form 1099-R, Distributions From Pensions, Annuities, Retirement or Profit-Sharing Plans, IRAs, Insurance Contracts, etc."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Savings: 20%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "The remaining 20% of your budget should go toward the future. You may put money in an emergency fund, contribute to a retirement account, or save toward a down payment on a home. Paying down debt beyond the minimum payment amount belongs in this category, too."
+      }
+    ],
+    "latency_s": 7.242368457838893,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 2,
+      "missing": [
+        "Landlord"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.5
+    },
+    "tools_ok": false,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": false,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.7976968971749152,
+    "judge": {
+      "coherent": 4,
+      "consistent_with_data": 2,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant provides general budgeting advice but fails to address the user's specific question about running short before payday without any cash flow data."
+    },
+    "judge_passed": false
+  }
+}

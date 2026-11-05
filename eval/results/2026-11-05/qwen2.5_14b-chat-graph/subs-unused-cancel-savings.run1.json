@@ -1,0 +1,59 @@
+{
+  "record": {
+    "scenario_id": "subs-unused-cancel-savings",
+    "run": 1,
+    "answer": "If you cancel Clipflix, you would save $15.49 each month. This is the amount charged for Clipflix, as shown by your recurring charges and spending history. This is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      },
+      {
+        "name": "get_spending",
+        "args": {
+          "category": "ENTERTAINMENT",
+          "start_date": "2026-10-07",
+          "end_date": "2026-11-06"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_7c98\",\"purpose\":\"recurring\",\"data\":{\"streams\":[{\"merchant\":\"Clipflix\",\"category\":\"ENTERTAINMENT\",\"frequency\":\"monthly\",\"typical\":15.49,\"last\":15.49,\"previous\":null,\"next_date\":\"2026-12-02\"},{\"merchant\":\"Streamly\",\"category\":\"ENTERTAINMENT\",\"frequency\":\"monthly\",\"typical\":9.99,\"last\":9.99,\"previous\":null,\"next_date\":\"2026-11-25\"}]}}",
+      "{\"user\":\"user_7c98\",\"purpose\":\"spending\",\"data\":{\"category\":\"ENTERTAINMENT\",\"total\":25.48,\"direction\":\"outflow\",\"count\":2,\"truncated\":false,\"transactions\":[{\"date\":\"2026-11-01\",\"amount\":15.49,\"merchant\":\"Clipflix\"},{\"date\":\"2026-10-25\",\"amount\":9.99,\"merchant\":\"Streamly\"}]}}"
+    ],
+    "graph_facts": [
+      "Charges at Clipflix: first in September 2026, latest in November 2026, in 3 months, $15.49 in the latest month",
+      "Recurring charge Clipflix: $15.49 from September 2026"
+    ],
+    "sources": [],
+    "latency_s": 8.544359208084643,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9819544255784398,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly uses the provided data to state the monthly savings and acknowledges it's not financial advice."
+    },
+    "judge_passed": true
+  }
+}

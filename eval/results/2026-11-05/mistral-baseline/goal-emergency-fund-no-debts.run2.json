@@ -1,0 +1,29 @@
+{
+  "record": {
+    "scenario_id": "goal-emergency-fund-no-debts",
+    "run": 2,
+    "status": "error",
+    "reason": "validation_failed",
+    "cap_cents": 106400,
+    "surplus_cents": 133000,
+    "offered": [
+      "emergency_fund",
+      "savings"
+    ],
+    "attempts": 2,
+    "plans": [],
+    "latency_s": 7.29864791687578,
+    "error": null,
+    "kind": "goal"
+  },
+  "scores": {
+    "checks": {
+      "status": false,
+      "banned_kinds": true,
+      "required_kinds": false,
+      "under_cap": false
+    },
+    "passed": false,
+    "attempts": 2
+  }
+}

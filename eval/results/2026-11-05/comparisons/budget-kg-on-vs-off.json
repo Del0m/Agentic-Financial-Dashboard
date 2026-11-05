@@ -1,0 +1,131 @@
+{
+  "with": "qwen2.5_14b-baseline",
+  "without": "qwen2.5_14b-budget-kg-off",
+  "metric": "budget",
+  "commit": "635b52972fe1653ce6942393594c8799da20357a",
+  "groups": {
+    "all": {
+      "scenarios": 16,
+      "wins": 1,
+      "losses": 1,
+      "ties": 14,
+      "passed_with": 15,
+      "passed_without": 15,
+      "verdict": "does not help"
+    }
+  },
+  "scenarios": [
+    {
+      "scenario": "budget-graph-previously-dismissed",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "budget-graph-price-increase",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "budget-graph-reclassified",
+      "group": null,
+      "with": true,
+      "without": false,
+      "result": "win"
+    },
+    {
+      "scenario": "budget-graph-seasonal-13mo",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "budget-one-time-known-shop",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "budget-one-time-new-shop",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "budget-recurring-new-gym",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "budget-recurring-wine-club",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "budget-seasonal-back-to-school",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "budget-seasonal-holidays",
+      "group": null,
+      "with": false,
+      "without": true,
+      "result": "loss"
+    },
+    {
+      "scenario": "control-flat-spending",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "control-rent-paid-early",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "control-steady-spender",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "control-usual-order-early",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "signal-low-balance-before-payday",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "signal-price-increase",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    }
+  ]
+}

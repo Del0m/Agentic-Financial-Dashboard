@@ -1,0 +1,50 @@
+{
+  "record": {
+    "scenario_id": "goal-debt-first",
+    "run": 1,
+    "status": "ok",
+    "reason": null,
+    "cap_cents": 81600,
+    "surplus_cents": 102000,
+    "offered": [
+      "debt_payoff",
+      "emergency_fund",
+      "savings"
+    ],
+    "attempts": 1,
+    "plans": [
+      {
+        "kind": "debt_payoff",
+        "priority": 1,
+        "monthly_cents": 61200,
+        "strategy": "avalanche",
+        "target_cents": 2160000,
+        "target_date": "2029-01-01",
+        "rationale": "Paying off high-interest debt is the top priority to save money on interest."
+      },
+      {
+        "kind": "emergency_fund",
+        "priority": 2,
+        "monthly_cents": 20400,
+        "strategy": null,
+        "target_cents": 685178,
+        "target_date": "2029-09-01",
+        "rationale": "Building an emergency fund is important, but we're prioritizing high-interest debt first."
+      }
+    ],
+    "latency_s": 6.19692474976182,
+    "error": null,
+    "kind": "goal"
+  },
+  "scores": {
+    "checks": {
+      "status": true,
+      "banned_kinds": true,
+      "required_kinds": true,
+      "first_kind": true,
+      "under_cap": true
+    },
+    "passed": true,
+    "attempts": 1
+  }
+}

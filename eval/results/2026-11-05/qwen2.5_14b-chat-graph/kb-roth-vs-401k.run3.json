@@ -1,0 +1,51 @@
+{
+  "record": {
+    "scenario_id": "kb-roth-vs-401k",
+    "run": 3,
+    "answer": "A Roth IRA and a 401(k) are both retirement savings accounts, but they have different characteristics:\n\n- **Roth IRA**: Contributions are made with after-tax dollars, and qualified withdrawals are tax-free. There are income limits for contributing to a Roth IRA.\n- **401(k)**: Contributions are typically made with pre-tax dollars, reducing your taxable income, and withdrawals in retirement are taxed as income. There are no income limits for contributing to a 401(k).\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [
+      "Individual retirement account, rollover: The IRA contribution limit does not apply to rollover contributions",
+      "Roth IRA, after-tax contribution: Roth IRA contributions are made with after-tax dollars.",
+      "Roth IRA, income limit: Roth IRA contributions might be limited if your income exceeds a certain level.",
+      "Roth IRA: is a Individual retirement account",
+      "401(k), catch-up contribution: $8,000.00 for 2026",
+      "401(k), annual contribution limit: $24,500.00 for 2026",
+      "Individual retirement account, annual contribution limit: $7,500.00 for 2026",
+      "Traditional IRA, income limit: You may not be able to deduct all of your traditional IRA contributions if you or your spouse participates in another retirement plan at work.",
+      "SIMPLE 401(k), catch-up contribution: $4,000.00 for 2026",
+      "SIMPLE 401(k), annual contribution limit: $17,000.00 for 2026"
+    ],
+    "sources": [],
+    "latency_s": 8.519194207619876,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": false,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9667740723938664,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 3,
+      "reason": "The answer accurately describes the key differences between a Roth IRA and a 401(k) using information from the provided tool results, but lacks specific product or action recommendations."
+    },
+    "judge_passed": true
+  }
+}

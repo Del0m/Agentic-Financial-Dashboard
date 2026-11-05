@@ -1,0 +1,67 @@
+{
+  "record": {
+    "scenario_id": "temporal-decision-dismissed",
+    "run": 2,
+    "answer": "You dismissed the suggestion to cut back on coffee.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [
+      "Advice on September 12, 2026: \"Coffee shops are pushing food and drink over its limit. Cutting back on coffee would help.\" The user's decision: dismissed."
+    ],
+    "sources": [
+      {
+        "title": "How to reduce your debt | Consumer Financial Protection Bureau",
+        "section": "Snowball method",
+        "source_url": "https://www.consumerfinance.gov/about-us/blog/how-reduce-your-debt/",
+        "text": "This approach focuses on your smallest debt. The goal is to get rid it as soon as possible. You keep on making the minimum payments on all of your debts, and you put any extra funds you have toward paying off the smallest debt. This will help you pay it off sooner.\n\nOnce you’ve paid one smaller debt in full, dedicate that freed up money to the next smallest debt. This way, you create a “snowball” of payments as you eliminate each debt. Unlike the higher interest rate method, you’ll see progress quickly as you pay off smaller debts. However, you may end up paying more in the long run, as you won’t be focusing on the larger or more costly debts."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Getting started",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Start by taking a look at your paycheck. If taxes are withheld, subtract that amount from your total earnings. Do not subtract other amounts that may be withheld or automatically deducted, like health insurance or retirement contributions. Those will become part of your budget.\n\nThe 50-30-20 rule recommends putting 50% of your money toward needs, 30% toward wants, and 20% toward savings. The savings category also includes money you will need to realize your future goals. Let’s take a closer look at each category."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Savings: 20%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "The remaining 20% of your budget should go toward the future. You may put money in an emergency fund, contribute to a retirement account, or save toward a down payment on a home. Paying down debt beyond the minimum payment amount belongs in this category, too."
+      },
+      {
+        "title": "How to reduce your debt | Consumer Financial Protection Bureau",
+        "section": "Take control of your finances",
+        "source_url": "https://www.consumerfinance.gov/about-us/blog/how-reduce-your-debt/",
+        "text": "The \"Get a Handle on Debt\" series gives you tools to manage your debt by budgeting smarter, paying your bills on time, tracking your spending, paying down existing debts, and earning extra income. You can also get money management strategies sent directly to your inbox by signing up for our \"Get a Handle on Debt\" boot camp."
+      }
+    ],
+    "latency_s": 5.683864749968052,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.9782849365301514,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The answer accurately reflects the provided data but lacks specificity beyond stating the user's decision."
+    },
+    "judge_passed": true
+  }
+}

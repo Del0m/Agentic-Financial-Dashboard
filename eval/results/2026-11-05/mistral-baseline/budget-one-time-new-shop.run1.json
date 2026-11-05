@@ -1,0 +1,68 @@
+{
+  "record": {
+    "scenario_id": "budget-one-time-new-shop",
+    "run": 1,
+    "flags": {
+      "GENERAL_MERCHANDISE": "2026-10-12"
+    },
+    "alerts": [
+      {
+        "day": "2026-10-12",
+        "kind": "overspend",
+        "category": "GENERAL_MERCHANDISE",
+        "cause": "one_time",
+        "action": "alert",
+        "severity": "high",
+        "message": "An unusual purchase of $600 from ElectroMart on October 12 has caused your General Merchandise category to overspend. Please review your spending.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-10-12",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "There will be a shortfall of $142.45 in your budget on 2026-10-13 due to an upcoming bill 'Everyday spending'. To cover this, you may consider moving $245.00 from savings or delaying spending in the 'GENERAL_MERCHANDISE' category. Also, note that there are recurring outflows of $4200, $500, and $1500 under the 'stream' category.",
+        "signal_days": 1
+      },
+      {
+        "day": "2026-10-13",
+        "kind": "overspend",
+        "category": "GENERAL_MERCHANDISE",
+        "cause": "one_time",
+        "action": "alert",
+        "severity": "high",
+        "message": "Unusual purchase detected: a one-time expense of $600 from ElectroMart exceeded your General Merchandise budget for October. Your current spending is $1,606.09, which is $1,456.13 over the budget.",
+        "signal_days": null
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 4,
+    "llm_retries": 0,
+    "latency_s": 8.074208125006407,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true,
+      "cause": true,
+      "action": true,
+      "flag_by": true,
+      "message": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [
+      0
+    ],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 1,
+    "llm_calls": 4,
+    "llm_retries": 0
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "record": {
+    "scenario_id": "mixed-card-vs-emergency",
+    "run": 1,
+    "answer": "Your credit card has a high APR of 22.0% and a balance of $2,600. This means that the interest you are accruing is significant, and paying it down could save you a considerable amount of money in the long run.\n\nYou currently have $1,450 in your checking account and $900 in your savings account, totaling $2,350. This amount could be used to start building an emergency fund, but it might also be beneficial to allocate some of it towards reducing your credit card balance to lower the interest you are paying.\n\nGiven the high interest rate on your credit card, it would be wise to prioritize paying down your credit card debt to reduce the amount of interest you are accruing. Once your credit card balance is lower, you can then focus on building your emergency fund.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_debts",
+        "args": {}
+      },
+      {
+        "name": "get_accounts",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_a3d3\",\"purpose\":\"debts\",\"data\":[{\"name\":\"Rewards Card\",\"kind\":\"credit\",\"apr\":22.0,\"balance\":2600.0,\"min_payment\":78.0,\"next_due_date\":\"2026-11-15\"}]}",
+      "{\"user\":\"user_a3d3\",\"purpose\":\"accounts\",\"data\":[{\"name\":\"Everyday Checking\",\"type\":\"depository\",\"subtype\":\"checking\",\"balance\":1450.0,\"available\":null,\"limit\":null},{\"name\":\"[person]'s Savings\",\"type\":\"depository\",\"subtype\":\"savings\",\"balance\":900.0,\"available\":null,\"limit\":null},{\"name\":\"Rewards Card\",\"type\":\"credit\",\"subtype\":\"credit card\",\"balance\":2600.0,\"available\":null,\"limit\":null}]}"
+    ],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "When should I use it?",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "Set some guidelines for yourself on what constitutes an emergency or unplanned expense. Not every unexpected expense is a dire emergency but try to stay consistent. Even if it’s not a trip to the emergency room, you may need it to pay for a medical bill that wasn’t covered by insurance.\n\nHaving a reserve fund for financial shocks can help you avoid relying on other forms of credit or loans that can turn into debt. If you use a credit card or take out a loan to pay for these expenses, your one-time emergency expense may grow significantly larger than your original bill because of interest and fees.\n\n**However, don’t be afraid to use it if you need it**. If you spend down what’s in your emergency savings, just work to build it up again. Practicing your savings skills over time will make this easier."
+      },
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "Where should I keep it?",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "Where you put your emergency fund depends on your situation. You want to make sure this fund is safe, accessible, and in a place where you’re not tempted to spend it on non-emergencies.\n\nHere are a few options for where to put your emergency savings, and you can choose the one that makes the most sense for you:\n\n**Bank or credit union account**— If you have an account with a bank or credit union—generally considered one of the safest places to put your money—it might make sense to have a dedicated account where you can keep and maintain these funds.**Prepaid card**— A prepaid card is a card that you can load money onto. It’s not connected with a bank or credit union, and you can only spend the amount that’s on your card.**Cash**— Another option is keeping money on hand for emergencies, either in your home or with a trusted family member or friend. Keep in mind that cash can be stolen, lost, or destroyed."
+      },
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "Why do I need it?",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "Without savings, a financial shock—even minor—could set you back, and if it turns into debt, it can potentially have a lasting impact.\n\nResearch suggests that individuals who struggle to recover from a financial shock have less savings to help protect against a future emergency. They may rely on credit cards or loans, which can lead to debt that’s generally harder to pay off. They may also pull from other savings, like retirement funds, to cover these costs."
+      },
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "How do I build it?",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "There are different strategies to get your savings started. These strategies cover a range of situations, including if you have a limited ability to save or if your pay tends to fluctuate. It may be that you could use all of these strategies, but if you have a limited ability to save, managing your cash flow or putting away a portion of your tax refund are the easiest ways to get started."
+      }
+    ],
+    "latency_s": 18.302260958123952,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.8733081983476515,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately references the user's credit card details and account balances from the provided tool results and offers a reasonable, prioritized plan."
+    },
+    "judge_passed": true
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "record": {
+    "scenario_id": "recurring-subscriptions",
+    "run": 2,
+    "answer": "You have one subscription to Streamly, which is a monthly charge of $15.49 for entertainment. This charge is due on December 2, 2026.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_3664\",\"purpose\":\"recurring\",\"data\":{\"streams\":[{\"merchant\":\"Streamly\",\"category\":\"ENTERTAINMENT\",\"frequency\":\"monthly\",\"typical\":15.49,\"last\":15.49,\"previous\":null,\"next_date\":\"2026-12-02\"}]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 7.190258833114058,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9544998028557453,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately reflects the provided data, naming the subscription and its cost, and includes the next payment date."
+    },
+    "judge_passed": true
+  }
+}

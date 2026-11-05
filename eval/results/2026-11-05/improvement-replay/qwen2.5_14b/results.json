@@ -1,0 +1,334 @@
+{
+  "mode": "replay",
+  "model": "qwen2.5:14b",
+  "results": [
+    {
+      "user": "improve-steady",
+      "periods": [
+        {
+          "start": "2026-08-01",
+          "mape": 6.1,
+          "lines": 4
+        },
+        {
+          "start": "2026-09-01",
+          "mape": 13.1,
+          "lines": 4
+        },
+        {
+          "start": "2026-10-01",
+          "mape": 6.4,
+          "lines": 4
+        }
+      ],
+      "proposals": 3,
+      "accepted": 3,
+      "rejected": 0,
+      "unseen": 0,
+      "seconds": 105.2,
+      "proposal_rows": [
+        {
+          "key": "budget-improve-steady|2026-08-29|FOOD_AND_DRINK|adjust_next_budget|82500",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Your spending in the FOOD_AND_DRINK category is projected to be $824.53 by the end of August. I recommend setting the limit to $825.00 for September to accommodate this higher spending.",
+          "proposed_limit_cents": 82500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 73459,
+              "spent_cents": 77133
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-steady|2026-08-31|TRANSPORTATION|adjust_next_budget|20500",
+          "category": "TRANSPORTATION",
+          "cause": "recurring",
+          "message": "Your spending on Transportation is higher than the limit this month due to regular fuel charges. For next month, consider setting the limit to $205.00 to cover the higher spending.",
+          "proposed_limit_cents": 20500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 17177,
+              "spent_cents": 20133
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-steady|2026-10-31|FOOD_AND_DRINK|adjust_next_budget|79000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Your spending at Grocer has increased since May, leading to an overspend this month. I recommend setting the next month's limit to $790.00.",
+          "proposed_limit_cents": 79000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 73459,
+              "spent_cents": 77133
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 82500,
+              "spent_cents": 65559
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 77418,
+              "spent_cents": 78983
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "user": "improve-rising",
+      "periods": [
+        {
+          "start": "2026-08-01",
+          "mape": 5.5,
+          "lines": 4
+        },
+        {
+          "start": "2026-09-01",
+          "mape": 10.1,
+          "lines": 4
+        },
+        {
+          "start": "2026-10-01",
+          "mape": 7.5,
+          "lines": 4
+        }
+      ],
+      "proposals": 5,
+      "accepted": 5,
+      "rejected": 0,
+      "unseen": 0,
+      "seconds": 159.6,
+      "proposal_rows": [
+        {
+          "key": "budget-improve-rising|2026-08-29|FOOD_AND_DRINK|adjust_next_budget|83500",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Your spending on Grocer is higher than usual this month. To avoid overspending next month, I recommend setting your limit to $835.00.",
+          "proposed_limit_cents": 83500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 75654,
+              "spent_cents": 77982
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-08-31|TRANSPORTATION|adjust_next_budget|19500",
+          "category": "TRANSPORTATION",
+          "cause": "recurring",
+          "message": "Your spending on Transportation is higher than the limit this month. For next month, I recommend setting the limit to $195.00 to account for the higher spending.",
+          "proposed_limit_cents": 19500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 16719,
+              "spent_cents": 19465
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-05|TRANSPORTATION|adjust_next_budget|27000",
+          "category": "TRANSPORTATION",
+          "cause": "recurring",
+          "message": "Your spending on Transportation is higher than the budget due to regular fuel charges. We recommend setting the next month's limit to $270.00.",
+          "proposed_limit_cents": 27000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 16719,
+              "spent_cents": 19465
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 19500,
+              "spent_cents": 15549
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 18315,
+              "spent_cents": 4348
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-10|FOOD_AND_DRINK|adjust_next_budget|117000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Your spending on Grocer is higher than usual this month. To avoid overspending, consider setting your next month's limit to $1,170.00.",
+          "proposed_limit_cents": 117000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 75654,
+              "spent_cents": 77982
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 83500,
+              "spent_cents": 74940
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 80932,
+              "spent_cents": 37636
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-30|FOOD_AND_DRINK|adjust_next_budget|86000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Your spending in the FOOD_AND_DRINK category is over the limit and projected to continue increasing. We recommend adjusting next month's limit to $860.00.",
+          "proposed_limit_cents": 86000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 75654,
+              "spent_cents": 77982
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 83500,
+              "spent_cents": 74940
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 80932,
+              "spent_cents": 82944
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "user": "improve-new-club",
+      "periods": [
+        {
+          "start": "2026-08-01",
+          "mape": 27.3,
+          "lines": 4
+        },
+        {
+          "start": "2026-09-01",
+          "mape": 34.3,
+          "lines": 4
+        },
+        {
+          "start": "2026-10-01",
+          "mape": 7.4,
+          "lines": 4
+        }
+      ],
+      "proposals": 5,
+      "accepted": 5,
+      "rejected": 0,
+      "unseen": 0,
+      "seconds": 402.2,
+      "proposal_rows": [
+        {
+          "key": "budget-improve-new-club|2026-08-29|FOOD_AND_DRINK|adjust_next_budget|79000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Your spending on Grocer is consistent with past patterns. To avoid overspending next month, I recommend setting your limit to $790.00.",
+          "proposed_limit_cents": 79000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 71898,
+              "spent_cents": 73525
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-08-31|TRANSPORTATION|adjust_next_budget|20500",
+          "category": "TRANSPORTATION",
+          "cause": "recurring",
+          "message": "Your spending on Transportation is higher than the limit this month due to regular fuel charges. For next month, consider setting the limit to $205.00 to cover the higher spending.",
+          "proposed_limit_cents": 20500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 17241,
+              "spent_cents": 20399
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-04|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "You've been spending $180.00 at Vine Club each month since it started recently. The projected spending for September is $1,350.00. I recommend setting the Entertainment budget to $200.00 for next month.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 18000
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-10-17|FOOD_AND_DRINK|adjust_next_budget|85000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Your spending on Food and Drink is projected to exceed the budget by the end of the month. We recommend adjusting next month's limit to $850.00 to account for this trend.",
+          "proposed_limit_cents": 85000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 71898,
+              "spent_cents": 73525
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 79000,
+              "spent_cents": 64931
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 74779,
+              "spent_cents": 46541
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-10-31|FOOD_AND_DRINK|adjust_next_budget|77500",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Your spending in the FOOD_AND_DRINK category is over the limit. Given the pattern, it's recommended to set the limit to $775.00 for next month.",
+          "proposed_limit_cents": 77500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 71898,
+              "spent_cents": 73525
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 79000,
+              "spent_cents": 64931
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 74779,
+              "spent_cents": 77045
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

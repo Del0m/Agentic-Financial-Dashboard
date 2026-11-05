@@ -1,0 +1,47 @@
+{
+  "record": {
+    "scenario_id": "savings-balance",
+    "run": 3,
+    "answer": "You have $8,420.55 in your High Yield Savings account. This is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_accounts",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_03f8\",\"purpose\":\"accounts\",\"data\":[{\"name\":\"Everyday Checking\",\"type\":\"depository\",\"subtype\":\"checking\",\"balance\":1310.0,\"available\":null,\"limit\":null},{\"name\":\"High Yield Savings\",\"type\":\"depository\",\"subtype\":\"savings\",\"balance\":8420.55,\"available\":null,\"limit\":null}]}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 6.304242165759206,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9956991728413066,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly and accurately states the balance from the provided data, and includes a disclaimer."
+    },
+    "judge_passed": true
+  }
+}

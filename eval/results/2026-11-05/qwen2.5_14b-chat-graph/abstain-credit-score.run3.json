@@ -1,0 +1,40 @@
+{
+  "record": {
+    "scenario_id": "abstain-credit-score",
+    "run": 3,
+    "answer": "I don't have access to your current credit score. You can check it through your bank's online portal, a credit card company, or a credit reporting agency like Equifax, Experian, or TransUnion. This is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 6.07789249997586,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": null,
+      "arguments": null,
+      "irrelevance": true
+    },
+    "temporal_ok": null,
+    "similarity": 0.8921622817229096,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 2,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant correctly states it cannot access the user's credit score but does not leverage any data and provides general advice."
+    },
+    "judge_passed": false
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "record": {
+    "scenario_id": "debt-higher-apr-smaller-balance",
+    "run": 3,
+    "answer": "You should pay off the Travel Card first because it has the highest APR of 27.49% with a balance of $900. This is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_debts",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_9ac5\",\"purpose\":\"debts\",\"data\":[{\"name\":\"Travel Card\",\"kind\":\"credit\",\"apr\":27.49,\"balance\":900.0,\"min_payment\":35.0,\"next_due_date\":\"2026-11-18\"},{\"name\":\"Store Card\",\"kind\":\"credit\",\"apr\":18.99,\"balance\":4800.0,\"min_payment\":120.0,\"next_due_date\":\"2026-11-18\"}]}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 6.350487125106156,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9385068853523633,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer correctly identifies the Travel Card as having the highest APR and references the balance, both of which are present in the provided data."
+    },
+    "judge_passed": true
+  }
+}

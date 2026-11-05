@@ -1,0 +1,83 @@
+{
+  "record": {
+    "scenario_id": "debt-avalanche-vs-snowball",
+    "run": 2,
+    "answer": "Using the avalanche method, you will be debt-free in 33 months with an extra $100 a month, paying $2,390.13 in total interest. The extra $100 saves you 36 months and $3,175.45 in interest compared to not paying extra.\n\nWith the snowball method, you will be debt-free in 34 months with an extra $100 a month, paying $2,547.58 in total interest. The extra $100 saves you 35 months and $3,018.00 in interest compared to not paying extra.\n\nThe avalanche method saves you slightly more in interest and pays off your debts a month faster than the snowball method with the extra $100 a month.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "plan_debt_payoff",
+        "args": {
+          "extra_monthly": 100,
+          "strategy": "avalanche"
+        }
+      },
+      {
+        "name": "plan_debt_payoff",
+        "args": {
+          "extra_monthly": 100,
+          "strategy": "snowball"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_71e0\",\"purpose\":\"debt_plan\",\"data\":{\"extra_monthly\":100.0,\"start\":\"2026-12\",\"plans\":[{\"strategy\":\"avalanche\",\"summary\":\"33 months to debt-free, $2,390.13 total interest. The extra saves 36 months and $3,175.45 in interest.\",\"months\":33,\"debt_free\":\"2029-08\",\"total_interest\":2390.13,\"order\":[{\"name\":\"Store Card\",\"paid_off\":\"2029-07\",\"interest\":135.15},{\"name\":\"Rewards Card\",\"paid_off\":\"2029-08\",\"interest\":2254.98}],\"without_extra\":{\"months\":69,\"total_interest\":5565.58},\"difference\":{\"months_sooner\":36,\"interest_saved\":3175.45},\"never\":[]}],\"excluded\":[],\"assumptions\":\"Interest is charged monthly at APR/12; minimum payments are held at today's amounts; not financial advice.\"}}",
+      "{\"user\":\"user_71e0\",\"purpose\":\"debt_plan\",\"data\":{\"extra_monthly\":100.0,\"start\":\"2026-12\",\"plans\":[{\"strategy\":\"snowball\",\"summary\":\"34 months to debt-free, $2,547.58 total interest. The extra saves 35 months and $3,018.00 in interest.\",\"months\":34,\"debt_free\":\"2029-09\",\"total_interest\":2547.58,\"order\":[{\"name\":\"Store Card\",\"paid_off\":\"2027-06\",\"interest\":29.95},{\"name\":\"Rewards Card\",\"paid_off\":\"2029-09\",\"interest\":2517.63}],\"without_extra\":{\"months\":69,\"total_interest\":5565.58},\"difference\":{\"months_sooner\":35,\"interest_saved\":3018.0},\"never\":[]}],\"excluded\":[],\"assumptions\":\"Interest is charged monthly at APR/12; minimum payments are held at today's amounts; not financial advice.\"}}"
+    ],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "How to reduce your debt | Consumer Financial Protection Bureau",
+        "section": "Snowball method",
+        "source_url": "https://www.consumerfinance.gov/about-us/blog/how-reduce-your-debt/",
+        "text": "This approach focuses on your smallest debt. The goal is to get rid it as soon as possible. You keep on making the minimum payments on all of your debts, and you put any extra funds you have toward paying off the smallest debt. This will help you pay it off sooner.\n\nOnce you’ve paid one smaller debt in full, dedicate that freed up money to the next smallest debt. This way, you create a “snowball” of payments as you eliminate each debt. Unlike the higher interest rate method, you’ll see progress quickly as you pay off smaller debts. However, you may end up paying more in the long run, as you won’t be focusing on the larger or more costly debts."
+      },
+      {
+        "title": "Credit cards key terms | Consumer Financial Protection Bureau",
+        "section": "Credit cards key terms",
+        "source_url": "https://www.consumerfinance.gov/consumer-tools/credit-cards/answers/key-terms/",
+        "text": "- Annual percentage rate (APR)\n-\nThe APR, or annual percentage rate, is the standard way to compare how much loans cost. It lets you compare the cost of loan products on an “apples-to-apples” basis. Your credit card company must disclose the APR before you agree to the use the card.\n\nTo calculate the APR, the interest rate and fees are compared to the amount you borrow and calculated over a one-year period. This allows you to compare the costs of a credit card to a six-month installment loan. It is also why APRs are often different from simple interest rates.\n\n- Balance transfer\n-\nA balance transfer lets you move an outstanding balance from one credit card to another, sometimes for a fee. The fee is usually a certain percentage of the amount you transfer or a fixed amount, whichever is more. Many credit card companies offer zero-percent or low-interest balance transfers to invite you to consolidate your debt on one credit card. The promotional interest rate for most balance transfers lasts for a limited time. After that, the interest rate on your new credit card may rise, increasing your payment amount.\n\nIf you’re more than 60 days late on a payment, the credit card company can increase your interest rate on all balances, including the transferred balance.\n\n- Cardholder agreement\n-\nA cardholder agreement states the terms and conditions that apply to a credit card that is offered to a customer. Among other provisions, the cardholder agreement outlines applicable fees, your liability for unauthorized transactions, and the annual percentage rate (APR) of the card. If you lost your cardholder agreement, you can obtain one on the card issuer’s website or by calling the card issuer. You may also be able to find it listed on the CFPB’s Credit Card Agreement Database.\n\n- Credit balance\n-\nA credit balance on your billing statement is an amount that the card issuer owes you."
+      },
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "Why do I need it?",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "Without savings, a financial shock—even minor—could set you back, and if it turns into debt, it can potentially have a lasting impact.\n\nResearch suggests that individuals who struggle to recover from a financial shock have less savings to help protect against a future emergency. They may rely on credit cards or loans, which can lead to debt that’s generally harder to pay off. They may also pull from other savings, like retirement funds, to cover these costs."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      }
+    ],
+    "latency_s": 16.20852770889178,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": true,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.8988221401586376,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately reflects the provided data and presents both options clearly."
+    },
+    "judge_passed": true
+  }
+}

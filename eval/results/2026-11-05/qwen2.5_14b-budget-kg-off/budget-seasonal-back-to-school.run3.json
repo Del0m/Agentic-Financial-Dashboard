@@ -1,0 +1,47 @@
+{
+  "record": {
+    "scenario_id": "budget-seasonal-back-to-school",
+    "run": 3,
+    "flags": {
+      "GENERAL_MERCHANDISE": "2026-09-04"
+    },
+    "alerts": [
+      {
+        "day": "2026-09-04",
+        "kind": "overspend",
+        "category": "GENERAL_MERCHANDISE",
+        "cause": "seasonal",
+        "action": "suggest_cuts",
+        "severity": "high",
+        "message": "Your spending in GENERAL_MERCHANDISE has increased this month with several new merchants, typical for back-to-school season. Consider cutting expenses in other categories to stay within your budget.",
+        "signal_days": null
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 4,
+    "llm_retries": 0,
+    "latency_s": 8.99859679164365,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true,
+      "cause": true,
+      "action": true,
+      "flag_by": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [
+      0
+    ],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 0,
+    "llm_calls": 4,
+    "llm_retries": 0
+  }
+}

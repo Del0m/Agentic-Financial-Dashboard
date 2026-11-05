@@ -1,0 +1,68 @@
+{
+  "record": {
+    "scenario_id": "budget-recurring-new-gym",
+    "run": 3,
+    "flags": {
+      "PERSONAL_CARE": "2026-10-03"
+    },
+    "alerts": [
+      {
+        "day": "2026-10-03",
+        "kind": "overspend",
+        "category": "PERSONAL_CARE",
+        "cause": "recurring",
+        "action": "adjust_next_budget",
+        "severity": "high",
+        "message": "Your spending on FitClub Gym is high, so we're setting a higher limit for next month: $135.00.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-10-03",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "delay_spend",
+        "severity": "medium",
+        "message": "Low balance: Landlord bill due on 2026-10-04, shortfall of $78.28",
+        "signal_days": 1
+      },
+      {
+        "day": "2026-10-04",
+        "kind": "overspend",
+        "category": "PERSONAL_CARE",
+        "cause": "recurring",
+        "action": "adjust_next_budget",
+        "severity": "high",
+        "message": "You spent $90.00 at FitClub Gym this month, which is typical for this merchant. Next month's limit will be $135.00.",
+        "signal_days": null
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 4,
+    "llm_retries": 0,
+    "latency_s": 6.07073195790872,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true,
+      "cause": true,
+      "action": true,
+      "flag_by": true,
+      "message": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [
+      0
+    ],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 1,
+    "llm_calls": 4,
+    "llm_retries": 0
+  }
+}

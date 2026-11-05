@@ -1,0 +1,84 @@
+{
+  "mode": "baseline",
+  "model": null,
+  "results": [
+    {
+      "user": "improve-steady",
+      "periods": [
+        {
+          "start": "2026-08-01",
+          "mape": 6.1,
+          "lines": 4
+        },
+        {
+          "start": "2026-09-01",
+          "mape": 6.4,
+          "lines": 4
+        },
+        {
+          "start": "2026-10-01",
+          "mape": 5.5,
+          "lines": 4
+        }
+      ],
+      "proposals": 0,
+      "accepted": 0,
+      "rejected": 0,
+      "unseen": 0,
+      "seconds": 2.7,
+      "proposal_rows": []
+    },
+    {
+      "user": "improve-rising",
+      "periods": [
+        {
+          "start": "2026-08-01",
+          "mape": 5.5,
+          "lines": 4
+        },
+        {
+          "start": "2026-09-01",
+          "mape": 4.6,
+          "lines": 4
+        },
+        {
+          "start": "2026-10-01",
+          "mape": 6.7,
+          "lines": 4
+        }
+      ],
+      "proposals": 0,
+      "accepted": 0,
+      "rejected": 0,
+      "unseen": 0,
+      "seconds": 2.9,
+      "proposal_rows": []
+    },
+    {
+      "user": "improve-new-club",
+      "periods": [
+        {
+          "start": "2026-08-01",
+          "mape": 27.3,
+          "lines": 4
+        },
+        {
+          "start": "2026-09-01",
+          "mape": 28.2,
+          "lines": 4
+        },
+        {
+          "start": "2026-10-01",
+          "mape": 27.9,
+          "lines": 4
+        }
+      ],
+      "proposals": 0,
+      "accepted": 0,
+      "rejected": 0,
+      "unseen": 0,
+      "seconds": 6.2,
+      "proposal_rows": []
+    }
+  ]
+}

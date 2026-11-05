@@ -1,0 +1,34 @@
+digraph G {
+rankdir=LR; bgcolor="white"; pad=0.3;
+node [shape=box,style="rounded,filled",fillcolor="#eaf2f8",fontname="Helvetica"];
+edge [fontname="Helvetica",fontsize=10,color="#566573"];
+"after-tax-contribution" [label="After-tax contribution"];
+"catch-up-contribution" [label="Catch-up contribution"];
+"contribution-limit" [label="Annual contribution limit"];
+"income-limit" [label="Income limit"];
+"ira" [label="Individual retirement\naccount"];
+"irs-ira-contribution-limits" [label="Retirement topics - IRA\ncontribution limits |\nInternal Revenue Service"];
+"irs-roth-comparison-chart" [label="Roth comparison chart |\nInternal Revenue Service"];
+"irs-roth-iras" [label="Roth IRAs | Internal Revenue\nService"];
+"irs-traditional-and-roth-iras" [label="Traditional and Roth IRAs |\nInternal Revenue Service"];
+"roth-ira" [label="Roth IRA"];
+"roth-ira" -> "after-tax-contribution" [label="HAS_RULE\n2000-01-01 → open"];
+"roth-ira" -> "income-limit" [label="HAS_RULE\n2000-01-01 → open"];
+"roth-ira" -> "ira" [label="IS_A\n2000-01-01 → open"];
+"roth-ira" -> "irs-ira-contribution-limits" [label="MENTIONED_IN"];
+"roth-ira" -> "irs-roth-comparison-chart" [label="MENTIONED_IN"];
+"roth-ira" -> "irs-roth-iras" [label="MENTIONED_IN"];
+"roth-ira" -> "irs-traditional-and-roth-iras" [label="MENTIONED_IN"];
+"roth-ira" -> "catch-up-contribution" [label="HAS_LIMIT\n2021-01-01 → 2022-01-01"];
+"roth-ira" -> "contribution-limit" [label="HAS_LIMIT\n2021-01-01 → 2022-01-01"];
+"roth-ira" -> "income-limit" [label="HAS_LIMIT\n2021-01-01 → 2022-01-01"];
+"roth-ira" -> "catch-up-contribution" [label="HAS_LIMIT\n2022-01-01 → 2023-01-01"];
+"roth-ira" -> "contribution-limit" [label="HAS_LIMIT\n2022-01-01 → 2023-01-01"];
+"roth-ira" -> "income-limit" [label="HAS_LIMIT\n2022-01-01 → 2023-01-01"];
+"roth-ira" -> "catch-up-contribution" [label="HAS_LIMIT\n2023-01-01 → 2024-01-01"];
+"roth-ira" -> "contribution-limit" [label="HAS_LIMIT\n2023-01-01 → 2024-01-01"];
+"roth-ira" -> "income-limit" [label="HAS_LIMIT\n2023-01-01 → 2024-01-01"];
+"roth-ira" -> "catch-up-contribution" [label="HAS_LIMIT\n2024-01-01 → 2025-01-01"];
+"roth-ira" -> "contribution-limit" [label="HAS_LIMIT\n2024-01-01 → 2025-01-01"];
+"roth-ira" -> "income-limit" [label="HAS_LIMIT\n2024-01-01 → 2025-01-01"];
+}

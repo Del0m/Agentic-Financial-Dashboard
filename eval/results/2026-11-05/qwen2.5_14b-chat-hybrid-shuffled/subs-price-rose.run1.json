@@ -1,0 +1,75 @@
+{
+  "record": {
+    "scenario_id": "subs-price-rose",
+    "run": 1,
+    "answer": "Yes, your gym membership price has gone up. It was $40.00 from August to November, and the latest charge was $43.00 in November. The next charge is scheduled for December 2nd at the new price of $43.00.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_2561\",\"purpose\":\"recurring\",\"data\":{\"streams\":[{\"merchant\":\"FitClub Gym\",\"category\":\"PERSONAL_CARE\",\"frequency\":\"monthly\",\"typical\":40.0,\"last\":43.0,\"previous\":40.0,\"next_date\":\"2026-12-02\"}]}}"
+    ],
+    "graph_facts": [
+      "Charges at FitClub Gym: first in August 2026, latest in November 2026, in 4 months, $43.00 in the latest month, priced $40.00 from August 2026, then $43.00 from November 2026",
+      "Recurring charge FitClub Gym: $40.00 from August 2026 to November 2026; $43.00 from November 2026"
+    ],
+    "sources": [
+      {
+        "title": "Asset Allocation and Diversification",
+        "section": "What is asset allocation?",
+        "source_url": "https://www.investor.gov/introduction-investing/getting-started/asset-allocation",
+        "text": "an asset category that is doing poorly may not be easy. But it can be a wise move. By cutting back on current “winners” and/or adding more current “losers,” rebalancing forces you to buy low and sell high.\n\nSome financial experts advise rebalancing at regular intervals, such as every six or 12 months. Others recommend rebalancing when your holdings of an asset class increase or decrease more than a pre-set percentage. In either case, rebalancing tends to work best when done relatively infrequently.\n\nIn a target date fund, the fund’s investment adviser takes care of rebalancing the fund’s asset allocation over time in a way that is typically intended to become more conservative as you approach the target date."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      },
+      {
+        "title": "What is compound interest?",
+        "section": "Suggested student activities",
+        "source_url": "https://www.investor.gov/additional-resources/information/youth/teachers-classroom-resources/what-compound-interest",
+        "text": "- Develop age appropriate math questions using various interest rates and the Rule of 72.\n\n- Illustration Using Pizza\n- Ask students: if a slice of plain pizza costs $2, and you buy a slice every day for a year, you'll spend how much? [The correct answer is $730.]\n- If you give up pizza and save the $730 for the year, then invest it, earning 5% interest, after five years, you'll have how much? [The correct answer is $931.69.]\n- How much will you have after 30 years? [The correct answer is $3,155.02.]"
+      },
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Deferral limits for 401(k) plans",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "The limit on employee elective deferrals (for traditional and safe harbor plans)** **is:\n\n- $24,500 in 2026, subject to cost-of-living adjustments\n\nGenerally, you aggregate all elective deferrals you made to all plans in which you participate to determine if you have exceeded these limits. If a plan participant’s elective deferrals are more than the annual limit, find out how you can correct this plan mistake."
+      }
+    ],
+    "latency_s": 9.050961167085916,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9236268607222395,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly addresses the question using the provided data, accurately stating the price increase and future charge date."
+    },
+    "judge_passed": true
+  }
+}

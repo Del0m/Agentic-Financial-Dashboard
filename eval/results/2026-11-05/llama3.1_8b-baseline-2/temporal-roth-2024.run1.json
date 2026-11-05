@@ -1,0 +1,87 @@
+{
+  "record": {
+    "scenario_id": "temporal-roth-2024",
+    "run": 1,
+    "answer": "The Roth IRA contribution limit in 2024 was $7,000, or $8,000 if you're age 50 or older. This limit applies to all of your traditional and Roth IRAs. This is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "search_kb",
+        "args": {
+          "query": "Roth IRA contribution limit 2024"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"purpose\":\"kb\",\"results\":[{\"title\":\"Retirement topics - IRA contribution limits | Internal Revenue Service\",\"section\":\"Roth IRA contribution limit\",\"source_url\":\"https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-ira-contribution-limits\",\"text\":\"In addition to the general contribution limit that applies to both Roth and traditional IRAs, your Roth IRA contribution may be limited based on your filing status and income.\\n\\n- 2024 - Amount of Roth IRA Contributions You Can Make for 2024\\n- 2023 - Amount of Roth IRA Contributions You Can Make for 2023\"},{\"title\":\"Retirement topics - IRA contribution limits | Internal Revenue Service\",\"section\":\"Retirement topics - IRA contribution limits | Internal Revenue Service\",\"source_url\":\"https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-ira-contribution-limits\",\"text\":\"**Note:** For other retirement plans contribution limits, see Retirement Topics – Contribution Limits.\\n\\nFor 2026, the total contributions you make each year to all of your traditional IRAs and Roth IRAs can’t be more than:\\n\\n- $7,500 ($8,600 if you’re age 50 or older), or\\n- If less, your taxable compensation for the year\\n\\nFor 2025 and 2024, the total contributions you make each year to all of your traditional IRAs and Roth IRAs can't be more than:\\n\\n- $7,000 ($8,000 if you're age 50 or older), or\\n- If less, your taxable compensation for the year\\n\\nFor 2023, the total contributions you make each year to all of your traditional IRAs and Roth IRAs can't be more than:\\n\\n- $6,500 ($7,500 if you're age 50 or older), or\\n- If less, your taxable compensation for the year\\n\\nThe IRA contribution limit does not apply to:\\n\\n- Rollover contributions\\n- Qualified reservist repayments\"},{\"title\":\"Roth IRAs | Internal Revenue Service\",\"section\":\"Limits on Roth IRA contributions based on modified AGI\",\"source_url\":\"https://www.irs.gov/retirement-plans/roth-iras\",\"text\":\"Your Roth IRA contribution might be limited based on your filing status and income.\\n\\n- 2023 - Amount of Roth IRA contributions you can make for 2023\\n- 2024 - Amount of Roth IRA contributions you can make for 2024\"},{\"title\":\"Traditional and Roth IRAs | Internal Revenue Service\",\"section\":\"How much can I contribute? (updated July 29, 2024)\",\"source_url\":\"https://www.irs.gov/retirement-plans/traditional-and-roth-iras\",\"text\":\"The most you can contribute to **all **of your traditional and Roth IRAs is the smaller of:\\n\\n- For 2021, $6,000, or $7,000 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\\n- For 2022, $6,000, or $7,000 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\\n- For 2023, $6,500, or $7,500 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\\n- For 2024, $7,000, or $8,000 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\"}]}"
+    ],
+    "graph_facts": [
+      "Individual retirement account, rollover: The IRA contribution limit does not apply to rollover contributions",
+      "Roth IRA, after-tax contribution: Roth IRA contributions are made with after-tax dollars.",
+      "Roth IRA, income limit: Roth IRA contributions might be limited if your income exceeds a certain level.",
+      "Roth IRA: is a Individual retirement account",
+      "401(k), annual contribution limit: $23,000.00 for 2024",
+      "Individual retirement account, annual contribution limit: $7,000.00 for 2024",
+      "Designated Roth 401(k), annual contribution limit: $23,000.00 for 2024",
+      "Roth IRA, catch-up contribution: $1,000.00 for 2024",
+      "Roth IRA, annual contribution limit: $7,000.00 for 2024",
+      "Roth IRA, income limit: $240,000.00 for 2024 (married)",
+      "Traditional IRA, income limit: You may not be able to deduct all of your traditional IRA contributions if you or your spouse participates in another retirement plan at work.",
+      "Designated Roth 401(k), catch-up contribution: $7,500.00 for 2024"
+    ],
+    "sources": [
+      {
+        "title": "Retirement topics - IRA contribution limits | Internal Revenue Service",
+        "section": "Retirement topics - IRA contribution limits | Internal Revenue Service",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-ira-contribution-limits",
+        "text": "**Note:** For other retirement plans contribution limits, see Retirement Topics – Contribution Limits.\n\nFor 2026, the total contributions you make each year to all of your traditional IRAs and Roth IRAs can’t be more than:\n\n- $7,500 ($8,600 if you’re age 50 or older), or\n- If less, your taxable compensation for the year\n\nFor 2025 and 2024, the total contributions you make each year to all of your traditional IRAs and Roth IRAs can't be more than:\n\n- $7,000 ($8,000 if you're age 50 or older), or\n- If less, your taxable compensation for the year\n\nFor 2023, the total contributions you make each year to all of your traditional IRAs and Roth IRAs can't be more than:\n\n- $6,500 ($7,500 if you're age 50 or older), or\n- If less, your taxable compensation for the year\n\nThe IRA contribution limit does not apply to:\n\n- Rollover contributions\n- Qualified reservist repayments"
+      },
+      {
+        "title": "Retirement topics - IRA contribution limits | Internal Revenue Service",
+        "section": "Roth IRA contribution limit",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-ira-contribution-limits",
+        "text": "In addition to the general contribution limit that applies to both Roth and traditional IRAs, your Roth IRA contribution may be limited based on your filing status and income.\n\n- 2024 - Amount of Roth IRA Contributions You Can Make for 2024\n- 2023 - Amount of Roth IRA Contributions You Can Make for 2023"
+      },
+      {
+        "title": "Roth IRAs | Internal Revenue Service",
+        "section": "Limits on Roth IRA contributions based on modified AGI",
+        "source_url": "https://www.irs.gov/retirement-plans/roth-iras",
+        "text": "Your Roth IRA contribution might be limited based on your filing status and income.\n\n- 2023 - Amount of Roth IRA contributions you can make for 2023\n- 2024 - Amount of Roth IRA contributions you can make for 2024"
+      },
+      {
+        "title": "Traditional and Roth IRAs | Internal Revenue Service",
+        "section": "How much can I contribute? (updated July 29, 2024)",
+        "source_url": "https://www.irs.gov/retirement-plans/traditional-and-roth-iras",
+        "text": "The most you can contribute to **all **of your traditional and Roth IRAs is the smaller of:\n\n- For 2021, $6,000, or $7,000 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\n- For 2022, $6,000, or $7,000 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\n- For 2023, $6,500, or $7,500 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\n- For 2024, $7,000, or $8,000 if you’re age 50 or older by the end of the year; or your taxable compensation for the year."
+      }
+    ],
+    "latency_s": 6.195089125074446,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": true,
+    "similarity": 0.9910932674353403,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly states the Roth IRA contribution limit for 2024, accurately reflecting the provided tool results and including the catch-up contribution for those over 50."
+    },
+    "judge_passed": true
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "record": {
+    "scenario_id": "goal-nothing-offered",
+    "run": 1,
+    "status": "nothing_offered",
+    "reason": "nothing_offered",
+    "cap_cents": 81600,
+    "surplus_cents": 102000,
+    "offered": [],
+    "attempts": 0,
+    "plans": [],
+    "latency_s": 0.01972804218530655,
+    "error": null,
+    "kind": "goal"
+  },
+  "scores": {
+    "checks": {
+      "status": true,
+      "banned_kinds": true,
+      "model_not_called": true
+    },
+    "passed": true,
+    "attempts": 0
+  }
+}

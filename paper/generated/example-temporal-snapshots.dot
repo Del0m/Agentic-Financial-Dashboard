@@ -1,0 +1,15 @@
+digraph G {
+rankdir=LR; bgcolor="white"; pad=0.3;
+node [shape=box,style="rounded,filled",fillcolor="#eaf2f8",fontname="Helvetica"];
+edge [fontname="Helvetica",fontsize=10,color="#566573"];
+graph [label="Question: What was the gym price on April 2, 2026?\nIllustrative example · synthetic personal data", labelloc="t", fontsize=18, fontname="Helvetica", nodesep=0.5, ranksep=1.0];
+"a1" [label="Alice\nknown at Jan 11, 2026",fillcolor="#eaf2f8"];
+"g1" [label="Gym membership\nanswer: $35",fillcolor="#eaf2f8"];
+"a2" [label="Alice\nknown at Apr 10, 2026, 12:00 UTC",fillcolor="#eaf2f8"];
+"g2" [label="Gym membership\nanswer: $45",fillcolor="#eaf2f8"];
+"a3" [label="Alice\nknown at May 10, 2026, 12:00 UTC",fillcolor="#eaf2f8"];
+"g3" [label="Gym membership\nanswer: $40",fillcolor="#eaf2f8"];
+"a1" -> "g1" [label="SUBSCRIBES\n$35 · version 1\nvalid: Jan 1 onward\nrecorded: Jan 10–Apr 10"];
+"a2" -> "g2" [label="SUBSCRIBES\n$45 · version 3\nvalid: Apr 1 onward\nrecorded: Apr 10–May 10"];
+"a3" -> "g3" [label="SUBSCRIBES\n$40 · version 4\nvalid: Apr 1 onward\nrecorded: May 10–Jun 10"];
+}

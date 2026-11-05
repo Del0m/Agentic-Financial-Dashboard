@@ -1,0 +1,42 @@
+{
+  "record": {
+    "scenario_id": "temporal-roth-2024",
+    "run": 2,
+    "answer": "The Roth IRA contribution limit for 2024 is $6,500 for those under age 50 and $7,500 for those age 50 and older. This is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 6.430416082963347,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "7000±0"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.9876435063673134,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately states the 2024 Roth IRA contribution limits and includes a disclaimer."
+    },
+    "judge_passed": true
+  }
+}

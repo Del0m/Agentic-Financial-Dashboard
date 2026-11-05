@@ -1,0 +1,50 @@
+{
+  "record": {
+    "scenario_id": "abstain-shop-never-visited",
+    "run": 1,
+    "answer": "I don't have the specific spending details at Costco for last year. For exact figures, check your transaction history for the year 2025. This is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_history",
+        "args": {
+          "entity": "Costco",
+          "relation": "SPENDS_AT"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"purpose\":\"graph\",\"as_of\":\"2026-11-06\",\"facts\":[]}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 8.143651916645467,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9057968148868155,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant correctly states it cannot provide the data and directs the user to their transaction history, avoiding inventing any figures."
+    },
+    "judge_passed": true
+  }
+}

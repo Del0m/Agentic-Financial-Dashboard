@@ -1,0 +1,67 @@
+{
+  "record": {
+    "scenario_id": "budget-seasonal-holidays",
+    "run": 1,
+    "flags": {
+      "GENERAL_MERCHANDISE": "2026-12-05"
+    },
+    "alerts": [
+      {
+        "day": "2026-12-05",
+        "kind": "overspend",
+        "category": "GENERAL_MERCHANDISE",
+        "cause": "one_time",
+        "action": "alert",
+        "severity": "high",
+        "message": "Your spending on General Merchandise is unusually high this month, primarily due to a $90 purchase at Book Nook.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-12-05",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "Low balance alert: Insufficient funds to cover the Landlord bill of 161.75 on 2026-12-07. Shortfall of 161.75 noted.",
+        "signal_days": 1
+      },
+      {
+        "day": "2026-12-06",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "You have a low balance with a shortfall of $148.88 for the Everyday spending bill on 2026-12-07. Your current available funds are insufficient to cover this expense without additional income or adjustments.",
+        "signal_days": 1
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 4,
+    "llm_retries": 0,
+    "latency_s": 14.685394040774554,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true,
+      "cause": false,
+      "action": true,
+      "flag_by": true
+    },
+    "passed": false,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [
+      0
+    ],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 0,
+    "llm_calls": 4,
+    "llm_retries": 0
+  }
+}

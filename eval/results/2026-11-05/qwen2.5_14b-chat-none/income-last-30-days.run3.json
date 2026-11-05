@@ -1,0 +1,51 @@
+{
+  "record": {
+    "scenario_id": "income-last-30-days",
+    "run": 3,
+    "answer": "Over the last 30 days, you had an income of $3700. This came in with two transactions of $1850 each on 2026-11-04 and 2026-10-21.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_spending",
+        "args": {
+          "category": "INCOME",
+          "start_date": "2026-10-07",
+          "end_date": "2026-11-06"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_e697\",\"purpose\":\"spending\",\"data\":{\"category\":\"INCOME\",\"total\":3700.0,\"direction\":\"inflow\",\"count\":2,\"truncated\":false,\"transactions\":[{\"date\":\"2026-11-04\",\"amount\":1850.0,\"merchant\":null},{\"date\":\"2026-10-21\",\"amount\":1850.0,\"merchant\":null}]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 9.330628958065063,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": true,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.937214972695648,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately summarizes the provided income data, including dates and amounts, and includes a disclaimer."
+    },
+    "judge_passed": true
+  }
+}

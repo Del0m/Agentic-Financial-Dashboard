@@ -1,0 +1,47 @@
+{
+  "record": {
+    "scenario_id": "subs-unused-cancel-savings",
+    "run": 2,
+    "answer": "If you cancel Clipflix, you would save $15.49 each month. This is the typical monthly charge for this subscription.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_5cba\",\"purpose\":\"recurring\",\"data\":{\"streams\":[{\"merchant\":\"Clipflix\",\"category\":\"ENTERTAINMENT\",\"frequency\":\"monthly\",\"typical\":15.49,\"last\":15.49,\"previous\":null,\"next_date\":\"2026-12-02\"},{\"merchant\":\"Streamly\",\"category\":\"ENTERTAINMENT\",\"frequency\":\"monthly\",\"typical\":9.99,\"last\":9.99,\"previous\":null,\"next_date\":\"2026-11-25\"}]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 5.90968216676265,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.976799381572083,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly addresses the question using the provided data and avoids inventing any new information."
+    },
+    "judge_passed": true
+  }
+}

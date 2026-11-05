@@ -1,0 +1,74 @@
+{
+  "record": {
+    "scenario_id": "temporal-gym-start",
+    "run": 3,
+    "answer": "It looks like you don't have any gym membership or recurring charges listed. You might want to check the details of your gym membership to find when it started. If you have a paper receipt or an email confirmation, that would likely have the start date.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_ee63\",\"purpose\":\"recurring\",\"data\":{\"streams\":[]}}"
+    ],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "Traditional and Roth IRAs | Internal Revenue Service",
+        "section": "What is the deadline to make contributions?",
+        "source_url": "https://www.irs.gov/retirement-plans/traditional-and-roth-iras",
+        "text": "Your tax return filing deadline (not including extensions). For example, you can make 2022 IRA contributions until April 18, 2023."
+      },
+      {
+        "title": "Traditional and Roth IRAs | Internal Revenue Service",
+        "section": "Traditional IRAs",
+        "source_url": "https://www.irs.gov/retirement-plans/traditional-and-roth-iras",
+        "text": "You must start taking distributions by April 1 following the year in which you turn age 72 (70 1/2 if you reach the age of 70 ½ before Jan. 1, 2020) and by December 31 of later years.\n\nAny deductible contributions and earnings you withdraw or that are distributed from your traditional IRA are taxable. Also, if you are under age 59 ½ you may have to pay an additional 10% tax for early withdrawals unless you qualify for an exception."
+      },
+      {
+        "title": "Understanding Deposit Insurance | FDIC.gov",
+        "section": "Understanding Deposit Insurance | FDIC.gov",
+        "source_url": "https://www.fdic.gov/resources/deposit-insurance/understanding-deposit-insurance",
+        "text": "FDIC deposit insurance protects your money in deposit accounts at FDIC-insured banks in the event of a bank failure. Since the FDIC was founded in 1933, no depositor has lost a penny of FDIC-insured funds."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      }
+    ],
+    "latency_s": 9.867003458086401,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "June"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.8994037035948611,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant correctly states there are no gym memberships listed and provides reasonable suggestions for finding the start date, but lacks specificity."
+    },
+    "judge_passed": true
+  }
+}

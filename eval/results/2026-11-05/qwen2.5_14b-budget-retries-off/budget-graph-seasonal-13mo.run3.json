@@ -1,0 +1,76 @@
+{
+  "record": {
+    "scenario_id": "budget-graph-seasonal-13mo",
+    "run": 3,
+    "flags": {
+      "GENERAL_MERCHANDISE": "2026-12-05"
+    },
+    "alerts": [
+      {
+        "day": "2026-12-05",
+        "kind": "overspend",
+        "category": "GENERAL_MERCHANDISE",
+        "cause": "seasonal",
+        "action": "alert",
+        "severity": "high",
+        "message": "You've spent $259.08 on general merchandise this month, which is higher than your limit of $151.73. The largest purchase was $90.00 at Book Nook.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-12-05",
+        "kind": "new_subscription",
+        "category": "RENT_AND_UTILITIES",
+        "cause": null,
+        "action": "alert",
+        "severity": "medium",
+        "message": "A new repeating charge from Landlord: $1,500.00, monthly.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-12-05",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "Low balance warning: Insufficient funds to cover the Landlord bill of 161.51 on 2026-12-06, resulting in a shortfall of 161.51.",
+        "signal_days": 1
+      },
+      {
+        "day": "2026-12-06",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "You have a low balance for Everyday spending on 2026-12-07 with a shortfall of $148.64, below your buffer of $100.00.",
+        "signal_days": 1
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 4,
+    "llm_retries": 0,
+    "latency_s": 17.737711749970913,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true,
+      "cause": true,
+      "action": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [
+      0
+    ],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 0,
+    "llm_calls": 4,
+    "llm_retries": 0
+  }
+}

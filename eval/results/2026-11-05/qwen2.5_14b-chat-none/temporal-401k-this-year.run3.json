@@ -1,0 +1,42 @@
+{
+  "record": {
+    "scenario_id": "temporal-401k-this-year",
+    "run": 3,
+    "answer": "The 401(k) employee contribution limit for 2026 is $22,500. This is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 6.341388166416436,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "24500±0"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": true,
+    "similarity": 0.9975345132366303,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 2,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The assistant provided a specific number but it is incorrect for the current year, indicating it did not look up the correct data."
+    },
+    "judge_passed": false
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "record": {
+    "scenario_id": "abstain-shop-never-visited",
+    "run": 1,
+    "answer": "You did not spend any money at Costco last year.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_spending",
+        "args": {
+          "end_date": "2026-10-31",
+          "category": "GENERAL_MERCHANDISE",
+          "start_date": "2025-11-01"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_d37d\",\"purpose\":\"spending\",\"data\":{\"category\":\"GENERAL_MERCHANDISE\",\"total\":0.0,\"direction\":\"outflow\",\"count\":0,\"truncated\":false,\"transactions\":[]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 8.180260666180402,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9029569848198795,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The answer directly and accurately reflects the provided data, although it lacks specificity beyond stating the zero spending."
+    },
+    "judge_passed": true
+  }
+}

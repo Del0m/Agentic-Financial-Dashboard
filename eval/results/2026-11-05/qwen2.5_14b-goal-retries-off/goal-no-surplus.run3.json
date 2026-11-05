@@ -1,0 +1,25 @@
+{
+  "record": {
+    "scenario_id": "goal-no-surplus",
+    "run": 3,
+    "status": "no_surplus",
+    "reason": "no_surplus",
+    "cap_cents": null,
+    "surplus_cents": -22000,
+    "offered": [],
+    "attempts": 0,
+    "plans": [],
+    "latency_s": 0.011944040656089783,
+    "error": null,
+    "kind": "goal"
+  },
+  "scores": {
+    "checks": {
+      "status": true,
+      "banned_kinds": true,
+      "model_not_called": true
+    },
+    "passed": true,
+    "attempts": 0
+  }
+}

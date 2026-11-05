@@ -1,0 +1,42 @@
+{
+  "record": {
+    "scenario_id": "signal-low-balance-before-payday",
+    "run": 3,
+    "flags": {},
+    "alerts": [
+      {
+        "day": "2026-10-08",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "medium",
+        "message": "On 2026-10-14, there will be a shortfall of $10.91 for the Landlord bill due to insufficient funds (starting_available: $1716.09, shortfall: $10.91, buffer: $100.0). To cover this, consider moving $115.0 from savings or delaying spending in the Entertainment category ($15.49 spent so far). Also, be aware of the upcoming changes in your streaming subscription: a $1500.0 outflow on an unspecified date, followed by an inflow of $2200.0 and an outflow of $40.0.",
+        "signal_days": 6
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 0,
+    "llm_retries": 0,
+    "latency_s": 3.237121374811977,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "alert_kinds": true,
+      "message": true,
+      "lead_time": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [],
+    "missed_alerts": [],
+    "low_balance_days_ahead": 6,
+    "llm_failures": 0,
+    "repeat_alerts": 0,
+    "llm_calls": 0,
+    "llm_retries": 0
+  }
+}

@@ -1,0 +1,992 @@
+{
+  "mode": "replay",
+  "model": "llama3.1:8b",
+  "results": [
+    {
+      "user": "improve-steady",
+      "periods": [
+        {
+          "start": "2026-08-01",
+          "mape": 6.1,
+          "lines": 4
+        },
+        {
+          "start": "2026-09-01",
+          "mape": 13.1,
+          "lines": 4
+        },
+        {
+          "start": "2026-10-01",
+          "mape": 6.4,
+          "lines": 4
+        }
+      ],
+      "proposals": 3,
+      "accepted": 3,
+      "rejected": 0,
+      "unseen": 0,
+      "seconds": 52.7,
+      "proposal_rows": [
+        {
+          "key": "budget-improve-steady|2026-08-29|FOOD_AND_DRINK|adjust_next_budget|82500",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Grocer's spending is close to its typical amount, so we're proposing a limit of $825.00 for next month.",
+          "proposed_limit_cents": 82500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 73459,
+              "spent_cents": 77133
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-steady|2026-08-31|TRANSPORTATION|adjust_next_budget|20500",
+          "category": "TRANSPORTATION",
+          "cause": "recurring",
+          "message": "Next month's transportation limit will be $205.00, based on this month's spending pattern.",
+          "proposed_limit_cents": 20500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 17177,
+              "spent_cents": 20133
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-steady|2026-10-31|FOOD_AND_DRINK|adjust_next_budget|79000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Grocer's charge this month is close to its typical amount, so we're proposing a limit of $790.00 for next month.",
+          "proposed_limit_cents": 79000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 73459,
+              "spent_cents": 77133
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 82500,
+              "spent_cents": 65559
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 77418,
+              "spent_cents": 78983
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "user": "improve-rising",
+      "periods": [
+        {
+          "start": "2026-08-01",
+          "mape": 5.5,
+          "lines": 4
+        },
+        {
+          "start": "2026-09-01",
+          "mape": 7.7,
+          "lines": 4
+        },
+        {
+          "start": "2026-10-01",
+          "mape": 8.8,
+          "lines": 4
+        }
+      ],
+      "proposals": 12,
+      "accepted": 12,
+      "rejected": 0,
+      "unseen": 0,
+      "seconds": 89.4,
+      "proposal_rows": [
+        {
+          "key": "budget-improve-rising|2026-08-31|TRANSPORTATION|adjust_next_budget|19500",
+          "category": "TRANSPORTATION",
+          "cause": "recurring",
+          "message": "Fuel spending is regular, propose next month's limit as $195.00.",
+          "proposed_limit_cents": 19500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 16719,
+              "spent_cents": 19465
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-05|TRANSPORTATION|adjust_next_budget|27000",
+          "category": "TRANSPORTATION",
+          "cause": "recurring",
+          "message": "Fuel charges are close to the typical amount, so we're proposing a limit of $270.00 for next month.",
+          "proposed_limit_cents": 27000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 16719,
+              "spent_cents": 19465
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 19500,
+              "spent_cents": 15549
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 18315,
+              "spent_cents": 4348
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-10|FOOD_AND_DRINK|adjust_next_budget|117000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Grocer's regular spending explains much of the overspending. Next month's limit is proposed at $1,170.00.",
+          "proposed_limit_cents": 117000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 75654,
+              "spent_cents": 77982
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 76352,
+              "spent_cents": 74940
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 75928,
+              "spent_cents": 37636
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-17|FOOD_AND_DRINK|adjust_next_budget|106000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Your spending on Grocer is at its typical amount, so we're proposing a limit of $1060.00 for next month.",
+          "proposed_limit_cents": 106000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 75654,
+              "spent_cents": 77982
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 76352,
+              "spent_cents": 74940
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 75928,
+              "spent_cents": 57886
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-18|FOOD_AND_DRINK|adjust_next_budget|100000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Next month's FOOD_AND_DRINK limit will be $1,000.00.",
+          "proposed_limit_cents": 100000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 75654,
+              "spent_cents": 77982
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 76352,
+              "spent_cents": 74940
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 75928,
+              "spent_cents": 57886
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-19|TRANSPORTATION|adjust_next_budget|20500",
+          "category": "TRANSPORTATION",
+          "cause": "recurring",
+          "message": "Your transportation budget for next month is proposed at $205.00, based on your regular spending on Fuel.",
+          "proposed_limit_cents": 20500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 16719,
+              "spent_cents": 19465
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 19500,
+              "spent_cents": 15549
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 18315,
+              "spent_cents": 12393
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-24|FOOD_AND_DRINK|adjust_next_budget|101000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Grocer's regular spending explains much of the overspend. Next month's limit will be $1,010.00.",
+          "proposed_limit_cents": 101000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 75654,
+              "spent_cents": 77982
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 76352,
+              "spent_cents": 74940
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 75928,
+              "spent_cents": 78095
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-25|FOOD_AND_DRINK|adjust_next_budget|97000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Grocer's regular spending explains much of the overspend. Next month's limit will be $970.00.",
+          "proposed_limit_cents": 97000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 75654,
+              "spent_cents": 77982
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 76352,
+              "spent_cents": 74940
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 75928,
+              "spent_cents": 78095
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-28|FOOD_AND_DRINK|adjust_next_budget|89500",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Grocer's regular pattern explains much of the spending. Next month's limit will be $895.00.",
+          "proposed_limit_cents": 89500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 75654,
+              "spent_cents": 77982
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 76352,
+              "spent_cents": 74940
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 75928,
+              "spent_cents": 80420
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-29|FOOD_AND_DRINK|adjust_next_budget|86000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Grocer's regular pattern explains much of the spending. Next month's limit will be $860.00.",
+          "proposed_limit_cents": 86000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 75654,
+              "spent_cents": 77982
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 76352,
+              "spent_cents": 74940
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 75928,
+              "spent_cents": 80420
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-30|FOOD_AND_DRINK|adjust_next_budget|86000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Grocer's regular charge of $860.00 is projected for next month.",
+          "proposed_limit_cents": 86000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 75654,
+              "spent_cents": 77982
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 76352,
+              "spent_cents": 74940
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 75928,
+              "spent_cents": 82944
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-rising|2026-10-31|FOOD_AND_DRINK|adjust_next_budget|97500",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Grocer's charge this month is close to its typical amount, so we're proposing a limit of $975.00 for next month.",
+          "proposed_limit_cents": 97500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 75654,
+              "spent_cents": 77982
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 76352,
+              "spent_cents": 74940
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 75928,
+              "spent_cents": 97196
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "user": "improve-new-club",
+      "periods": [
+        {
+          "start": "2026-08-01",
+          "mape": 27.3,
+          "lines": 4
+        },
+        {
+          "start": "2026-09-01",
+          "mape": 31.7,
+          "lines": 4
+        },
+        {
+          "start": "2026-10-01",
+          "mape": 8.9,
+          "lines": 4
+        }
+      ],
+      "proposals": 30,
+      "accepted": 30,
+      "rejected": 0,
+      "unseen": 0,
+      "seconds": 286.2,
+      "proposal_rows": [
+        {
+          "key": "budget-improve-new-club|2026-08-31|TRANSPORTATION|adjust_next_budget|20500",
+          "category": "TRANSPORTATION",
+          "cause": "recurring",
+          "message": "Fuel spending is at its typical amount, so we're proposing a limit of $205.00 for next month.",
+          "proposed_limit_cents": 20500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 17241,
+              "spent_cents": 20399
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-04|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 18000
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-05|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your spending on Vine Club is high, so we're setting a limit of $200.00 for next month.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-06|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your ENTERTAINMENT category is projected to spend $979.95 this month. Consider setting a limit of $200.00 for next month.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-07|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00 due to recurring charges from Vine Club.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-08|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your spending on Vine Club is high, so we're adjusting next month's limit to $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-09|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your ENTERTAINMENT category is projected to spend $653.30 this month, exceeding the limit of $19.31. Next month's limit is proposed at $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-10|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your ENTERTAINMENT category is projected to spend $587.97 this month, exceeding the limit of $19.31. Next month's limit is proposed to be $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-11|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your ENTERTAINMENT budget for next month is proposed at $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-12|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your ENTERTAINMENT budget for next month is proposed at $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-13|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your ENTERTAINMENT budget for next month is proposed at $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-14|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your ENTERTAINMENT budget for next month is proposed to be $200.00 due to high spending on Vine Club.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-15|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your ENTERTAINMENT budget for next month is proposed at $200.00 to account for the high spending on Vine Club.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-16|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00 due to recurring charges from Vine Club.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-17|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-18|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00 due to recurring charges from Vine Club.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-19|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00 due to recurring charges from Vine Club.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-20|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-21|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your ENTERTAINMENT budget for next month is proposed at $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-22|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-23|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-24|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-25|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00 due to recurring charges from Vine Club.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-26|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-27|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-28|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your ENTERTAINMENT category is projected to exceed its limit this month. Consider setting a limit of $200.00 for next month.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-29|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Your ENTERTAINMENT category is projected to spend $202.75 this month, exceeding the limit of $19.31. Next month's limit will be set to $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-09-30|ENTERTAINMENT|adjust_next_budget|20000",
+          "category": "ENTERTAINMENT",
+          "cause": "recurring",
+          "message": "Next month's limit for ENTERTAINMENT will be $200.00.",
+          "proposed_limit_cents": 20000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 1679,
+              "spent_cents": 19599
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 1931,
+              "spent_cents": 19599
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-10-17|FOOD_AND_DRINK|adjust_next_budget|85000",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Your FOOD_AND_DRINK limit for next month will be $850.00, based on your spending pattern.",
+          "proposed_limit_cents": 85000,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 71898,
+              "spent_cents": 73525
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 72386,
+              "spent_cents": 64931
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 70150,
+              "spent_cents": 46541
+            }
+          ]
+        },
+        {
+          "key": "budget-improve-new-club|2026-10-31|FOOD_AND_DRINK|adjust_next_budget|77500",
+          "category": "FOOD_AND_DRINK",
+          "cause": "recurring",
+          "message": "Grocer's charge this month is close to its typical amount, so next month's limit will be $775.00.",
+          "proposed_limit_cents": 77500,
+          "periods": [
+            {
+              "start": "2026-08-01",
+              "limit_cents": 71898,
+              "spent_cents": 73525
+            },
+            {
+              "start": "2026-09-01",
+              "limit_cents": 72386,
+              "spent_cents": 64931
+            },
+            {
+              "start": "2026-10-01",
+              "limit_cents": 70150,
+              "spent_cents": 77045
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

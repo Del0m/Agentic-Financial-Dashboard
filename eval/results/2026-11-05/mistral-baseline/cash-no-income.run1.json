@@ -1,0 +1,68 @@
+{
+  "record": {
+    "scenario_id": "cash-no-income",
+    "run": 1,
+    "answer": " To avoid running short of cash this month, consider adjusting your bills' due dates or taking advantage of any one-time opportunities to save. You can also use a bill calendar to keep track of your monthly expenses and plan when they're due. This is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "Strategy: Manage your cash flow",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "Your cash flow\n\nFor example, you may be able to work with your creditors (like your landlord, utility companies, or credit card companies) to adjust the due dates for your bills, or you can use the weeks when you have more money available to move a little extra into savings.\n\n**Who is this helpful for**: Anyone. This is one important first step in managing your money, regardless of whether you’re living paycheck to paycheck or have a tendency to spend more than your budget allows."
+      },
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "Strategy: Take advantage of one-time opportunities to save",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "There may also be certain times during the year when you get an influx of money. For many Americans, a tax refund can be one of the largest checks they receive all year. There may be other times of the year, like a holiday or birthday, that you receive a cash gift.\n\nWhile it’s tempting to spend it, saving all or a portion of that money could help you quickly set up your emergency fund.\n\n**Who is this helpful for**: Anyone but particularly those with irregular income. If you receive a large check from a tax refund or for some other reason, it’s always good to consider putting all or a portion of it away into savings."
+      },
+      {
+        "title": "How to reduce your debt | Consumer Financial Protection Bureau",
+        "section": "Step three: Organize your monthly bills",
+        "source_url": "https://www.consumerfinance.gov/about-us/blog/how-reduce-your-debt/",
+        "text": "Understanding what you owe, and when, will help you manage your debt. You can use a bill calendar to keep all your information in one place as you tackle your debt. Use the bill calendar to see all your bills and plan when they’re due. Keeping track of your monthly expenses can help put you one step closer to reaching your goals."
+      },
+      {
+        "title": "Asset Allocation and Diversification",
+        "section": "What is asset allocation?",
+        "source_url": "https://www.investor.gov/introduction-investing/getting-started/asset-allocation",
+        "text": "an asset category that is doing poorly may not be easy. But it can be a wise move. By cutting back on current “winners” and/or adding more current “losers,” rebalancing forces you to buy low and sell high.\n\nSome financial experts advise rebalancing at regular intervals, such as every six or 12 months. Others recommend rebalancing when your holdings of an asset class increase or decrease more than a pre-set percentage. In either case, rebalancing tends to work best when done relatively infrequently.\n\nIn a target date fund, the fund’s investment adviser takes care of rebalancing the fund’s asset allocation over time in a way that is typically intended to become more conservative as you approach the target date."
+      }
+    ],
+    "latency_s": 4.73731370922178,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 2,
+      "missing": [
+        "income",
+        "400±1"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": false,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": false,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.8052666206658515,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 2,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The answer provides general advice but fails to address the user's specific situation due to the lack of cash flow data."
+    },
+    "judge_passed": false
+  }
+}

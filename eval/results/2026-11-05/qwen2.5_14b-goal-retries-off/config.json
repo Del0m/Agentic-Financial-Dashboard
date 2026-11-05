@@ -1,0 +1,29 @@
+{
+  "model": "qwen2.5:14b",
+  "judge": "gemma3:12b",
+  "embeddings": "nomic-embed-text",
+  "runs": 3,
+  "commit": "635b52972fe1653ce6942393594c8799da20357a",
+  "scenarios": [
+    "goal-cap-too-small",
+    "goal-debt-first",
+    "goal-emergency-fund-no-debts",
+    "goal-no-surplus",
+    "goal-nothing-offered",
+    "goal-respects-skipped-kind"
+  ],
+  "scenario_hash": "ce09ebee2386ccc9e5a3c038078b2f9cceac29a5fbcd0db828c6508a3610f2ba",
+  "ollama_version": "0.33.2",
+  "label": "goal-retries-off",
+  "scenario_hashes_by_kind": {
+    "goal": "ce09ebee2386ccc9e5a3c038078b2f9cceac29a5fbcd0db828c6508a3610f2ba"
+  },
+  "retrieval": "hybrid",
+  "kg_mode": "on",
+  "retries": false,
+  "temperature": 0.0,
+  "seed": null,
+  "today": "2026-11-06",
+  "started_at": "2026-11-05T20:12:14Z",
+  "finished_at": "2026-11-05T20:12:45Z"
+}

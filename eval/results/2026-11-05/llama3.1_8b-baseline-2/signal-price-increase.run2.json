@@ -1,0 +1,73 @@
+{
+  "record": {
+    "scenario_id": "signal-price-increase",
+    "run": 2,
+    "flags": {
+      "PERSONAL_CARE": "2026-10-03"
+    },
+    "alerts": [
+      {
+        "day": "2026-10-02",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "FitClub Gym may leave you $394.10 short on 2026-10-03.",
+        "signal_days": 1
+      },
+      {
+        "day": "2026-10-03",
+        "kind": "overspend",
+        "category": "PERSONAL_CARE",
+        "cause": "recurring",
+        "action": "adjust_next_budget",
+        "severity": "high",
+        "message": "Your spending on FitClub Gym is regular and explains the overspend. Next month's limit will be $445.00.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-10-03",
+        "kind": "price_increase",
+        "category": "PERSONAL_CARE",
+        "cause": null,
+        "action": "alert",
+        "severity": "medium",
+        "message": "FitClub Gym's monthly personal care charge will increase from $40.00 to $43.00 on 2026-11-03.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-10-04",
+        "kind": "overspend",
+        "category": "PERSONAL_CARE",
+        "cause": "recurring",
+        "action": "adjust_next_budget",
+        "severity": "high",
+        "message": "Your spending on FitClub Gym is at its typical amount. Next month's limit will be $335.00.",
+        "signal_days": null
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 4,
+    "llm_retries": 0,
+    "latency_s": 6.895073959138244,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "alert_kinds": true,
+      "message": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 1,
+    "llm_calls": 4,
+    "llm_retries": 0
+  }
+}

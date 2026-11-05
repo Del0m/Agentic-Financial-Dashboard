@@ -1,0 +1,47 @@
+{
+  "record": {
+    "scenario_id": "cash-before-payday",
+    "run": 2,
+    "answer": "Your checking balance ranges from $50.00 to $4,250.00 over the forecast. You could run short: it reaches $50.00 on 2026-11-09, below your $100.00 buffer. The dip comes from Landlord.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_cash_forecast",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_58dc\",\"purpose\":\"cash_flow\",\"data\":{\"status\":\"ok\",\"income\":\"paycheck\",\"buffer\":100.0,\"summary\":\"Your checking balance ranges from $50.00 to $4,250.00 over the forecast. You could run short: it reaches $50.00 on 2026-11-09, below your $100.00 buffer. The dip comes from Landlord.\",\"monthly_surplus\":2700.0,\"assumed_no_income\":false,\"days\":[{\"date\":\"2026-11-07\",\"low\":1550.0,\"expected\":1550.0,\"high\":1550.0},{\"date\":\"2026-11-08\",\"low\":1550.0,\"expected\":1550.0,\"high\":1550.0},{\"date\":\"2026-11-09\",\"low\":50.0,\"expected\":50.0,\"high\":50.0},{\"date\":\"2026-11-10\",\"low\":50.0,\"expected\":50.0,\"high\":50.0},{\"date\":\"2026-11-11\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-12\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-13\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-14\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-15\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-16\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-17\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-18\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-19\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-20\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-21\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-22\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-23\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-24\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-25\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-26\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-27\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-28\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-29\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-11-30\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-12-01\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-12-02\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-12-03\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-12-04\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-12-05\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0},{\"date\":\"2026-12-06\",\"low\":4250.0,\"expected\":4250.0,\"high\":4250.0}],\"dip\":{\"date\":\"2026-11-09\",\"shortfall\":50.0,\"bill\":\"Landlord\"}}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 10.271030333358794,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.8745666430455262,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 2,
+      "reason": "The answer directly quotes the tool's data, accurately reflecting the user's situation and potential shortfall due to a Landlord payment, but lacks specific recommendations."
+    },
+    "judge_passed": true
+  }
+}

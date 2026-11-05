@@ -1,0 +1,72 @@
+{
+  "record": {
+    "scenario_id": "debt-higher-apr-smaller-balance",
+    "run": 1,
+    "answer": "You should pay off the Travel Card first, with an APR of 27.49% and a balance of $900.00. This is because it has the highest APR among your debts.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_debts",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_5f34\",\"purpose\":\"debts\",\"data\":[{\"name\":\"Travel Card\",\"kind\":\"credit\",\"apr\":27.49,\"balance\":900.0,\"min_payment\":35.0,\"next_due_date\":\"2026-11-18\"},{\"name\":\"Store Card\",\"kind\":\"credit\",\"apr\":18.99,\"balance\":4800.0,\"min_payment\":120.0,\"next_due_date\":\"2026-11-18\"}]}"
+    ],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "How to reduce your debt | Consumer Financial Protection Bureau",
+        "section": "Snowball method",
+        "source_url": "https://www.consumerfinance.gov/about-us/blog/how-reduce-your-debt/",
+        "text": "This approach focuses on your smallest debt. The goal is to get rid it as soon as possible. You keep on making the minimum payments on all of your debts, and you put any extra funds you have toward paying off the smallest debt. This will help you pay it off sooner.\n\nOnce you’ve paid one smaller debt in full, dedicate that freed up money to the next smallest debt. This way, you create a “snowball” of payments as you eliminate each debt. Unlike the higher interest rate method, you’ll see progress quickly as you pay off smaller debts. However, you may end up paying more in the long run, as you won’t be focusing on the larger or more costly debts."
+      },
+      {
+        "title": "Credit cards key terms | Consumer Financial Protection Bureau",
+        "section": "Credit cards key terms",
+        "source_url": "https://www.consumerfinance.gov/consumer-tools/credit-cards/answers/key-terms/",
+        "text": "- Annual percentage rate (APR)\n-\nThe APR, or annual percentage rate, is the standard way to compare how much loans cost. It lets you compare the cost of loan products on an “apples-to-apples” basis. Your credit card company must disclose the APR before you agree to the use the card.\n\nTo calculate the APR, the interest rate and fees are compared to the amount you borrow and calculated over a one-year period. This allows you to compare the costs of a credit card to a six-month installment loan. It is also why APRs are often different from simple interest rates.\n\n- Balance transfer\n-\nA balance transfer lets you move an outstanding balance from one credit card to another, sometimes for a fee. The fee is usually a certain percentage of the amount you transfer or a fixed amount, whichever is more. Many credit card companies offer zero-percent or low-interest balance transfers to invite you to consolidate your debt on one credit card. The promotional interest rate for most balance transfers lasts for a limited time. After that, the interest rate on your new credit card may rise, increasing your payment amount.\n\nIf you’re more than 60 days late on a payment, the credit card company can increase your interest rate on all balances, including the transferred balance.\n\n- Cardholder agreement\n-\nA cardholder agreement states the terms and conditions that apply to a credit card that is offered to a customer. Among other provisions, the cardholder agreement outlines applicable fees, your liability for unauthorized transactions, and the annual percentage rate (APR) of the card. If you lost your cardholder agreement, you can obtain one on the card issuer’s website or by calling the card issuer. You may also be able to find it listed on the CFPB’s Credit Card Agreement Database.\n\n- Credit balance\n-\nA credit balance on your billing statement is an amount that the card issuer owes you."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Savings: 20%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "The remaining 20% of your budget should go toward the future. You may put money in an emergency fund, contribute to a retirement account, or save toward a down payment on a home. Paying down debt beyond the minimum payment amount belongs in this category, too."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Getting started",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Start by taking a look at your paycheck. If taxes are withheld, subtract that amount from your total earnings. Do not subtract other amounts that may be withheld or automatically deducted, like health insurance or retirement contributions. Those will become part of your budget.\n\nThe 50-30-20 rule recommends putting 50% of your money toward needs, 30% toward wants, and 20% toward savings. The savings category also includes money you will need to realize your future goals. Let’s take a closer look at each category."
+      }
+    ],
+    "latency_s": 6.431847875006497,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.923002012288893,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The assistant correctly identifies the Travel Card as the highest APR debt and recommends paying it off first, aligning with the provided data."
+    },
+    "judge_passed": true
+  }
+}

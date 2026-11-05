@@ -1,0 +1,53 @@
+{
+  "record": {
+    "scenario_id": "temporal-roth-2024",
+    "run": 2,
+    "answer": "The Roth IRA contribution limit for 2024 was $7,000.00.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [
+      "Individual retirement account, rollover: The IRA contribution limit does not apply to rollover contributions",
+      "Roth IRA, after-tax contribution: Roth IRA contributions are made with after-tax dollars.",
+      "Roth IRA, income limit: Roth IRA contributions might be limited if your income exceeds a certain level.",
+      "Roth IRA: is a Individual retirement account",
+      "401(k), annual contribution limit: $23,000.00 for 2024",
+      "Individual retirement account, annual contribution limit: $7,000.00 for 2024",
+      "Designated Roth 401(k), annual contribution limit: $23,000.00 for 2024",
+      "Roth IRA, catch-up contribution: $1,000.00 for 2024",
+      "Roth IRA, annual contribution limit: $7,000.00 for 2024",
+      "Roth IRA, income limit: $240,000.00 for 2024 (married)",
+      "Traditional IRA, income limit: You may not be able to deduct all of your traditional IRA contributions if you or your spouse participates in another retirement plan at work.",
+      "Designated Roth 401(k), catch-up contribution: $7,500.00 for 2024"
+    ],
+    "sources": [],
+    "latency_s": 7.507590166758746,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": true,
+    "similarity": 0.9774868391720392,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly and accurately states the Roth IRA contribution limit from the provided data."
+    },
+    "judge_passed": true
+  }
+}

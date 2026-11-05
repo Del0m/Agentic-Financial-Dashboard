@@ -1,0 +1,52 @@
+{
+  "record": {
+    "scenario_id": "subs-price-rose",
+    "run": 2,
+    "answer": "Yes, your FitClub Gym membership price increased. It was $40.00 from August to November, and it went up to $43.00 starting November.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {
+          "category": "GENERAL_SERVICES"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_9dee\",\"purpose\":\"recurring\",\"data\":{\"streams\":[{\"merchant\":\"FitClub Gym\",\"category\":\"PERSONAL_CARE\",\"frequency\":\"monthly\",\"typical\":40.0,\"last\":43.0,\"previous\":40.0,\"next_date\":\"2026-12-02\"}]}}"
+    ],
+    "graph_facts": [
+      "Charges at FitClub Gym: first in August 2026, latest in November 2026, in 4 months, $43.00 in the latest month, priced $40.00 from August 2026, then $43.00 from November 2026",
+      "Recurring charge FitClub Gym: $40.00 from August 2026 to November 2026; $43.00 from November 2026"
+    ],
+    "sources": [],
+    "latency_s": 9.399180666077882,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9493310350474022,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly addresses the question using the provided data and includes specific dates and amounts."
+    },
+    "judge_passed": true
+  }
+}

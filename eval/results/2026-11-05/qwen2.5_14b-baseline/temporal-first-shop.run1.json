@@ -1,0 +1,98 @@
+{
+  "record": {
+    "scenario_id": "temporal-first-shop",
+    "run": 1,
+    "answer": "The first time you shopped at Book Nook was on 2026-03-12.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_spending",
+        "args": {
+          "category": "GENERAL_MERCHANDISE",
+          "start_date": "2026-01-01",
+          "end_date": "2026-11-06"
+        }
+      },
+      {
+        "name": "get_spending",
+        "args": {
+          "end_date": "2026-11-06",
+          "category": "BOOKS_AND_ENTORNO",
+          "start_date": "2026-01-01"
+        }
+      },
+      {
+        "name": "get_spending",
+        "args": {
+          "category": "MISC",
+          "start_date": "2026-01-01",
+          "end_date": "2026-11-06"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_c48f\",\"purpose\":\"spending\",\"data\":{\"category\":\"GENERAL_MERCHANDISE\",\"total\":75.0,\"direction\":\"outflow\",\"count\":3,\"truncated\":false,\"transactions\":[{\"date\":\"2026-09-12\",\"amount\":25.0,\"merchant\":\"Book Nook\"},{\"date\":\"2026-05-12\",\"amount\":25.0,\"merchant\":\"Book Nook\"},{\"date\":\"2026-03-12\",\"amount\":25.0,\"merchant\":\"Book Nook\"}]}}",
+      "error: unknown category 'BOOKS_AND_ENTORNO'; use one of: INCOME, TRANSFER_IN, TRANSFER_OUT, LOAN_PAYMENTS, BANK_FEES, ENTERTAINMENT, FOOD_AND_DRINK, GENERAL_MERCHANDISE, HOME_IMPROVEMENT, MEDICAL, PERSONAL_CARE, GENERAL_SERVICES, GOVERNMENT_AND_NON_PROFIT, TRANSPORTATION, TRAVEL, RENT_AND_UTILITIES, UNCATEGORIZED",
+      "error: unknown category 'MISC'; use one of: INCOME, TRANSFER_IN, TRANSFER_OUT, LOAN_PAYMENTS, BANK_FEES, ENTERTAINMENT, FOOD_AND_DRINK, GENERAL_MERCHANDISE, HOME_IMPROVEMENT, MEDICAL, PERSONAL_CARE, GENERAL_SERVICES, GOVERNMENT_AND_NON_PROFIT, TRANSPORTATION, TRAVEL, RENT_AND_UTILITIES, UNCATEGORIZED"
+    ],
+    "graph_facts": [
+      "Charges at Book Nook: first in March 2026, latest in September 2026, in 3 months, $25.00 in the latest month"
+    ],
+    "sources": [
+      {
+        "title": "Five Questions to Ask Before You Invest",
+        "section": "Question 1: Is the seller licensed?",
+        "source_url": "https://www.investor.gov/introduction-investing/getting-started/five-questions-ask-you-invest",
+        "text": "Research shows that con-artists are experts at the art of persuasion, often using a variety of influence tactics tailored to the vulnerabilities of their victims. Smart investors check the background of anyone promoting an investment opportunity, even before learning about the opportunity itself.\n\nInvestor.gov has a free and simple search tool that allows you to find out if an investment professional is licensed and registered, and if they have a disciplinary history or customer complaints. It’s a great first step toward protecting your money."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "In summary",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Options to save for the future at UNFCU include savings accounts and share certificates.\n\nThe 50-30-20 rule is just one way to consider organizing your budget. To find the perfect fit for your situation, consult a professional financial planner."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      },
+      {
+        "title": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+        "section": "How do I build it?",
+        "source_url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+        "text": "There are different strategies to get your savings started. These strategies cover a range of situations, including if you have a limited ability to save or if your pay tends to fluctuate. It may be that you could use all of these strategies, but if you have a limited ability to save, managing your cash flow or putting away a portion of your tax refund are the easiest ways to get started."
+      }
+    ],
+    "latency_s": 14.077868374995887,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "March"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.9609537869706544,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly and accurately addresses the question using the provided data."
+    },
+    "judge_passed": true
+  }
+}

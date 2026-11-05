@@ -1,0 +1,62 @@
+{
+  "record": {
+    "scenario_id": "mixed-card-vs-emergency",
+    "run": 1,
+    "answer": "Based on the information provided, you have a credit card balance of $2600 and a savings account balance of $900. Since you don't have a clear monthly income or spending pattern, it's important to build an emergency fund first to cover unexpected expenses. However, given your current debt, focusing on paying down the credit card with the highest APR will save you money on interest. Start by setting aside a small emergency fund, say $500, and then prioritize paying off the credit card debt.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_accounts",
+        "args": {}
+      },
+      {
+        "name": "get_spending",
+        "args": {}
+      },
+      {
+        "name": "get_cash_forecast",
+        "args": {}
+      },
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_58d8\",\"purpose\":\"accounts\",\"data\":[{\"name\":\"Everyday Checking\",\"type\":\"depository\",\"subtype\":\"checking\",\"balance\":1450.0,\"available\":null,\"limit\":null},{\"name\":\"[person]'s Savings\",\"type\":\"depository\",\"subtype\":\"savings\",\"balance\":900.0,\"available\":null,\"limit\":null},{\"name\":\"Rewards Card\",\"type\":\"credit\",\"subtype\":\"credit card\",\"balance\":2600.0,\"available\":null,\"limit\":null}]}",
+      "{\"user\":\"user_58d8\",\"purpose\":\"spending\",\"data\":{}}",
+      "{\"user\":\"user_58d8\",\"purpose\":\"cash_flow\",\"data\":{\"status\":\"no_history\",\"income\":\"none\",\"buffer\":100.0,\"summary\":\"No forecast is available.\",\"monthly_surplus\":null,\"assumed_no_income\":true,\"days\":[],\"dip\":null}}",
+      "{\"user\":\"user_58d8\",\"purpose\":\"recurring\",\"data\":{\"streams\":[]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 11.988990209065378,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": false,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": false,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9034896764185941,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 3,
+      "reason": "The answer accurately references the user's credit card balance and savings account, but only suggests a general amount for the emergency fund and doesn't name a specific debt payoff strategy."
+    },
+    "judge_passed": true
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "record": {
+    "scenario_id": "control-steady-spender",
+    "run": 1,
+    "flags": {},
+    "alerts": [
+      {
+        "day": "2026-08-05",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "There will be a shortfall of $269.1 in your budget on August 6, 2026, due to a $370.0 outflow for the Landlord bill. This is because you have a starting available balance of $100, a shortfall of $269.1, and no savings to cover it. Additionally, you have expenses in the ENTERTAINMENT category totaling $15.99. To avoid this shortfall, consider delaying spending or moving funds from savings if possible.",
+        "signal_days": 1
+      },
+      {
+        "day": "2026-08-06",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "There will be a shortfall of $237.37 in your budget on August 7, 2026, due to a bill from Streamly for $1500.00 and recurring expenses in the ENTERTAINMENT category totaling $15.99. To cover this shortfall, consider delaying spending or moving $340.00 from savings.",
+        "signal_days": 1
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 0,
+    "llm_retries": 0,
+    "latency_s": 6.137149415910244,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 0,
+    "llm_calls": 0,
+    "llm_retries": 0
+  }
+}

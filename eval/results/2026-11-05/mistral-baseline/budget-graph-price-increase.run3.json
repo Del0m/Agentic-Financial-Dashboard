@@ -1,0 +1,56 @@
+{
+  "record": {
+    "scenario_id": "budget-graph-price-increase",
+    "run": 3,
+    "flags": {
+      "ENTERTAINMENT": "2026-10-03"
+    },
+    "alerts": [
+      {
+        "day": "2026-10-03",
+        "kind": "overspend",
+        "category": "ENTERTAINMENT",
+        "cause": "recurring",
+        "action": "adjust_next_budget",
+        "severity": "high",
+        "message": "Your Entertainment spending is higher than expected this month. We propose a limit of $1,395.00 for next month to account for the increased spending.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-10-04",
+        "kind": "overspend",
+        "category": "ENTERTAINMENT",
+        "cause": "recurring",
+        "action": "alert",
+        "severity": "high",
+        "message": "Your Entertainment spending has exceeded the budget due to an unusual purchase from Streamly Plus. The charge increased from $90.00 to $135.00 on October 3rd. The projected spending for this month is $1,046.25. Please adjust your spending accordingly.",
+        "signal_days": null
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 4,
+    "llm_retries": 0,
+    "latency_s": 6.848806499969214,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true,
+      "cause": true,
+      "action": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [
+      0
+    ],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 1,
+    "llm_calls": 4,
+    "llm_retries": 0
+  }
+}

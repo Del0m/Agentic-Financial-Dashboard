@@ -1,0 +1,74 @@
+{
+  "record": {
+    "scenario_id": "debt-plan-extra-200",
+    "run": 3,
+    "answer": "With an extra $200 per month, you will be debt-free in 49 months, which is by December 2030. The total interest paid would be $2,941.08. Without the extra $200, it would take 95 months and cost $7,109.82 in interest. The extra $200 saves you 46 months and $4,168.74 in interest.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "plan_debt_payoff",
+        "args": {
+          "extra_monthly": 200
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_ce52\",\"purpose\":\"debt_plan\",\"data\":{\"extra_monthly\":200.0,\"start\":\"2026-12\",\"plans\":[{\"strategy\":\"avalanche\",\"summary\":\"49 months to debt-free, $2,941.08 total interest. The extra saves 46 months and $4,168.74 in interest.\",\"months\":49,\"debt_free\":\"2030-12\",\"total_interest\":2941.08,\"order\":[{\"name\":\"Platinum Card\",\"paid_off\":\"2027-12\",\"interest\":465.52},{\"name\":\"Student Loan\",\"paid_off\":\"2030-12\",\"interest\":2475.56}],\"without_extra\":{\"months\":95,\"total_interest\":7109.82},\"difference\":{\"months_sooner\":46,\"interest_saved\":4168.74},\"never\":[]},{\"strategy\":\"snowball\",\"summary\":\"49 months to debt-free, $2,941.08 total interest. The extra saves 46 months and $4,168.74 in interest.\",\"months\":49,\"debt_free\":\"2030-12\",\"total_interest\":2941.08,\"order\":[{\"name\":\"Platinum Card\",\"paid_off\":\"2027-12\",\"interest\":465.52},{\"name\":\"Student Loan\",\"paid_off\":\"2030-12\",\"interest\":2475.56}],\"without_extra\":{\"months\":95,\"total_interest\":7109.82},\"difference\":{\"months_sooner\":46,\"interest_saved\":4168.74},\"never\":[]}],\"excluded\":[],\"assumptions\":\"Interest is charged monthly at APR/12; minimum payments are held at today's amounts; not financial advice.\"}}"
+    ],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "How to reduce your debt | Consumer Financial Protection Bureau",
+        "section": "Step three: Organize your monthly bills",
+        "source_url": "https://www.consumerfinance.gov/about-us/blog/how-reduce-your-debt/",
+        "text": "Understanding what you owe, and when, will help you manage your debt. You can use a bill calendar to keep all your information in one place as you tackle your debt. Use the bill calendar to see all your bills and plan when they’re due. Keeping track of your monthly expenses can help put you one step closer to reaching your goals."
+      },
+      {
+        "title": "How to reduce your debt | Consumer Financial Protection Bureau",
+        "section": "Snowball method",
+        "source_url": "https://www.consumerfinance.gov/about-us/blog/how-reduce-your-debt/",
+        "text": "This approach focuses on your smallest debt. The goal is to get rid it as soon as possible. You keep on making the minimum payments on all of your debts, and you put any extra funds you have toward paying off the smallest debt. This will help you pay it off sooner.\n\nOnce you’ve paid one smaller debt in full, dedicate that freed up money to the next smallest debt. This way, you create a “snowball” of payments as you eliminate each debt. Unlike the higher interest rate method, you’ll see progress quickly as you pay off smaller debts. However, you may end up paying more in the long run, as you won’t be focusing on the larger or more costly debts."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      },
+      {
+        "title": "How to reduce your debt | Consumer Financial Protection Bureau",
+        "section": "Highest interest rate method",
+        "source_url": "https://www.consumerfinance.gov/about-us/blog/how-reduce-your-debt/",
+        "text": "This approach focuses on your debts like credit card and student loan debts with the highest rate of interest. The goal is to pay off the highest interest rate debt as quickly as possible, because it’s costing you the most. While it may not feel like you’re making progress, this method will help you eliminate your costliest debts first—which can save you money in the long run."
+      }
+    ],
+    "latency_s": 11.566752291750163,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": true,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9020607675695251,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately reflects the tool's data, including timelines, interest amounts, and savings, and provides a clear explanation."
+    },
+    "judge_passed": true
+  }
+}

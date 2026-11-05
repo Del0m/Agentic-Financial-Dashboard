@@ -1,0 +1,67 @@
+{
+  "record": {
+    "scenario_id": "temporal-subscription-stopped",
+    "run": 1,
+    "answer": "The latest Clipflix charge was in July 2026, so if you haven't seen a charge since then, your subscription likely ended or was paused after that month. If you want to confirm the exact end date, you should check your account with Clipflix directly.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [
+      "Charges at Clipflix: first in March 2026, latest in July 2026, in 5 months, $15.49 in the latest month"
+    ],
+    "sources": [
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      },
+      {
+        "title": "Understanding Deposit Insurance | FDIC.gov",
+        "section": "Understanding Deposit Insurance | FDIC.gov",
+        "source_url": "https://www.fdic.gov/resources/deposit-insurance/understanding-deposit-insurance",
+        "text": "FDIC deposit insurance protects your money in deposit accounts at FDIC-insured banks in the event of a bank failure. Since the FDIC was founded in 1933, no depositor has lost a penny of FDIC-insured funds."
+      },
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Deferral limits for 401(k) plans",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "The limit on employee elective deferrals (for traditional and safe harbor plans)** **is:\n\n- $24,500 in 2026, subject to cost-of-living adjustments\n\nGenerally, you aggregate all elective deferrals you made to all plans in which you participate to determine if you have exceeded these limits. If a plan participant’s elective deferrals are more than the annual limit, find out how you can correct this plan mistake."
+      },
+      {
+        "title": "Traditional and Roth IRAs | Internal Revenue Service",
+        "section": "What is the deadline to make contributions?",
+        "source_url": "https://www.irs.gov/retirement-plans/traditional-and-roth-iras",
+        "text": "Your tax return filing deadline (not including extensions). For example, you can make 2022 IRA contributions until April 18, 2023."
+      }
+    ],
+    "latency_s": 7.219488542061299,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": true,
+    "similarity": 0.9483658370800561,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 2,
+      "reason": "The answer accurately reflects the provided data but lacks specificity by not suggesting a concrete action beyond checking the account."
+    },
+    "judge_passed": true
+  }
+}

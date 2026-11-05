@@ -1,0 +1,76 @@
+{
+  "record": {
+    "scenario_id": "budget-graph-seasonal-13mo",
+    "run": 1,
+    "flags": {
+      "GENERAL_MERCHANDISE": "2026-12-05"
+    },
+    "alerts": [
+      {
+        "day": "2026-12-05",
+        "kind": "overspend",
+        "category": "GENERAL_MERCHANDISE",
+        "cause": "seasonal",
+        "action": "alert",
+        "severity": "high",
+        "message": "You've spent $259.08 in General Merchandise this month, which is higher than your limit of $151.73. The largest expense was $90 at Book Nook.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-12-05",
+        "kind": "new_subscription",
+        "category": "RENT_AND_UTILITIES",
+        "cause": null,
+        "action": "alert",
+        "severity": "medium",
+        "message": "A new repeating charge from Landlord: $1,500.00, monthly.",
+        "signal_days": null
+      },
+      {
+        "day": "2026-12-05",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "Landlord may leave you $161.51 short on 2026-12-06.",
+        "signal_days": 1
+      },
+      {
+        "day": "2026-12-06",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "You have a low balance for Everyday spending on 2026-12-07, with a shortfall of $148.64, as your available funds are only $100.",
+        "signal_days": 1
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 4,
+    "llm_retries": 0,
+    "latency_s": 18.94906845781952,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true,
+      "cause": true,
+      "action": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [
+      0
+    ],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 0,
+    "llm_calls": 4,
+    "llm_retries": 0
+  }
+}

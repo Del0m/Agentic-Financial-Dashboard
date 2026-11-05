@@ -1,0 +1,28 @@
+{
+  "record": {
+    "scenario_id": "goal-cap-too-small",
+    "run": 3,
+    "status": "no_affordable_goals",
+    "reason": "cap_below_minimum",
+    "cap_cents": 50,
+    "surplus_cents": 1000,
+    "offered": [
+      "emergency_fund",
+      "savings"
+    ],
+    "attempts": 0,
+    "plans": [],
+    "latency_s": 0.01229087496176362,
+    "error": null,
+    "kind": "goal"
+  },
+  "scores": {
+    "checks": {
+      "status": true,
+      "banned_kinds": true,
+      "model_not_called": true
+    },
+    "passed": true,
+    "attempts": 0
+  }
+}

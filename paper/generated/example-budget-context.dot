@@ -1,0 +1,17 @@
+digraph G {
+rankdir=LR; bgcolor="white"; pad=0.3;
+node [shape=box,style="rounded,filled",fillcolor="#eaf2f8",fontname="Helvetica"];
+edge [fontname="Helvetica",fontsize=10,color="#566573"];
+graph [label="Question: Why is this category over budget?\nIllustrative example · synthetic personal data", labelloc="t", fontsize=18, fontname="Helvetica", nodesep=0.5, ranksep=1.0];
+"alice" [label="Alice\nuser",fillcolor="#eaf2f8"];
+"ent" [label="Entertainment\ncategory",fillcolor="#eaf2f8"];
+"gym" [label="Neighborhood Gym\nmerchant",fillcolor="#eaf2f8"];
+"stream" [label="Gym membership\nrecurring stream",fillcolor="#eaf2f8"];
+"advice" [label="Earlier suggestion\nreduce discretionary spending",fillcolor="#eaf2f8"];
+"alice" -> "ent" [label="BUDGETS\n$80 limit\nApril 2026"];
+"alice" -> "gym" [label="SPENDS_AT\n$90 total · 2 charges\nApril 2026"];
+"gym" -> "ent" [label="CATEGORIZED_AS\neffective Apr 1, 2026"];
+"alice" -> "stream" [label="SUBSCRIBES\n$40 typical recurring charge\nfrom Apr 1, 2026"];
+"stream" -> "gym" [label="SUBSCRIBES\nmerchant identity"];
+"advice" -> "ent" [label="ABOUT\naction: suggest_cuts\noutcome: dismissed\nvalid: Mar 15–16, 2026"];
+}

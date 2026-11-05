@@ -1,0 +1,39 @@
+{
+  "model": "qwen2.5:14b",
+  "judge": "gemma3:12b",
+  "embeddings": "nomic-embed-text",
+  "runs": 3,
+  "commit": "635b52972fe1653ce6942393594c8799da20357a",
+  "scenarios": [
+    "budget-graph-previously-dismissed",
+    "budget-graph-price-increase",
+    "budget-graph-reclassified",
+    "budget-graph-seasonal-13mo",
+    "budget-one-time-known-shop",
+    "budget-one-time-new-shop",
+    "budget-recurring-new-gym",
+    "budget-recurring-wine-club",
+    "budget-seasonal-back-to-school",
+    "budget-seasonal-holidays",
+    "control-flat-spending",
+    "control-rent-paid-early",
+    "control-steady-spender",
+    "control-usual-order-early",
+    "signal-low-balance-before-payday",
+    "signal-price-increase"
+  ],
+  "scenario_hash": "a2af4ed9041681ab7b23139e6e77d666b58feb5f3c28a723d1c87b08e504b0c9",
+  "ollama_version": "0.33.2",
+  "label": "budget-retries-off",
+  "scenario_hashes_by_kind": {
+    "budget": "a2af4ed9041681ab7b23139e6e77d666b58feb5f3c28a723d1c87b08e504b0c9"
+  },
+  "retrieval": "hybrid",
+  "kg_mode": "on",
+  "retries": false,
+  "temperature": 0.0,
+  "seed": null,
+  "today": "2026-11-06",
+  "started_at": "2026-11-05T20:04:47Z",
+  "finished_at": "2026-11-05T20:12:13Z"
+}
