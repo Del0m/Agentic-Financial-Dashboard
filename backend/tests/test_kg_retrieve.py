@@ -7,6 +7,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from app import config
 from app.agents.chat_graph import build_chat_graph
 from app.agents.tools import make_tools
+from app.budget_engine.txns import add_months
 from app.kg.retrieve import gather, read_time
 from app.privacy.gateway import PrivacyGateway
 from eval.fixtures import load_scenarios, prepare_graph, seed, temp_db
@@ -18,17 +19,25 @@ TODAY = date(2026, 11, 6)
 SCENARIOS = {s.id: s for s in load_scenarios(REPO / "eval" / "scenarios")}
 
 
-@pytest.mark.parametrize("question, on_date, since", [
-    ("What was the limit in 2024?", date(2024, 6, 1), None),
-    ("What was it last year?", date(2025, 6, 1), None),
-    ("What did I spend last month?", date(2026, 10, 1), None),
-    ("What was it in September?", date(2026, 9, 1), None),
-    ("What was it in December?", date(2025, 12, 1), None),
+@pytest.mark.parametrize("question, last, first", [
+    ("What was the limit in 2024?", date(2024, 12, 31), date(2024, 1, 1)),
+    ("What's the limit in 2030?", date(2030, 12, 31), date(2030, 1, 1)),
+    ("What did I spend in 2026?", TODAY, date(2026, 1, 1)),
+    ("What was it last year?", date(2025, 12, 31), date(2025, 1, 1)),
+    ("What did I spend last month?", date(2026, 10, 31), date(2026, 10, 1)),
+    ("What was it in September?", date(2026, 9, 30), date(2026, 9, 1)),
+    ("What was it in June 2024?", date(2024, 6, 30), date(2024, 6, 1)),
+    ("What was it in December?", date(2025, 12, 31), date(2025, 12, 1)),
+    ("What have I spent in November?", TODAY, date(2026, 11, 1)),
     ("How has it changed since August?", TODAY, date(2026, 8, 1)),
-    ("What's the limit this year?", TODAY, None),
+    ("How has it changed since 2025?", TODAY, date(2025, 1, 1)),
+    ("How has it changed since last year?", TODAY, date(2025, 1, 1)),
+    ("What was it on 2026-09-15?", date(2026, 9, 15), date(2026, 9, 15)),
+    ("What's the limit this year?", TODAY, date(2026, 1, 1)),
+    ("What's the limit?", TODAY, None),
 ])
-def test_read_time(question, on_date, since):
-    assert read_time(question, TODAY) == (on_date, since)
+def test_read_time(question, last, first):
+    assert read_time(question, TODAY) == (last, first)
 
 
 @pytest.fixture(autouse=True)
@@ -102,7 +111,7 @@ def test_facts_reach_the_prompt_with_their_date(tmp_path):
         graph = build_chat_graph(make_tools(gateway, FakeKB()), model=model, graph_retrieve=gateway.graph_retrieve)
         state = graph.invoke({"messages": [HumanMessage(s.question)], "tool_rounds": 0})
     system = model.seen[0][0].content
-    assert "Facts (valid as of 2024-06-01):" in system and "$7,000.00 for 2024" in system
+    assert "Facts (valid as of 2024-12-31):" in system and "$7,000.00 for 2024" in system
     assert list(state["graph_by_turn"].values()) == [True]
 
 
@@ -236,3 +245,80 @@ def test_last_month_is_a_snapshot_not_unbounded_history(dated_user):
     found = gather(dated_user, "dated", "Cafe food and drink budget last month", date(2026, 10, 20))
     assert any("$900.00 in September 2026" in f.line for f in found.user)
     assert all("July" not in f.line and "August" not in f.line and "November" not in f.line for f in found.user)
+
+
+@pytest.fixture
+def long_history(db):
+    from app.db.models import User
+    from app.kg.project import Assertion, _node, apply
+    from app.kg.store import assert_edge
+    with db() as s:
+        s.add(User(id="long", email="long@example.test", password_hash="!"))
+        s.flush()
+        months = [(2024, m, 5000) for m in range(1, 13)] + [(2025, m, 6000) for m in range(1, 13)] + \
+                 [(2026, m, 7000) for m in range(1, 12)]
+        for year, month, cents in months:
+            start, end = date(year, month, 1), add_months(date(year, month, 1), 1)
+            apply(s, "long", [Assertion(("user", "long"), "SPENDS_AT", ("merchant", "fitclub gym"),
+                                        {"cents": cents, "count": 1, "category": "PERSONAL_CARE"}, start, end,
+                                        dst_label="FitClub Gym")], historical=True)
+        advice = _node(s, "long", ("advice", "advice-1"), label="Venmo to John Smith increased from $5 to $9.")
+        food = _node(s, "long", ("category", "FOOD_AND_DRINK"))
+        assert_edge(s, user_id="long", src_id=advice.id, rel="ABOUT", dst_id=food.id,
+                    value={"action": "alert", "outcome": "dismissed"}, valid_from=date(2026, 9, 15), valid_to=date(2026, 9, 16))
+        yield s
+
+
+def _merchant_line(session, question):
+    return next(f.line for f in gather(session, "long", question, TODAY).user if f.rel == "SPENDS_AT")
+
+
+@pytest.mark.parametrize("question", ["Has my FitClub gym gone up in price?", "How many months have I paid FitClub?",
+                                      "How much do I pay FitClub?"])
+def test_a_question_naming_no_period_keeps_the_whole_history(long_history, question):
+    line = _merchant_line(long_history, question)
+    assert "first in January 2024" in line and "in 35 months" in line
+    assert "$50.00 from January 2024, then $60.00 from January 2025, then $70.00 from January 2026" in line
+
+
+def test_a_year_means_the_whole_year_with_its_total(long_history):
+    line = _merchant_line(long_history, "How much did I spend at FitClub in 2024?")
+    assert "in the period asked" in line and "first in January 2024" in line and "latest in December 2024" in line
+    assert "in 12 months" in line and "$600.00 in total" in line
+
+
+def test_last_year_means_the_whole_of_last_year(long_history):
+    line = _merchant_line(long_history, "How much did I spend at FitClub last year?")
+    assert "first in January 2025" in line and "latest in December 2025" in line and "$720.00 in total" in line
+
+
+def test_since_a_year_runs_to_today(long_history):
+    line = _merchant_line(long_history, "How has FitClub changed since 2025?")
+    assert "first in January 2025" in line and "latest in November 2026" in line and "2024" not in line
+
+
+@pytest.mark.parametrize("question", ["What did I decide about food and drink in September?",
+                                      "What advice did you give on food and drink in September?",
+                                      "What did I decide about food and drink in 2026?"])
+def test_advice_dated_inside_the_period_is_found(long_history, question):
+    assert any(f.rel == "ABOUT" for f in gather(long_history, "long", question, TODAY).user)
+
+
+def test_advice_outside_the_period_isnt(long_history):
+    assert not gather(long_history, "long", "What did I decide about food and drink in August?", TODAY).user
+
+
+def test_a_budget_alone_narrows_to_today_when_no_period_is_named(dated_user):
+    question = "What's my food and drink budget?"
+    assert [f.line for f in gather(dated_user, "dated", question, date(2026, 9, 10)).user if f.rel == "BUDGETS"] == [
+        "food and drink budget limit: $900.00 in September 2026"]
+    changed = gather(dated_user, "dated", "Has my food and drink budget gone up?", date(2026, 9, 10)).user
+    assert any(f.rel == "BUDGETS" and "July 2026" in f.line and "September 2026" in f.line for f in changed)
+
+
+def test_advice_text_is_scrubbed_before_the_model_sees_it(tmp_path, long_history):
+    gateway = PrivacyGateway(long_history, "long", audit_path=tmp_path / "audit.jsonl")
+    found = gateway.graph_retrieve("What did I decide about food and drink?")
+    line = next(l for l in found["facts"] if "decision: dismissed" in l)
+    assert "Venmo to [person]" in line and "John" not in line and "Smith" not in line
+    assert "John" not in (tmp_path / "audit.jsonl").read_text()

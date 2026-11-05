@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import config
-from app.budget_engine.txns import add_months, month_start
+from app.budget_engine.txns import add_months, month_end, month_start
 from app.db.models import KGEdge, KGNode
 
 from . import query
@@ -59,29 +59,44 @@ def _money(cents: Optional[int]) -> str:
     return "unknown" if cents is None else f"${cents / 100:,.2f}"
 
 
-# the date a question is about: "in 2024", "last year", "last month", or a month name, the latest one not after today.
-# "since June" also gives where a change starts. anything else is about today
+# the period a question is about, as its last day and its first, both inclusive. a period that's still running ends
+# today, and one wholly in the future keeps its own dates, so a limit question about 2030 doesn't get this year's.
+# "since" runs to today. a question naming no period has no first day: everything up to today
 def read_time(question: str, today: date) -> tuple[date, Optional[date]]:
     text = question.casefold()
     exact = re.search(r"\b\d{4}-\d{2}-\d{2}\b", text)
     if exact:
         try:
-            return date.fromisoformat(exact.group()), None
+            day = date.fromisoformat(exact.group())
+            return day, day
         except ValueError:
             pass
-    year = re.search(r"\b(19|20)\d{2}\b", text)
-    named = re.search(r"\b(in|since) (" + "|".join(MONTHS) + r")\b", text)
+
+    def period(first: date, last: date, since: bool) -> tuple[date, date]:
+        return (today if since or first <= today <= last else last), first
+
+    months = "|".join(MONTHS)
+    year = re.search(r"\b(?:19|20)\d{2}\b", text)
+    named = re.search(rf"\b(in|since|during) ({months})\b|\b({months}) (?:19|20)\d{{2}}\b", text)
     if named:
-        month = date(int(year.group()) if year else today.year, MONTHS.index(named.group(2)) + 1, 1)
-        if not year and month > today:
-            month = date(today.year - 1, month.month, 1)
-        return (today, month) if named.group(1) == "since" else (month, None)
+        name = named.group(2) or named.group(3)
+        first = date(int(year.group()) if year else today.year, MONTHS.index(name) + 1, 1)
+        if not year and first > today:
+            first = date(today.year - 1, first.month, 1)
+        return period(first, month_end(first), named.group(1) == "since")
     if year:
-        return date(int(year.group()), 6, 1), None
+        first = date(int(year.group()), 1, 1)
+        return period(first, date(first.year, 12, 31), f"since {year.group()}" in text)
     if "last year" in text:
-        return date(today.year - 1, 6, 1), None
+        first = date(today.year - 1, 1, 1)
+        return period(first, date(first.year, 12, 31), "since last year" in text)
     if "last month" in text:
-        return add_months(month_start(today), -1), None
+        first = add_months(month_start(today), -1)
+        return period(first, month_end(first), "since last month" in text)
+    if "this year" in text:
+        return today, date(today.year, 1, 1)
+    if "this month" in text:
+        return today, month_start(today)
     return today, None
 
 
@@ -116,7 +131,7 @@ def _matches(label: Optional[str], words: set[str]) -> bool:
 
 @dataclass(frozen=True)
 class Window:
-    end: date
+    end: date                # both inclusive: a fact counts if any of it falls in the period
     start: Optional[date]    # None means all history up to end
 
 
@@ -146,8 +161,11 @@ def _merchant_facts(session: Session, user_id: str, merchant: KGNode, scrub: Cal
             price = e.value_json["cents"]
             steps.append(f"{_money(price)} from {e.valid_from:%B %Y}")
     prices = f", priced {', then '.join(steps)}" if 1 < len(steps) <= MAX_PRICE_STEPS else ""
+    # within a period, "first" only means first in that period, and a question about it usually wants the total
+    scope = "in the period asked, " if window.start is not None else ""
+    total = f", {_money(sum(e.value_json['cents'] for e in months))} in total" if window.start is not None else ""
     return [Fact("SPENDS_AT", f"Charges at {name}",
-                 f"first in {first.valid_from:%B %Y}, latest in {last.valid_from:%B %Y}, in {len(months)} months, "
+                 f"{scope}first in {first.valid_from:%B %Y}, latest in {last.valid_from:%B %Y}, in {len(months)} months{total}, "
                  f"{_money(last.value_json['cents'])} in the latest month{prices}")]
 
 
@@ -175,7 +193,9 @@ def _budget_facts(session: Session, user_id: str, category: KGNode, window: Wind
     return [Fact("BUDGETS", f"{_category_label(category)} budget limit", ", ".join(parts))]
 
 
-def _advice_facts(session: Session, user_id: str, words: set[str], categories: list[KGNode], window: Window) -> list[Fact]:
+# an advice label is an alert's message, and a code-written one names the merchant as the bank gave it
+def _advice_facts(session: Session, user_id: str, words: set[str], categories: list[KGNode], scrub: Callable,
+                  window: Window) -> list[Fact]:
     category_ids = {c.id for c in categories}
     out = []
     for advice in _nodes(session, user_id, "advice"):
@@ -184,7 +204,7 @@ def _advice_facts(session: Session, user_id: str, words: set[str], categories: l
             value = edges[-1].value_json or {}
             outcome = value.get("outcome") or "no decision yet"
             out.append(Fact("ABOUT", f"Advice on {edges[-1].valid_from:%B %-d, %Y}",
-                            f"\"{advice.label}\" The user's decision: {outcome}."))
+                            f"\"{scrub(advice.label)}\" The user's decision: {outcome}."))
     return out
 
 
@@ -240,11 +260,14 @@ def _shuffled(user: list[Fact], guidance: list[Fact]) -> tuple[list[Fact], list[
 
 def gather(session: Session, user_id: str, question: str, today: date, *, scrub: Callable = lambda s: s,
            relation: Optional[str] = None, history: bool = False) -> Gathered:
-    on_date, since = read_time(question, today)
-    history = history or since is not None or bool(re.search(
-        r"\b(history|when|first|start\w*|stop\w*|chang\w*|previous\w*|decid\w*|accept\w*|dismiss\w*)\b",
-        question.casefold()))
-    window = Window(on_date, since if history else on_date)
+    on_date, start = read_time(question, today)
+    window = Window(on_date, start)
+    # "what's my food budget?" means this month's limit, so a budget alone narrows to today when no period is named.
+    # everything else keeps its history: a summary of only this month would read as "first charged this month"
+    history = history or bool(re.search(
+        r"\b(history|when|first|start\w*|stop\w*|chang\w*|previous\w*|decid\w*|accept\w*|dismiss\w*|rais\w*|increas\w*"
+        r"|decreas\w*|lower\w*|past|ever|before|used to|(?:go|goes|gone|going|went) (?:up|down))\b", question.casefold()))
+    budget_window = window if start is not None or history else Window(on_date, on_date)
     words = _words(question) - STOP_WORDS
     all_words = _words(question)
     user: list[Fact] = []
@@ -255,8 +278,8 @@ def gather(session: Session, user_id: str, question: str, today: date, *, scrub:
     categories = [c for c in _nodes(session, user_id, "category")
                   if set(c.key.casefold().split("_")) - {"and"} & all_words or _matches(c.label, words)]
     for category in categories:
-        user += _budget_facts(session, user_id, category, window)
-    user += _advice_facts(session, user_id, words, categories, window)
+        user += _budget_facts(session, user_id, category, budget_window)
+    user += _advice_facts(session, user_id, words, categories, scrub, window)
     if relation:
         user = [f for f in user if f.rel == relation]
     concepts = [] if relation else _linked_concepts(session, question)
