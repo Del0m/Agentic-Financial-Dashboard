@@ -1,0 +1,347 @@
+{
+  "rubric_version": 1,
+  "decider": "User (human; explicit approval in Codex chat on 2026-11-05)",
+  "rubric_applied": false,
+  "decision_policy": "user_approved_all",
+  "proposal_sha256": "dfb5a0ba78bee419bfc53d4d52d325778df92f27b66bf288d66d0a4533dbb57b",
+  "affordability_checked": false,
+  "protocol_deviation": "The user approved all 84 collected proposals as a set. These decisions were not made by applying the recurring-cause and two-period criteria in rubric version 1. Total-budget-versus-income affordability was not verified.",
+  "decisions": {
+    "budget-improve-new-club|2026-08-29|FOOD_AND_DRINK|adjust_next_budget|79000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-08-30|FOOD_AND_DRINK|adjust_next_budget|76000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-08-31|FOOD_AND_DRINK|adjust_next_budget|74000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-08-31|TRANSPORTATION|adjust_next_budget|20500": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-04|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-05|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-06|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-07|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-08|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-09|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-10|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-11|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-12|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-13|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-14|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-15|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-16|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-17|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-18|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-19|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-20|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-21|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-22|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-23|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-24|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-25|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-26|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-27|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-28|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-29|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-09-30|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-04|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-05|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-06|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-07|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-08|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-09|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-10|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-11|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-12|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-13|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-14|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-15|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-16|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-17|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-17|FOOD_AND_DRINK|adjust_next_budget|85000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-18|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-19|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-20|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-21|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-22|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-23|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-24|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-25|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-26|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-27|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-28|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-29|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-30|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-31|ENTERTAINMENT|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-new-club|2026-10-31|FOOD_AND_DRINK|adjust_next_budget|77500": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-08-29|FOOD_AND_DRINK|adjust_next_budget|83500": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-08-30|FOOD_AND_DRINK|adjust_next_budget|81000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-08-31|FOOD_AND_DRINK|adjust_next_budget|78000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-08-31|TRANSPORTATION|adjust_next_budget|19500": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-05|TRANSPORTATION|adjust_next_budget|27000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-10|FOOD_AND_DRINK|adjust_next_budget|117000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-17|FOOD_AND_DRINK|adjust_next_budget|106000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-18|FOOD_AND_DRINK|adjust_next_budget|100000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-19|TRANSPORTATION|adjust_next_budget|20500": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-24|FOOD_AND_DRINK|adjust_next_budget|101000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-25|FOOD_AND_DRINK|adjust_next_budget|97000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-26|FOOD_AND_DRINK|adjust_next_budget|93500": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-26|TRANSPORTATION|adjust_next_budget|20000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-27|FOOD_AND_DRINK|adjust_next_budget|90000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-28|FOOD_AND_DRINK|adjust_next_budget|89500": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-29|FOOD_AND_DRINK|adjust_next_budget|86000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-30|FOOD_AND_DRINK|adjust_next_budget|86000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-rising|2026-10-31|FOOD_AND_DRINK|adjust_next_budget|97500": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-steady|2026-08-29|FOOD_AND_DRINK|adjust_next_budget|82500": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-steady|2026-08-30|FOOD_AND_DRINK|adjust_next_budget|80000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-steady|2026-08-31|FOOD_AND_DRINK|adjust_next_budget|77500": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-steady|2026-08-31|TRANSPORTATION|adjust_next_budget|20500": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    },
+    "budget-improve-steady|2026-10-31|FOOD_AND_DRINK|adjust_next_budget|79000": {
+      "decision": "accept",
+      "reason": "Explicitly accepted by the human user on 2026-11-05; affordability was not verified."
+    }
+  }
+}

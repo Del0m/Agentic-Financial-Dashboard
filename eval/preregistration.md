@@ -85,4 +85,5 @@ It stays in the tables with its results. If a pass takes more than 3 times as lo
 
 ## Changes
 
-None yet.
+- **2026-11-05 — Human acceptance of all collected proposals.** The user approved all 84 collected proposals as a set, and Codex transcribed that approval into `acceptance/decisions.json`. This replaces the planned AI application of rubric version 1 for this decision set; the recurring-cause and two-recent-period criteria were not applied to make these decisions. The original rubric is retained unchanged. Affordability against total budget and income was not verified. Budget-improvement results using this file must be described as a human-approved-all acceptance policy, not as rubric-based acceptance or evidence of affordability. New proposals produced during replay still follow the existing rule: an exact key without a saved decision counts as rejected.
+- **2026-11-05 — Proposals predate the benchmark commit.** The proposals were collected at `12d1d10`. Review fixes merged after that changed code the budget agent runs on, including graph projection, forecast and recurring detection, so a replay can produce proposals that have no saved decision. They count as rejected under the rule above. The paper reports each model's unseen-proposal count from the replay beside its budget-improvement result.
