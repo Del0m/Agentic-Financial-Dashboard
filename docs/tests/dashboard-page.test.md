@@ -10,8 +10,8 @@ npm test -- app/dashboard/page.test.tsx
 
 ## Shared setup
 
-- `@/lib/api` is mocked with `vi.mock`: `getDashboard`, `getBudget`, `getAlerts`, `getTransactions` and `getGoals`.
-- `BalanceChart`, `PlaidLinkButton` and `DebtPlanCompare` are replaced with empty components. They draw a chart, open Plaid and call the planner, none of which is under test.
+- `@/lib/api` is mocked with `vi.mock`: `getDashboard`, `getBudget`, `getAlerts`, `getTransactions`, `getGoals`, `getRecurring`, `getForecast` and `getSim`. `getSim` fails with a 404 by default, as it does when the admin routes are off, so the user is a real one.
+- `BalanceChart`, `DebtPlanCompare` and `ForecastChart` are replaced with empty components, and `PlaidLinkButton` with a plain button showing its label. They draw charts, open Plaid and call the planner, none of which is under test.
 - The user has one linked account and a December budget with a "Debt payoff" goal line.
 - `goal(id, over)` builds an accepted goal.
 
@@ -76,3 +76,21 @@ npm test -- app/dashboard/page.test.tsx
 **What it does:** Keeps a forecast failure inside its card.
 
 **Why it's there:** Checks the forecast integration while preserving the existing workflow.
+
+## `a real user can link another account`
+
+**What it does:** When `getSim` fails with a 404, the header shows "Link another account" and no demo chip.
+
+**Why it's there:** A real user must keep the Link button, including when the admin routes are off.
+
+## `a simulated user gets no Link button, and sees its simulated date`
+
+**What it does:** For a simulated user on Oct 8, 2026, the header shows "Demo · Oct 8, 2026" and no Link button.
+
+**Why it's there:** The server refuses bank linking for simulated users. The button requested a link token as soon as it appeared, so the demo opened with a red "Couldn't start Link" error. The chip also says which date the demo is on.
+
+## `the budget card explains the day marker`
+
+**What it does:** With day 10 of 31, the Budget card starts with "Day 10 of 31. The mark on each bar…".
+
+**Why it's there:** The marker had no explanation, so a reader couldn't tell what it was for.

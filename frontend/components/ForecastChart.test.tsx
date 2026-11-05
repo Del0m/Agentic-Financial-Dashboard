@@ -23,7 +23,7 @@ export const FORECAST: Forecast = {
 
 test("headlines a range, never the expected value alone", () => {
   render(<ForecastChart data={FORECAST} onSaveBuffer={vi.fn()} />);
-  expect(screen.getByText("Your typical range is between $5.00 and $412.00 on Oct 13.")).toBeTruthy();
+  expect(screen.getByText("Your lowest point is likely Oct 13, with a balance between $5.00 and $412.00.")).toBeTruthy();
 });
 
 test("labels the chart with the lowest likely balance and the buffer", () => {

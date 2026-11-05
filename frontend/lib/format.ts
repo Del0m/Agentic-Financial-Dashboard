@@ -35,6 +35,12 @@ export function categoryLabel(category: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+// the reserved free line holds spending that has no line of its own; "Free" alone reads like free money. a name the
+// user chose is kept
+export function lineLabel(line: { category: string; name: string }): string {
+  return line.category === "FREE" && line.name === "Free" ? "Everything else" : line.name;
+}
+
 // days from an iso date to the last day of its month. on the last day it's the next month's end instead: a seeded
 // user starts on a month's last day, and one day would only reach the 1st (never 0, which the api rejects)
 export function daysToMonthEnd(iso: string): number {

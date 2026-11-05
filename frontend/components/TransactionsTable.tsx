@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { errorMessage, type Txn } from "@/lib/api";
-import { formatCents, formatDate } from "@/lib/format";
+import { formatCents, formatDate, lineLabel } from "@/lib/format";
 
 type Line = { category: string; name: string; group?: string };
 
@@ -71,7 +71,7 @@ export default function TransactionsTable({ transactions, lines, onCorrect, onRe
                         value={lined.has(t.category) ? t.category : "FREE"}
                         onChange={(e) => pick(t, e.target.value, false)}
                         className="rounded border border-black/20 bg-transparent px-1 py-0.5 dark:border-white/30">
-                        {choices.map((l) => <option key={l.category} value={l.category}>{l.name}</option>)}
+                        {choices.map((l) => <option key={l.category} value={l.category}>{lineLabel(l)}</option>)}
                       </select>
                       {t.source === "rule" && <span className="text-xs text-neutral-500">rule</span>}
                       {offer?.id === t.id && (

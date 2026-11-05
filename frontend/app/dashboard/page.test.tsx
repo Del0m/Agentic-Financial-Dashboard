@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import DashboardPage from "@/app/dashboard/page";
 import {
-  ApiError, getAlerts, getBudget, getDashboard, getForecast, getGoals, getRecurring, getTransactions, type Budget, type Dashboard, type Goal,
+  ApiError, getAlerts, getBudget, getDashboard, getForecast, getGoals, getRecurring, getSim, getTransactions, type Budget, type Dashboard, type Goal,
 } from "@/lib/api";
 
 vi.mock("@/lib/api", async (importOriginal) => ({
@@ -14,10 +14,11 @@ vi.mock("@/lib/api", async (importOriginal) => ({
   getGoals: vi.fn(),
   getRecurring: vi.fn(),
   getForecast: vi.fn(),
+  getSim: vi.fn(),
 }));
 // these draw charts, open Plaid or call the planner; none of it matters here
 vi.mock("@/components/BalanceChart", () => ({ default: () => null }));
-vi.mock("@/components/PlaidLinkButton", () => ({ default: () => null }));
+vi.mock("@/components/PlaidLinkButton", () => ({ default: ({ label }: { label: string }) => <button type="button">{label}</button> }));
 vi.mock("@/components/DebtPlanCompare", () => ({ default: () => null }));
 vi.mock("@/components/ForecastChart", () => ({ default: () => null }));
 
@@ -45,6 +46,7 @@ function goal(id: number, over: Partial<Goal> = {}): Goal {
 }
 
 beforeEach(() => {
+  vi.mocked(getSim).mockRejectedValue(new ApiError(404, { detail: "Not Found" }));
   vi.mocked(getDashboard).mockResolvedValue(DASHBOARD);
   budgetMock.mockResolvedValue(BUDGET);
   vi.mocked(getAlerts).mockResolvedValue([]);
@@ -136,5 +138,25 @@ describe("Dashboard goals", () => {
   test("with nothing proposed the link has no count", async () => {
     render(<DashboardPage />);
     expect((await screen.findByRole("link", { name: "Goals" })).getAttribute("href")).toBe("/goals");
+  });
+});
+
+describe("Dashboard demo user", () => {
+  test("a real user can link another account", async () => {
+    render(<DashboardPage />);
+    expect(await screen.findByRole("button", { name: "Link another account" })).toBeTruthy();
+    expect(screen.queryByText(/^Demo ·/)).toBeNull();
+  });
+
+  test("a simulated user gets no Link button, and sees its simulated date", async () => {
+    vi.mocked(getSim).mockResolvedValue({ simulated: true, profile: "overspend-recurring", date: "2026-10-08" });
+    render(<DashboardPage />);
+    expect(await screen.findByText("Demo · Oct 8, 2026")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Link another account" })).toBeNull();
+  });
+
+  test("the budget card explains the day marker", async () => {
+    render(<DashboardPage />);
+    expect(await screen.findByText(/Day 10 of 31\. The mark on each bar/)).toBeTruthy();
   });
 });

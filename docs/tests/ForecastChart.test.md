@@ -8,7 +8,7 @@ Typed forecast data has a $5–$412 rent-day range, a $100 buffer and a Landlord
 
 ## `headlines a range, never the expected value alone`
 
-**What it does:** Headlines a range, never the expected value alone.
+**What it does:** The headline reads "Your lowest point is likely Oct 13, with a balance between $5.00 and $412.00.": the date of the lowest likely balance and its range, never the expected value alone.
 
 **Why it's there:** Makes the range and buffer understandable and usable without reading the plot.
 

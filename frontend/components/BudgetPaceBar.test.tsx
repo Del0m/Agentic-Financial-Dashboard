@@ -56,6 +56,39 @@ describe("BudgetPaceBar", () => {
     expect(screen.getByRole("meter", { name: "Groceries spent" })).toBeTruthy();
   });
 
+  test("says how much is left instead of a pace number", () => {
+    draw(line());
+    expect(screen.getByText(/\$236\.00 left/)).toBeTruthy();
+    expect(screen.queryByText(/pace/)).toBeNull();
+  });
+
+  test("ahead of pace says it is spending fast", () => {
+    draw(line({ flagged: true, reason: "pace", spent_cents: 40000 }));
+    expect(screen.getByText(/\$72\.00 left · spending fast/)).toBeTruthy();
+  });
+
+  test("over the limit says by how much", () => {
+    draw(line({ flagged: true, reason: "over_limit", spent_cents: 9000, limit_cents: 4200, pace: 8.3 }));
+    expect(screen.getByText(/\$48\.00 over/)).toBeTruthy();
+  });
+
+  test("fixed and saving lines show no left or over", () => {
+    draw(line({ kind: "fixed", spent_cents: 150000, limit_cents: 150000, pace: null }));
+    expect(screen.queryByText(/left|over/)).toBeNull();
+    cleanup();
+    draw(line({ category: "SAVINGS_TRANSFER", name: "Savings", group: "saving", kind: "fixed", spent_cents: 0, pace: null }));
+    expect(screen.queryByText(/left|over/)).toBeNull();
+  });
+
+  test("the reserved free line reads as everything else, a renamed one keeps its name", () => {
+    draw(line({ category: "FREE", name: "Free", group: "free" }));
+    expect(screen.getByText("Everything else")).toBeTruthy();
+    expect(screen.getByRole("meter", { name: "Everything else spent" })).toBeTruthy();
+    cleanup();
+    draw(line({ category: "FREE", name: "Fun money", group: "free" }));
+    expect(screen.getByText("Fun money")).toBeTruthy();
+  });
+
   test("a goal line shows its monthly amount and no meter", () => {
     render(<BudgetPaceBar line={line({ category: "GOAL_DEBT_PAYOFF", name: "Debt payoff", group: "goal",
                                         limit_cents: 58300, spent_cents: 0, pace: null })}
