@@ -172,3 +172,67 @@ def test_get_history_is_left_out_when_facts_already_answer(monkeypatch, tmp_path
 
 def test_get_history_is_offered_when_there_are_no_facts(monkeypatch, tmp_path):
     assert "get_history" in _bound_tools(monkeypatch, tmp_path, {"as_of": "2026-11-06", "facts": []})
+
+
+@pytest.fixture
+def dated_user(db):
+    from app.db.models import User
+    from app.kg.project import Assertion, apply
+    with db() as s:
+        s.add(User(id="dated", email="dated@example.test", password_hash="!"))
+        s.flush()
+        for month in (7, 8, 9, 11, 12):
+            start = date(2026, month, 1)
+            end = date(2027, 1, 1) if month == 12 else date(2026, month + 1, 1)
+            apply(s, "dated", [
+                Assertion(("user", "dated"), "BUDGETS", ("category", "FOOD_AND_DRINK"),
+                          {"limit_cents": month * 10000}, start, end, dst_label="Food and drink"),
+                Assertion(("user", "dated"), "SPENDS_AT", ("merchant", "cafe"),
+                          {"cents": month * 100, "count": 1}, start, end, dst_label="Cafe"),
+                Assertion(("user", "dated"), "SUBSCRIBES", ("stream", "out|cafe"),
+                          {"typical_cents": month * 100}, start, end, dst_label="Cafe"),
+                Assertion(("advice", f"advice-{month}"), "ABOUT", ("category", "FOOD_AND_DRINK"),
+                          {"outcome": "accepted"}, start, end, src_label="Cafe suggestion"),
+            ])
+        yield s
+
+
+@pytest.mark.parametrize("question", ["Cafe food and drink budget in September", "Cafe food and drink budget in September 2026",
+                                      "Cafe food and drink budget on 2026-09-15"])
+def test_requested_date_filters_every_user_fact(dated_user, question):
+    found = gather(dated_user, "dated", question, TODAY)
+    assert {f.rel for f in found.user} == {"BUDGETS", "SPENDS_AT", "SUBSCRIBES", "ABOUT"}
+    assert any("$900.00 in September 2026" in f.line for f in found.user)
+    assert all("November" not in f.line and "August" not in f.line and "December" not in f.line for f in found.user)
+
+
+def test_september_question_cannot_use_november_only_budget(db):
+    from app.db.models import User
+    from app.kg.project import Assertion, apply
+    with db() as s:
+        s.add(User(id="u", email="u@example.test", password_hash="!"))
+        s.flush()
+        apply(s, "u", [Assertion(("user", "u"), "BUDGETS", ("category", "FOOD_AND_DRINK"),
+                                 {"limit_cents": 90000}, date(2026, 11, 1), date(2026, 12, 1))])
+        assert gather(s, "u", "What was my food and drink budget in September?", TODAY).user == ()
+
+
+def test_since_window_filters_all_facts_and_preserves_changes(dated_user):
+    found = gather(dated_user, "dated", "How have Cafe and my food and drink budget changed since August?", TODAY)
+    assert {f.rel for f in found.user} == {"BUDGETS", "SPENDS_AT", "SUBSCRIBES", "ABOUT"}
+    assert any("August 2026" in f.line and "November 2026" in f.line for f in found.user)
+    assert all("July" not in f.line and "from December" not in f.line and "$12.00" not in f.line
+               and "$1,200.00" not in f.line for f in found.user)
+
+
+def test_explicit_history_retains_past_but_not_future_facts(dated_user):
+    found = gather(dated_user, "dated", "Cafe food and drink", TODAY, history=True)
+    assert any("July 2026" in f.line and "November 2026" in f.line for f in found.user)
+    assert all("from December" not in f.line and "$12.00" not in f.line and "$1,200.00" not in f.line
+               for f in found.user)
+
+
+def test_last_month_is_a_snapshot_not_unbounded_history(dated_user):
+    found = gather(dated_user, "dated", "Cafe food and drink budget last month", date(2026, 10, 20))
+    assert any("$900.00 in September 2026" in f.line for f in found.user)
+    assert all("July" not in f.line and "August" not in f.line and "November" not in f.line for f in found.user)

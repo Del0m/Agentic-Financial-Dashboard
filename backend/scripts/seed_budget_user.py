@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 from app.budget_engine.styles import STYLES
 from app.budget_service.settings import set_user_style
 from app.db.models import (Account, AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, CategoryRule, Goal, Liability,
-                           PlaidItem, RecurringStream, Transaction, User)
+                           KGEdge, KGNode, PlaidItem, RecurringStream, Transaction, User)
 from eval.budget_users import FORECAST_USERS, GOAL_USERS, GRAPH_USERS, PLANTED, PROFILES, RECURRING_USERS, default_start, seed_profile
 
 
@@ -45,6 +45,8 @@ def delete_user(session: Session, user_id: str) -> None:
     if session.get(UserRunClaim, user_id) is not None:
         raise ValueError("Cannot replace a user with an active run.")
     periods = select(BudgetPeriod.id).where(BudgetPeriod.user_id == user_id)
+    session.execute(delete(KGEdge).where(KGEdge.user_id == user_id))
+    session.execute(delete(KGNode).where(KGNode.user_id == user_id))
     session.execute(delete(AdviceLog).where(AdviceLog.user_id == user_id))
     session.execute(delete(Alert).where(Alert.user_id == user_id))
     session.execute(delete(Goal).where(Goal.user_id == user_id))

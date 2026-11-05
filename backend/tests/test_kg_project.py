@@ -167,7 +167,7 @@ def test_a_backdated_month_is_skipped_and_reported(account):
     project.project_month(s, "u1", date(2026, 8, 1))
     add_txn(s, acct, 500, "FOOD_AND_DRINK", merchant="Cafe", day=date(2026, 6, 3))
     result = project.project_month(s, "u1", date(2026, 6, 1))
-    assert result.skipped == ["SPENDS_AT:Cafe:2026-06-01"]
+    assert result.skipped == ["SPENDS_AT:cafe:2026-06-01"]
 
 
 def test_replacing_and_deleting_a_rule(account):
@@ -298,3 +298,95 @@ def test_build_kg_script(monkeypatch, capsys):
         assert script.main(["--user", uid]) == 0
         assert "0 skipped" in capsys.readouterr().out
         assert script.main(["--user", "nobody"]) == 2
+
+
+def test_merchant_variants_sum_before_projection(account):
+    s, acct = account
+    for name, amount in [(" Cafe ", 1000), ("CAFE", 700), ("cafe", -200)]:
+        add_txn(s, acct, amount, "FOOD_AND_DRINK", merchant=name, day=date(2026, 8, 3))
+    project.project_month(s, "u1", date(2026, 8, 1))
+    [(edge, node)] = edges_of(s, "u1", "SPENDS_AT")
+    assert node.key == "cafe" and node.label == "Cafe"
+    assert edge.value_json == {"cents": 1500, "count": 3, "category": "FOOD_AND_DRINK"}
+    project.project_month(s, "u1", date(2026, 8, 1))
+    assert s.query(KGEdge).filter_by(rel="SPENDS_AT").count() == 1
+
+
+def test_real_users_rule_edit_keeps_previous_interval(account):
+    from datetime import datetime, timezone
+    s, _ = account
+    rule = CategoryRule(user_id="u1", merchant_name="cafe", category="FOOD_AND_DRINK",
+                        created_at=datetime(2026, 8, 1, tzinfo=timezone.utc))
+    s.add(rule)
+    s.flush()
+    project.project_rules(s, "u1", date(2026, 8, 1))
+    rule.category = "TRAVEL"
+    s.flush()
+    project.project_rules(s, "u1", date(2026, 9, 15))
+    # A second edit on the same day corrects September, not August.
+    rule.category = "ENTERTAINMENT"
+    s.flush()
+    project.project_rules(s, "u1", date(2026, 9, 15))
+    assert [(n.key, e.valid_from, e.valid_to) for e, n in edges_of(s, "u1", "CATEGORIZED_AS")] == [
+        ("FOOD_AND_DRINK", date(2026, 8, 1), date(2026, 9, 15)),
+        ("ENTERTAINMENT", date(2026, 9, 15), None)]
+    assert rule.created_at.date() == date(2026, 8, 1)
+    count = s.query(KGEdge).count()
+    project.project_rules(s, "u1", date(2026, 10, 1))
+    assert s.query(KGEdge).count() == count
+
+
+def test_overdue_close_then_daily_backfills_older_spending_and_budgets(tmp_path):
+    from app.budget_service.close import close_due
+    from app.budget_service.daily import run_daily_locked
+    from app.budget_service.initialize import initialize_budget
+    with temp_db() as Session:
+        with Session() as s:
+            uid = seed_profile(s, profile_by_id("overspend-recurring"), until=date(2026, 9, 30))
+            initialize_budget(s, uid, date(2026, 9, 30))
+        close_due(Session, uid, date(2026, 10, 2))
+        with Session() as s:
+            assert project.has_graph(s, uid) and not project.backfill_complete(s, uid)
+        state = run_daily_locked(Session, uid, date(2026, 10, 2), model=SchemaReplyModel(), checkpointer=None)
+        assert state["status"] != "error" and not state.get("graph_error")
+        with Session() as s:
+            assert project.backfill_complete(s, uid)
+            assert {date(2026, 7, 1), date(2026, 8, 1), date(2026, 9, 1)} <= {
+                e.valid_from for e, _ in edges_of(s, uid, "SPENDS_AT")}
+            assert {date(2026, 9, 1), date(2026, 10, 1)} <= {e.valid_from for e, _ in edges_of(s, uid, "BUDGETS")}
+            count = s.query(KGEdge).count()
+            assert project.project_run(s, uid, date(2026, 10, 2)).skipped == []
+            assert s.query(KGEdge).count() == count
+
+
+@pytest.mark.parametrize("failure", ["partial", "exception"])
+def test_unsuccessful_backfill_is_retryable(account, monkeypatch, failure):
+    s, acct = account
+    for month in (7, 8, 9):
+        add_txn(s, acct, 1000, "FOOD_AND_DRINK", merchant="Cafe", day=date(2026, month, 3))
+    # A recent month already exists, as when close runs before the first daily run.
+    project.project_month(s, "u1", date(2026, 9, 1))
+    s.commit()
+    original = project.project_month
+
+    def interrupted(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if args[2].month == 8:
+            if failure == "exception":
+                raise RuntimeError("interrupted")
+            result.skipped.append("injected failure")
+        return result
+
+    with monkeypatch.context() as patch:
+        patch.setattr(project, "project_month", interrupted)
+        ok = project.safely(s, "backfill", lambda: project.project_run(s, "u1", date(2026, 9, 20)))
+        assert ok is (failure == "partial")
+        s.commit()
+    assert not project.backfill_complete(s, "u1")
+    assert project.project_run(s, "u1", date(2026, 9, 20)).skipped == []
+    s.commit()
+    assert project.backfill_complete(s, "u1")
+    assert {e.valid_from.month for e, _ in edges_of(s, "u1", "SPENDS_AT")} == {7, 8, 9}
+    count = s.query(KGEdge).count()
+    project.project_run(s, "u1", date(2026, 9, 20))
+    assert s.query(KGEdge).count() == count

@@ -8,10 +8,11 @@ the next. Run from the repo root:
 """
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -69,10 +70,40 @@ def dirty_files() -> list[str]:
     return [line for line in out.splitlines() if line.strip()]
 
 
-def is_finished(model: str, label: str, commit: str, root: Path = RESULTS_DIR) -> bool:
-    for path in root.glob(f"*/{_safe(model)}-{label}/summary.json"):
-        config = json.loads((path.parent / "config.json").read_text())
-        if config.get("commit") == commit and config.get("finished_at"):
+def expected_config(command: list[str]) -> dict:
+    # Use the evaluator's parser and scenario selection without starting any models.
+    from app import config
+    from eval.run_eval import parse_args, load_scenarios, SCENARIOS_DIR, _scenario_hash, spread, KINDS
+    args = parse_args(command[2:])
+    scenarios = [s for s in load_scenarios(SCENARIOS_DIR, only=args.only)
+                 if (not args.kind or s.kind == args.kind) and not set(args.skip_tag) & set(s.tags)]
+    if args.limit:
+        scenarios = [s for kind in KINDS for s in spread([s for s in scenarios if s.kind == kind], args.limit)]
+    return {"model": args.model, "label": args.label, "runs": args.runs,
+            "scenarios": [s.id for s in scenarios], "scenario_hash": _scenario_hash(scenarios),
+            "retrieval": args.retrieval or config.KG_CHAT, "kg_mode": args.kg or config.KG_MODE,
+            "retries": args.retries == "on" if args.retries else config.RETRIES_ENABLED,
+            "temperature": args.temperature, "seed": args.seed, "today": args.today and args.today.isoformat(),
+            "judge": args.judge, "embeddings": config.OLLAMA_EMBED_MODEL}
+
+
+def is_finished(model: str, label: str, commit: str, *, expected: dict, root: Path = None) -> bool:
+    root = RESULTS_DIR if root is None else root
+    name = re.compile(re.escape(f"{_safe(model)}-{label}") + r"(?:-[2-9]\d*|-1\d+)?")
+    for path in root.glob("*/*/summary.json"):
+        if not name.fullmatch(path.parent.name):
+            continue
+        try:
+            config = json.loads((path.parent / "config.json").read_text())
+            summary = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if not isinstance(config, dict) or not isinstance(summary, dict):
+            continue
+        if (config.get("commit") == commit and config.get("finished_at")
+                and all(key in config and config[key] == value for key, value in expected.items())
+                and all((path.parent / f"{sid}.run{n}.json").is_file()
+                        for sid in expected["scenarios"] for n in range(1, expected["runs"] + 1))):
             return True
     return False
 
@@ -106,11 +137,13 @@ def main(argv=None) -> int:
         return 0
     commit, timings = _commit(), {}
     for model, condition in conditions(GRAPH_RETRIEVAL_BUILT):
+        if args.pilot:
+            condition = replace(condition, label=f"pilot-{condition.label}")
         if args.pilot and "--runs" not in condition.args:
             command = eval_command(model, condition, baseline, PILOT_LIMIT) + ["--runs", "1"]
         else:
             command = eval_command(model, condition, baseline, PILOT_LIMIT if args.pilot else None)
-        if not args.pilot and is_finished(model, condition.label, commit):
+        if not args.pilot and is_finished(model, condition.label, commit, expected=expected_config(command)):
             print(f"Skipping {model} {condition.label}: already finished on this commit", flush=True)
             continue
         timings[f"{model} {condition.label}"] = round(run(command), 1)

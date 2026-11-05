@@ -182,9 +182,10 @@ class PrivacyGateway:
 
     # what the graph says about a question (tpc-39). facts about the user go through build_context, so they're scrubbed
     # and audited. guidance is public text and skips it, like search_kb
-    def graph_retrieve(self, question: str, relation: Optional[str] = None) -> dict:
+    def graph_retrieve(self, question: str, relation: Optional[str] = None, *, history: bool = False) -> dict:
         from ..kg.retrieve import gather
-        found = gather(self._session, self._user_id, question, self.today(), scrub=scrub_merchant, relation=relation)
+        found = gather(self._session, self._user_id, question, self.today(), scrub=scrub_merchant, relation=relation,
+                       history=history)
         if found.user:
             self.build_context("graph", graph_user=found.user, graph_as_of=found.as_of)
         return {"as_of": found.as_of.isoformat(), "facts": [f.line for f in (*found.user, *found.guidance)]}

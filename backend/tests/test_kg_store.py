@@ -426,3 +426,19 @@ def test_owned_to_shared_guidance_bridge(s):
     edge = assert_edge(s, user_id='a', src_id=account.id, dst_id=concept.id,
                        rel='IS_A', value={}, valid_from=D('2026-01-01'), now=T1)
     assert (edge.user_id, edge.src_id, edge.dst_id) == ('a', account.id, concept.id)
+
+
+def test_historical_months_allow_gaps_but_not_overlap(s):
+    user = upsert_node(s, user_id='a', kind='user', key='a')
+    merchant = upsert_node(s, user_id='a', kind='merchant', key='Cafe')
+    args = dict(user_id='a', src_id=user.id, dst_id=merchant.id, rel='SPENDS_AT', value={'cents': 100})
+    assert_edge(s, **args, valid_from=D('2026-09-01'), valid_to=D('2026-10-01'))
+    with pytest.raises(OverlapError):
+        assert_edge(s, **args, valid_from=D('2026-08-01'), valid_to=D('2026-09-01'))
+    assert_edge(s, **args, valid_from=D('2026-08-01'), valid_to=D('2026-09-01'), historical=True)
+    with pytest.raises(OverlapError):
+        assert_edge(s, **args, valid_from=D('2026-07-01'), valid_to=D('2026-09-02'), historical=True)
+    with pytest.raises(InvalidAssertionError):
+        assert_edge(s, **args, valid_from=D('2026-07-01'), historical=True)
+    with pytest.raises(InvalidAssertionError):
+        fact(s, nodes(s), valid_to=D('2026-03-01'), historical=True)

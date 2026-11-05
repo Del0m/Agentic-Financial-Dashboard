@@ -154,9 +154,74 @@ def test_finished_condition_needs_the_same_commit(tmp_path):
     folder = tmp_path / "2026-11-06" / "qwen2.5_14b-chat-none"
     write_folder(folder, {"a": [True]})
     (folder / "summary.json").write_text("{}")
-    assert bench.is_finished("qwen2.5:14b", "chat-none", "abc", root=tmp_path) is True
-    assert bench.is_finished("qwen2.5:14b", "chat-none", "other", root=tmp_path) is False
-    assert bench.is_finished("mistral", "chat-none", "abc", root=tmp_path) is False
+    expected = {"model": "qwen2.5:14b", "label": "chat-none", "scenarios": ["a"], "runs": 1}
+    path = folder / "config.json"
+    path.write_text(json.dumps({**json.loads(path.read_text()), **expected}))
+    assert bench.is_finished("qwen2.5:14b", "chat-none", "abc", expected=expected, root=tmp_path) is True
+    assert bench.is_finished("qwen2.5:14b", "chat-none", "other", expected=expected, root=tmp_path) is False
+    assert bench.is_finished("mistral", "chat-none", "abc", expected=expected, root=tmp_path) is False
+
+
+def completed_condition(root, command, commit="abc", suffix=""):
+    cfg = bench.expected_config(command)
+    folder = root / "2026-11-06" / f"{bench._safe(cfg['model'])}-{cfg['label']}{suffix}"
+    write_folder(folder, {sid: [True] * cfg["runs"] for sid in cfg["scenarios"]}, commit=commit)
+    (folder / "config.json").write_text(json.dumps({**cfg, "commit": commit, "finished_at": "t"}))
+    (folder / "summary.json").write_text("{}")
+    return folder
+
+
+def test_pilot_then_full_executes_full_conditions(monkeypatch, tmp_path):
+    condition = bench.Condition("baseline", ())
+    monkeypatch.setattr(bench, "RESULTS_DIR", tmp_path)
+    monkeypatch.setattr(bench, "conditions", lambda _: [("mistral", condition)])
+    monkeypatch.setattr(bench, "dirty_files", lambda: [])
+    monkeypatch.setattr(bench, "_commit", lambda: "abc")
+    commands = []
+
+    def run(command):
+        if command[1] == "eval/run_eval.py":
+            commands.append(command)
+            completed_condition(tmp_path, command)
+        return 0
+
+    monkeypatch.setattr(bench, "run", run)
+    assert bench.main(["--pilot"]) == 0
+    assert bench.main([]) == 0
+    pilot, full = map(bench.expected_config, commands)
+    assert pilot["label"] == "pilot-baseline" and full["label"] == "baseline"
+    assert pilot["runs"] == 1 and full["runs"] == 3
+    assert len(pilot["scenarios"]) < len(full["scenarios"])
+    assert bench.main([]) == 0
+    assert len(commands) == 2
+
+
+@pytest.mark.parametrize("suffix", ["-2", "-10", "-21"])
+def test_completed_numeric_rerun_is_reused_after_old_original(tmp_path, suffix):
+    command = bench.eval_command("mistral", bench.Condition("baseline", ()), ("--kg", "on", "--retrieval", "hybrid"))
+    completed_condition(tmp_path, command, commit="old")
+    completed_condition(tmp_path, command, suffix=suffix)
+    assert bench.is_finished("mistral", "baseline", "abc", expected=bench.expected_config(command), root=tmp_path)
+
+
+@pytest.mark.parametrize("change", ["pilot", "runs", "scenarios", "scenario_hash", "retrieval", "kg_mode", "retries",
+                                    "temperature", "seed", "today", "model", "label", "unfinished", "missing", "malformed"])
+def test_rerun_requires_matching_metadata_and_complete_files(tmp_path, change):
+    command = bench.eval_command("mistral", bench.Condition("baseline", ()), ("--kg", "on", "--retrieval", "hybrid"))
+    expected = bench.expected_config(command)
+    folder = completed_condition(tmp_path, command, suffix="-2")
+    path = folder / "config.json"
+    cfg = json.loads(path.read_text())
+    if change == "pilot":  # old pilots used the full condition's label
+        cfg.update(bench.expected_config(command + ["--limit", "4", "--runs", "1"]))
+    elif change == "unfinished":
+        cfg.pop("finished_at")
+    elif change == "missing":
+        (folder / f"{expected['scenarios'][0]}.run3.json").unlink()
+    elif change != "malformed":
+        cfg[change] = "wrong"
+    path.write_text("{" if change == "malformed" else json.dumps(cfg))
+    assert not bench.is_finished("mistral", "baseline", "abc", expected=expected, root=tmp_path)
 
 
 def test_benchmark_refuses_uncommitted_changes(monkeypatch, capsys):

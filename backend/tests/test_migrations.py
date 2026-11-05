@@ -315,3 +315,31 @@ def test_kg_postgres_ddl_matches_metadata_and_predicates():
     assert "ON DELETE CASCADE" not in sql
     down = postgres_downgrade_sql(KG_MIGRATION)
     assert down.index("DROP TABLE kg_edges") < down.index("DROP TABLE kg_nodes")
+
+
+def test_rule_effective_date_migration_preserves_existing_rows(tmp_path, monkeypatch):
+    url = f"sqlite:///{tmp_path / 'rule-date.db'}"
+    monkeypatch.setattr(db_session, "DATABASE_URL", url)
+    cfg = alembic_config()
+    command.upgrade(cfg, KG_REVISION)
+    engine = sa.create_engine(url)
+    with engine.begin() as c:
+        c.execute(sa.text("INSERT INTO users (id,email,password_hash,created_at,prefs_json) "
+                          "VALUES ('u','u@example.test','!', '2026-01-01','{}')"))
+        c.execute(sa.text("INSERT INTO category_rules (user_id,merchant_name,category,created_at) "
+                          "VALUES ('u','cafe','FOOD_AND_DRINK','2026-01-01')"))
+    command.upgrade(cfg, "head")
+    with engine.begin() as c:
+        assert c.execute(sa.text("SELECT category,effective_from FROM category_rules")).one() == ("FOOD_AND_DRINK", None)
+        ctx = MigrationContext.configure(c, opts={
+            "compare_type": True,
+            "include_object": lambda obj, name, type_, reflected, compare_to:
+                name == "category_rules" if type_ == "table" else True,
+        })
+        assert compare_metadata(ctx, Base.metadata) == []
+        c.execute(sa.text("UPDATE category_rules SET effective_from='2026-09-15'"))
+    command.downgrade(cfg, KG_REVISION)
+    with engine.connect() as c:
+        assert "effective_from" not in {col["name"] for col in sa.inspect(c).get_columns("category_rules")}
+        assert c.scalar(sa.text("SELECT category FROM category_rules")) == "FOOD_AND_DRINK"
+    engine.dispose()

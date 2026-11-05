@@ -59,7 +59,8 @@ def _add_rules(session_factory, user_id: str, profile, day: date) -> None:
     rules = [(merchant, category) for when, merchant, category in profile.rules if when == day]
     if rules:
         with session_factory() as s:
-            s.add_all(CategoryRule(user_id=user_id, merchant_name=merchant, category=category) for merchant, category in rules)
+            s.add_all(CategoryRule(user_id=user_id, merchant_name=merchant, category=category, effective_from=day)
+                      for merchant, category in rules)
             s.commit()
 
 

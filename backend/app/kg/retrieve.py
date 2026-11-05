@@ -63,20 +63,25 @@ def _money(cents: Optional[int]) -> str:
 # "since June" also gives where a change starts. anything else is about today
 def read_time(question: str, today: date) -> tuple[date, Optional[date]]:
     text = question.casefold()
+    exact = re.search(r"\b\d{4}-\d{2}-\d{2}\b", text)
+    if exact:
+        try:
+            return date.fromisoformat(exact.group()), None
+        except ValueError:
+            pass
     year = re.search(r"\b(19|20)\d{2}\b", text)
+    named = re.search(r"\b(in|since) (" + "|".join(MONTHS) + r")\b", text)
+    if named:
+        month = date(int(year.group()) if year else today.year, MONTHS.index(named.group(2)) + 1, 1)
+        if not year and month > today:
+            month = date(today.year - 1, month.month, 1)
+        return (today, month) if named.group(1) == "since" else (month, None)
     if year:
         return date(int(year.group()), 6, 1), None
     if "last year" in text:
         return date(today.year - 1, 6, 1), None
     if "last month" in text:
         return add_months(month_start(today), -1), None
-    since = re.search(r"\bsince (" + "|".join(MONTHS) + r")\b", text)
-    named = re.search(r"\bin (" + "|".join(MONTHS) + r")\b", text)
-    found = since or named
-    if found:
-        month = date(today.year, MONTHS.index(found.group(1)) + 1, 1)
-        month = month if month <= today else date(today.year - 1, month.month, 1)
-        return (today, month) if since else (month, None)
     return today, None
 
 
@@ -109,8 +114,18 @@ def _matches(label: Optional[str], words: set[str]) -> bool:
     return bool((_words(label or "") - STOP_WORDS) & words)
 
 
-def _edges(session: Session, user_id: str, rel: str, *, src_id: Optional[int] = None, dst_id: Optional[int] = None) -> list[KGEdge]:
-    stmt = select(KGEdge).where(KGEdge.user_id == user_id, KGEdge.rel == rel, KGEdge.expired_at.is_(None))
+@dataclass(frozen=True)
+class Window:
+    end: date
+    start: Optional[date]    # None means all history up to end
+
+
+def _edges(session: Session, user_id: str, rel: str, window: Window, *, src_id: Optional[int] = None,
+           dst_id: Optional[int] = None) -> list[KGEdge]:
+    stmt = select(KGEdge).where(KGEdge.user_id == user_id, KGEdge.rel == rel, KGEdge.expired_at.is_(None),
+                                KGEdge.valid_from <= window.end)
+    if window.start is not None:
+        stmt = stmt.where((KGEdge.valid_to.is_(None)) | (KGEdge.valid_to > window.start))
     if src_id is not None:
         stmt = stmt.where(KGEdge.src_id == src_id)
     if dst_id is not None:
@@ -118,9 +133,9 @@ def _edges(session: Session, user_id: str, rel: str, *, src_id: Optional[int] = 
     return list(session.scalars(stmt.order_by(KGEdge.valid_from, KGEdge.id)))
 
 
-def _merchant_facts(session: Session, user_id: str, merchant: KGNode, scrub: Callable) -> list[Fact]:
+def _merchant_facts(session: Session, user_id: str, merchant: KGNode, scrub: Callable, window: Window) -> list[Fact]:
     name = scrub(merchant.label or merchant.key)
-    months = [e for e in _edges(session, user_id, "SPENDS_AT", dst_id=merchant.id) if (e.value_json or {}).get("cents", 0) > 0]
+    months = [e for e in _edges(session, user_id, "SPENDS_AT", window, dst_id=merchant.id) if (e.value_json or {}).get("cents", 0) > 0]
     if not months:
         return []
     first, last = months[0], months[-1]
@@ -136,11 +151,11 @@ def _merchant_facts(session: Session, user_id: str, merchant: KGNode, scrub: Cal
                  f"{_money(last.value_json['cents'])} in the latest month{prices}")]
 
 
-def _stream_facts(session: Session, user_id: str, words: set[str], scrub: Callable) -> list[Fact]:
+def _stream_facts(session: Session, user_id: str, words: set[str], scrub: Callable, window: Window) -> list[Fact]:
     out = []
     for stream in _nodes(session, user_id, "stream"):
         if stream.key.startswith("out|") and _matches(stream.label, words):
-            edges = _edges(session, user_id, "SUBSCRIBES", dst_id=stream.id)
+            edges = _edges(session, user_id, "SUBSCRIBES", window, dst_id=stream.id)
             if edges:
                 parts = [f"{_money(e.value_json['typical_cents'])} from {e.valid_from:%B %Y}"
                          + ("" if e.valid_to is None else f" to {e.valid_to:%B %Y}") for e in edges]
@@ -152,20 +167,19 @@ def _category_label(category: KGNode) -> str:
     return (category.label or category.key.replace("_", " ")).lower()
 
 
-def _budget_facts(session: Session, user_id: str, category: KGNode, since: Optional[date]) -> list[Fact]:
-    edges = _edges(session, user_id, "BUDGETS", dst_id=category.id)
-    edges = [e for e in edges if since is None or e.valid_from >= since]
+def _budget_facts(session: Session, user_id: str, category: KGNode, window: Window) -> list[Fact]:
+    edges = _edges(session, user_id, "BUDGETS", window, dst_id=category.id)
     if not edges:
         return []
     parts = [f"{_money(e.value_json['limit_cents'])} in {e.valid_from:%B %Y}" for e in edges]
     return [Fact("BUDGETS", f"{_category_label(category)} budget limit", ", ".join(parts))]
 
 
-def _advice_facts(session: Session, user_id: str, words: set[str], categories: list[KGNode]) -> list[Fact]:
+def _advice_facts(session: Session, user_id: str, words: set[str], categories: list[KGNode], window: Window) -> list[Fact]:
     category_ids = {c.id for c in categories}
     out = []
     for advice in _nodes(session, user_id, "advice"):
-        edges = _edges(session, user_id, "ABOUT", src_id=advice.id)
+        edges = _edges(session, user_id, "ABOUT", window, src_id=advice.id)
         if edges and (_matches(advice.label, words) or edges[-1].dst_id in category_ids):
             value = edges[-1].value_json or {}
             outcome = value.get("outcome") or "no decision yet"
@@ -225,20 +239,24 @@ def _shuffled(user: list[Fact], guidance: list[Fact]) -> tuple[list[Fact], list[
 
 
 def gather(session: Session, user_id: str, question: str, today: date, *, scrub: Callable = lambda s: s,
-           relation: Optional[str] = None) -> Gathered:
+           relation: Optional[str] = None, history: bool = False) -> Gathered:
     on_date, since = read_time(question, today)
+    history = history or since is not None or bool(re.search(
+        r"\b(history|when|first|start\w*|stop\w*|chang\w*|previous\w*|decid\w*|accept\w*|dismiss\w*)\b",
+        question.casefold()))
+    window = Window(on_date, since if history else on_date)
     words = _words(question) - STOP_WORDS
     all_words = _words(question)
     user: list[Fact] = []
     for merchant in _nodes(session, user_id, "merchant"):
         if _matches(merchant.label or merchant.key, words):
-            user += _merchant_facts(session, user_id, merchant, scrub)
-    user += _stream_facts(session, user_id, words, scrub)
+            user += _merchant_facts(session, user_id, merchant, scrub, window)
+    user += _stream_facts(session, user_id, words, scrub, window)
     categories = [c for c in _nodes(session, user_id, "category")
                   if set(c.key.casefold().split("_")) - {"and"} & all_words or _matches(c.label, words)]
     for category in categories:
-        user += _budget_facts(session, user_id, category, since)
-    user += _advice_facts(session, user_id, words, categories)
+        user += _budget_facts(session, user_id, category, window)
+    user += _advice_facts(session, user_id, words, categories, window)
     if relation:
         user = [f for f in user if f.rel == relation]
     concepts = [] if relation else _linked_concepts(session, question)

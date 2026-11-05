@@ -152,6 +152,7 @@ class CategoryRule(Base):
     merchant_name: Mapped[str]
     category: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    effective_from: Mapped[Optional[Date]]  # date of this category decision, including simulated edits
 
 # alert and advice columns are plain strings so a new kind or action never needs a migration;
 # these list the values architecture section 5 allows

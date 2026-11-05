@@ -172,11 +172,13 @@ def _replace(session, target, now, replacements):
 
 def assert_edge(session, *, user_id, src_id, rel, dst_id, value, valid_from,
                 valid_to=None, source='projection', evidence=None, correct=False,
-                target_edge_id=None, now=None):
+                target_edge_id=None, now=None, historical=False):
     """Assert an ordered fact, or correct one explicitly named current version."""
     if rel not in get_args(Relation) or source not in get_args(EdgeSource):
         raise InvalidAssertionError('unknown relation or source')
     _interval(valid_from, valid_to)
+    if historical and (rel not in {'SPENDS_AT', 'BUDGETS'} or valid_to is None or source != 'projection'):
+        raise InvalidAssertionError('historical insertion requires a bounded monthly projection')
     if evidence is not None and not isinstance(evidence, dict):
         raise InvalidAssertionError('evidence must be an object')
     value, evidence = _json(value), _json(evidence or {})
@@ -235,7 +237,7 @@ def assert_edge(session, *, user_id, src_id, rel, dst_id, value, valid_from,
         return changed
     if any(_overlap(valid_from, valid_to, r.valid_from, r.valid_to) for r in rows):
         raise OverlapError('assertion overlaps an existing interval')
-    if rows and valid_from <= max(r.valid_from for r in rows):
+    if not historical and rows and valid_from <= max(r.valid_from for r in rows):
         raise OverlapError('new intervals must be inserted chronologically')
     edge = KGEdge(user_id=user_id, src_id=src_id, rel=rel, dst_id=dst_id,
                   value_json=value, valid_from=valid_from, valid_to=valid_to,

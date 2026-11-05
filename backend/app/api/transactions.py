@@ -90,19 +90,20 @@ def correct_transaction(txn_id: int, edit: TxnEdit, user: User = Depends(get_cur
         if edit.remember and not (row.merchant_name or "").strip():
             raise HTTPException(422, "This transaction has no merchant to remember.")
         row.user_category = edit.category
+        today = project.current_day(s, user.id)
         if edit.remember:
             key = normalize_merchant(row.merchant_name)
             rule = s.scalars(select(CategoryRule).where(CategoryRule.user_id == user.id,
                                                         CategoryRule.merchant_name == key)).first()
             if rule is None:
-                s.add(CategoryRule(user_id=user.id, merchant_name=key, category=edit.category))
-            else:
+                s.add(CategoryRule(user_id=user.id, merchant_name=key, category=edit.category, effective_from=today))
+            elif rule.category != edit.category:
                 rule.category = edit.category
+                rule.effective_from = today
         s.flush()
         # a rule is dated when it's made, and a corrected month replaces what the graph believed about it (tpc-36).
         # only a month the graph already has: otherwise the first daily run's backfill records it in order
         if project.has_graph(s, user.id):
-            today = project.current_day(s, user.id)
             project.safely(s, "correct_transaction", lambda: (project.project_rules(s, user.id, today),
                                                               project.project_month(s, user.id, row.date, today)))
         s.commit()

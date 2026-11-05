@@ -106,7 +106,7 @@ def make_tools(gateway: PrivacyGateway, kb: KnowledgeBase) -> list[BaseTool]:
         relation = _blank(relation)
         if relation is not None and relation.upper() not in HISTORY_RELATIONS:
             raise ToolException(f"unknown relation '{relation}'; use one of: {', '.join(HISTORY_RELATIONS)}, or leave it out")
-        found = gateway.graph_retrieve(entity, relation=relation.upper() if relation else None)
+        found = gateway.graph_retrieve(entity, relation=relation.upper() if relation else None, history=True)
         return json.dumps({"purpose": "graph", **found}, separators=(",", ":"), ensure_ascii=False)
 
     tools = [

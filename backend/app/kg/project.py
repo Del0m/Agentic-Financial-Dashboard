@@ -12,7 +12,7 @@ from typing import Any, Callable, Iterable, Optional, Sequence
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.budget_engine.txns import Txn, add_months, month_end, month_start, spending
+from app.budget_engine.txns import Txn, add_months, month_end, month_start, normalize_merchant, spending
 from app.budget_service.initialize import load_txns
 from app.db.models import (Account, AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, CategoryRule, KGEdge,
                            KGNode, RecurringStream, Transaction, User, utcnow)
@@ -52,8 +52,8 @@ def next_month(month: date) -> date:
 def spends_at(user_id: str, txns: Iterable[Txn], month: date) -> list[Assertion]:
     start, by_merchant = month_start(month), {}
     for t in spending(txns):
-        if t.merchant and start <= t.date <= month_end(start):
-            by_merchant.setdefault(t.merchant, []).append(t)
+        if t.merchant and normalize_merchant(t.merchant) and start <= t.date <= month_end(start):
+            by_merchant.setdefault(normalize_merchant(t.merchant), []).append(t)
     out = []
     for merchant, rows in sorted(by_merchant.items()):
         sizes: dict[str, int] = {}
@@ -62,7 +62,7 @@ def spends_at(user_id: str, txns: Iterable[Txn], month: date) -> list[Assertion]
         category = sorted(sizes, key=lambda c: (-sizes[c], c))[0]
         value = {"cents": sum(t.amount_cents for t in rows), "count": len(rows), "category": category}
         out.append(Assertion(("user", user_id), "SPENDS_AT", ("merchant", merchant), value, start, next_month(start),
-                             dst_label=merchant))
+                             dst_label=rows[0].merchant.strip()))
     return out
 
 
@@ -124,7 +124,7 @@ def _current(session: Session, user_id: str, src_id: int, rel: str, *, dst_id: O
     return list(session.scalars(stmt.order_by(KGEdge.valid_from, KGEdge.id)))
 
 
-def apply(session: Session, user_id: str, assertions: Iterable[Assertion]) -> Result:
+def apply(session: Session, user_id: str, assertions: Iterable[Assertion], *, historical: bool = False) -> Result:
     result = Result()
     for a in assertions:
         src = _node(session, user_id, a.src, label=a.src_label)
@@ -141,7 +141,7 @@ def apply(session: Session, user_id: str, assertions: Iterable[Assertion]) -> Re
                     result.corrected += 1
                 continue
             assert_edge(session, user_id=user_id, src_id=src.id, rel=a.rel, dst_id=dst.id, value=a.value,
-                        valid_from=a.valid_from, valid_to=a.valid_to, source=a.source)
+                        valid_from=a.valid_from, valid_to=a.valid_to, source=a.source, historical=historical)
             result.asserted += 1
         except KGError as exc:
             logger.warning("graph projection skipped %s: %s", a.rel, type(exc).__name__)
@@ -149,11 +149,11 @@ def apply(session: Session, user_id: str, assertions: Iterable[Assertion]) -> Re
     return result
 
 
-def project_month(session: Session, user_id: str, month: date, today: Optional[date] = None) -> Result:
+def project_month(session: Session, user_id: str, month: date, today: Optional[date] = None, *, historical: bool = False) -> Result:
     start = month_start(month)
     end = min(month_end(start), today) if today else month_end(start)
     wanted = spends_at(user_id, load_txns(session, user_id, start, end), start)
-    result = apply(session, user_id, wanted)
+    result = apply(session, user_id, wanted, historical=historical)
     # a merchant with nothing left this month, after a change of category or a removed transaction, goes to zero
     user = _node(session, user_id, ("user", user_id))
     kept = {a.dst[1].strip().casefold() for a in wanted}
@@ -169,9 +169,12 @@ def project_month(session: Session, user_id: str, month: date, today: Optional[d
     return result
 
 
-def project_period(session: Session, user_id: str, period: BudgetPeriod) -> Result:
-    result = apply(session, user_id, budgets(user_id, period.start_date, period.lines))
-    apply(session, user_id, category_bridges(ln.category for ln in period.lines))
+def project_period(session: Session, user_id: str, period: BudgetPeriod, *, historical: bool = False) -> Result:
+    result = apply(session, user_id, budgets(user_id, period.start_date, period.lines), historical=historical)
+    bridges = apply(session, user_id, category_bridges(ln.category for ln in period.lines))
+    result.asserted += bridges.asserted
+    result.corrected += bridges.corrected
+    result.skipped += bridges.skipped
     return result
 
 
@@ -182,12 +185,14 @@ def project_rules(session: Session, user_id: str, today: date) -> Result:
     simulated = _sim_day(session, user_id) is not None
     rules = {r.merchant_name: r for r in session.scalars(select(CategoryRule).where(CategoryRule.user_id == user_id))}
     for merchant, rule in sorted(rules.items()):
-        day = today if simulated else rule.created_at.date()
         src = _node(session, user_id, ("merchant", merchant), label=merchant)
         dst = _node(session, user_id, ("category", rule.category))
         current = [e for e in _current(session, user_id, src.id, "CATEGORIZED_AS") if e.valid_to is None]
         if current and current[0].dst_id == dst.id:
             continue
+        # Keep the edit date through projection retries. Legacy rows without it
+        # use the caller's date for changes and creation time for their first fact.
+        day = rule.effective_from or (today if simulated or current else rule.created_at.date())
         if current and day <= current[0].valid_from:
             assert_edge(session, user_id=user_id, src_id=src.id, rel="CATEGORIZED_AS", dst_id=dst.id, value=None,
                         valid_from=current[0].valid_from, correct=True, target_edge_id=current[0].id, source="user")
@@ -292,8 +297,8 @@ def project_accounts(session: Session, user_id: str, today: date) -> Result:
     return apply(session, user_id, accounts(user_id, rows, first_days, today))
 
 
-# everything up to today, oldest first, because the store refuses a backdated insert. the graph starts with what's in
-# the database now, so today's rules apply to the older months it records
+# Everything up to today, oldest first. Bounded monthly facts may fill gaps left
+# by an earlier close or partial run. Today's rules apply to older spending rows.
 def backfill(session: Session, user_id: str, today: date) -> Result:
     total = Result()
 
@@ -302,21 +307,25 @@ def backfill(session: Session, user_id: str, today: date) -> Result:
         total.corrected += result.corrected
         total.skipped += result.skipped
 
-    _node(session, user_id, ("user", user_id))
+    user = _node(session, user_id, ("user", user_id))
+    user.props_json = {**user.props_json, "backfill_complete": False}
     add(project_accounts(session, user_id, today))
     first = session.scalar(select(func.min(Transaction.date)).where(Transaction.user_id == user_id,
                                                                     Transaction.removed.is_(False), Transaction.date <= today))
     month = month_start(first) if first else month_start(today)
     while month <= month_start(today):
-        add(project_month(session, user_id, month, today))
+        add(project_month(session, user_id, month, today, historical=True))
         month = next_month(month)
     periods = session.scalars(select(BudgetPeriod).where(BudgetPeriod.user_id == user_id, BudgetPeriod.start_date <= today)
                               .order_by(BudgetPeriod.start_date)).all()
     for period in periods:
-        add(project_period(session, user_id, period))
+        add(project_period(session, user_id, period, historical=True))
     add(project_rules(session, user_id, today))
     add(project_streams(session, user_id))
     add(project_advice(session, user_id))
+    if not total.skipped:
+        user.props_json = {**user.props_json, "backfill_complete": True}
+    session.flush()
     return total
 
 
@@ -324,9 +333,14 @@ def has_graph(session: Session, user_id: str) -> bool:
     return session.scalar(select(KGNode.id).where(KGNode.user_id == user_id, KGNode.kind == "user").limit(1)) is not None
 
 
+def backfill_complete(session: Session, user_id: str) -> bool:
+    node = session.scalar(select(KGNode).where(KGNode.user_id == user_id, KGNode.kind == "user"))
+    return node is not None and node.props_json.get("backfill_complete") is True
+
+
 # the daily run: the first one builds the user's history, and later ones re-project what can have changed
 def project_run(session: Session, user_id: str, today: date) -> Result:
-    if not has_graph(session, user_id):
+    if not backfill_complete(session, user_id):
         return backfill(session, user_id, today)
     total = project_month(session, user_id, today, today)
     for result in (project_accounts(session, user_id, today), project_rules(session, user_id, today),
