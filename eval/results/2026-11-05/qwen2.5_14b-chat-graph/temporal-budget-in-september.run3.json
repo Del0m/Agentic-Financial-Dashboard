@@ -1,0 +1,42 @@
+{
+  "record": {
+    "scenario_id": "temporal-budget-in-september",
+    "run": 3,
+    "answer": "Your food and drink budget limit in September 2026 was $320.00.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [
+      "food_and_drink budget limit: $320.00 in September 2026"
+    ],
+    "sources": [],
+    "latency_s": 5.996991875115782,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": true,
+    "similarity": 0.9676125895673512,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly and accurately reflects the provided tool result, answering the question clearly."
+    },
+    "judge_passed": true
+  }
+}

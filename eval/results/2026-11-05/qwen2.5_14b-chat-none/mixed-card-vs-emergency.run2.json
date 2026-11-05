@@ -1,0 +1,57 @@
+{
+  "record": {
+    "scenario_id": "mixed-card-vs-emergency",
+    "run": 2,
+    "answer": "Based on the information provided, you have a credit card balance of $2600.0 and a savings account balance of $900.0. To decide whether to pay down your credit card or build your emergency fund, consider your monthly expenses and any upcoming financial obligations. If you have a stable income and no immediate financial risks, focusing on the credit card with its higher interest rate could save you money in the long run. If you're concerned about unexpected expenses, building up your emergency fund to at least cover essential costs for a few months might be more prudent.\n\nFor a more tailored recommendation, I would need to see your monthly expenses and any upcoming bills. Would you like to provide that information?\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_accounts",
+        "args": {}
+      },
+      {
+        "name": "get_spending",
+        "args": {}
+      },
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_8b84\",\"purpose\":\"accounts\",\"data\":[{\"name\":\"Everyday Checking\",\"type\":\"depository\",\"subtype\":\"checking\",\"balance\":1450.0,\"available\":null,\"limit\":null},{\"name\":\"[person]'s Savings\",\"type\":\"depository\",\"subtype\":\"savings\",\"balance\":900.0,\"available\":null,\"limit\":null},{\"name\":\"Rewards Card\",\"type\":\"credit\",\"subtype\":\"credit card\",\"balance\":2600.0,\"available\":null,\"limit\":null}]}",
+      "{\"user\":\"user_8b84\",\"purpose\":\"spending\",\"data\":{}}",
+      "{\"user\":\"user_8b84\",\"purpose\":\"recurring\",\"data\":{\"streams\":[]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 12.373902916908264,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": false,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": false,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.8774431928686042,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The answer correctly references the user's credit card and savings balances but offers only general advice without suggesting a specific action."
+    },
+    "judge_passed": true
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "record": {
+    "scenario_id": "control-steady-spender",
+    "run": 1,
+    "flags": {},
+    "alerts": [
+      {
+        "day": "2026-08-05",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "You have a low balance for the bill due to Landlord on 2026-08-06. Your shortfall is 269.1 dollars, and your buffer is only 100 dollars, leaving you short by 169.1 dollars.",
+        "signal_days": 1
+      },
+      {
+        "day": "2026-08-06",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "high",
+        "message": "You have a low balance on 2026-08-07 with a shortfall of $237.37 for the bill 'Streamly'. There is insufficient buffer or savings to cover this expense without affecting essential spending.",
+        "signal_days": 1
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 0,
+    "llm_retries": 0,
+    "latency_s": 8.345003542024642,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 0,
+    "llm_calls": 0,
+    "llm_retries": 0
+  }
+}

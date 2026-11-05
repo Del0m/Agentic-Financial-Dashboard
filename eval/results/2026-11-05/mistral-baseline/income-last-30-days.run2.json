@@ -1,0 +1,67 @@
+{
+  "record": {
+    "scenario_id": "income-last-30-days",
+    "run": 2,
+    "answer": " To find out how much money came in as income over the last 30 days, we need to look at the user's income transactions from October 7 to November 6, 2026. Use the get_spending function with the \"INCOME\" category and the \"start_date\" and \"end_date\" parameters set to October 7, 2026, and November 6, 2026, respectively.\n\nHere's the command:\n```\nget_spending(category=\"INCOME\", start_date=\"2026-10-07\", end_date=\"2026-11-06\")\n```\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Overall limit on contributions",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "make a nonelective contribution of $57,000 to his solo 401(k) plan. This $57,000 limit is not reduced by the elective deferrals Greg made under his employer’s plan because the limit on annual additions applies to each plan separately.\n\n**Example 2**: In **Example 1**, if Greg were 52 years old and eligible to make catch-up contributions, he could contribute an additional $6,500 of elective deferrals for 2020. His catch-up contribution could be split between the plans in any proportion he chooses. Or, Greg may contribute the full $6,500 catch-up contribution to his solo 401(k) plan, making a total contribution of $63,500 for 2020. This is because, although he made nonelective contribution to his solo 401(k) plan up to the maximum of $57,000, the $57,000 limit is not reduced by the elective deferral catch-up contributions."
+      },
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Deferral limits for a SIMPLE 401(k) plan",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "The limit on employee elective deferrals to a SIMPLE 401(k) plan is:\n\n- $17,000 in 2026, subject to cost-of-living adjustments."
+      },
+      {
+        "title": "Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service",
+        "section": "Compensation limit for contributions",
+        "source_url": "https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits",
+        "text": "The amount of your compensation that can be taken into account when determining employer and employee contributions is limited to $360,000 for 2026, subject to cost-of-living adjustments."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Getting started",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Start by taking a look at your paycheck. If taxes are withheld, subtract that amount from your total earnings. Do not subtract other amounts that may be withheld or automatically deducted, like health insurance or retirement contributions. Those will become part of your budget.\n\nThe 50-30-20 rule recommends putting 50% of your money toward needs, 30% toward wants, and 20% toward savings. The savings category also includes money you will need to realize your future goals. Let’s take a closer look at each category."
+      }
+    ],
+    "latency_s": 7.739538332913071,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "3700±0.01"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": false,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": false,
+      "arguments": false,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.8113250971663586,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 2,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The assistant correctly identifies the need for data and provides a command, but since it didn't look up the data, it's not consistent with any user data."
+    },
+    "judge_passed": false
+  }
+}

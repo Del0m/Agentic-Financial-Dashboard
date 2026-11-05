@@ -1,0 +1,58 @@
+{
+  "record": {
+    "scenario_id": "debt-plan-extra-200",
+    "run": 1,
+    "answer": "With an extra $200 per month, you will be debt-free in 49 months, which is by December 2030. The total interest paid would be $2,941.08. This extra payment saves you 46 months and $4,168.74 in interest compared to not paying extra. This is true for both the avalanche and snowball methods.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "plan_debt_payoff",
+        "args": {
+          "extra_monthly": 200,
+          "strategy": "avalanche"
+        }
+      },
+      {
+        "name": "plan_debt_payoff",
+        "args": {
+          "extra_monthly": 200,
+          "strategy": "snowball"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_c8f9\",\"purpose\":\"debt_plan\",\"data\":{\"extra_monthly\":200.0,\"start\":\"2026-12\",\"plans\":[{\"strategy\":\"avalanche\",\"summary\":\"49 months to debt-free, $2,941.08 total interest. The extra saves 46 months and $4,168.74 in interest.\",\"months\":49,\"debt_free\":\"2030-12\",\"total_interest\":2941.08,\"order\":[{\"name\":\"Platinum Card\",\"paid_off\":\"2027-12\",\"interest\":465.52},{\"name\":\"Student Loan\",\"paid_off\":\"2030-12\",\"interest\":2475.56}],\"without_extra\":{\"months\":95,\"total_interest\":7109.82},\"difference\":{\"months_sooner\":46,\"interest_saved\":4168.74},\"never\":[]}],\"excluded\":[],\"assumptions\":\"Interest is charged monthly at APR/12; minimum payments are held at today's amounts; not financial advice.\"}}",
+      "{\"user\":\"user_c8f9\",\"purpose\":\"debt_plan\",\"data\":{\"extra_monthly\":200.0,\"start\":\"2026-12\",\"plans\":[{\"strategy\":\"snowball\",\"summary\":\"49 months to debt-free, $2,941.08 total interest. The extra saves 46 months and $4,168.74 in interest.\",\"months\":49,\"debt_free\":\"2030-12\",\"total_interest\":2941.08,\"order\":[{\"name\":\"Platinum Card\",\"paid_off\":\"2027-12\",\"interest\":465.52},{\"name\":\"Student Loan\",\"paid_off\":\"2030-12\",\"interest\":2475.56}],\"without_extra\":{\"months\":95,\"total_interest\":7109.82},\"difference\":{\"months_sooner\":46,\"interest_saved\":4168.74},\"never\":[]}],\"excluded\":[],\"assumptions\":\"Interest is charged monthly at APR/12; minimum payments are held at today's amounts; not financial advice.\"}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 11.151804292108864,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": true,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9434618205754947,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately summarizes the provided data, including timelines, interest amounts, and savings for both debt payoff strategies."
+    },
+    "judge_passed": true
+  }
+}

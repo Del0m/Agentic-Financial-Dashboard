@@ -1,0 +1,48 @@
+{
+  "record": {
+    "scenario_id": "budget-recurring-wine-club",
+    "run": 2,
+    "flags": {
+      "FOOD_AND_DRINK": "2026-10-05"
+    },
+    "alerts": [
+      {
+        "day": "2026-10-05",
+        "kind": "overspend",
+        "category": "FOOD_AND_DRINK",
+        "cause": "recurring",
+        "action": "adjust_next_budget",
+        "severity": "medium",
+        "message": "The spending at Vine Club is a recurring charge that has increased your total spending. We recommend adjusting next month's limit to $495.00 to accommodate this change.",
+        "signal_days": null
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 4,
+    "llm_retries": 0,
+    "latency_s": 9.798030082602054,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "flags": true,
+      "cause": true,
+      "action": true,
+      "flag_by": true,
+      "message": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [
+      0
+    ],
+    "missed_alerts": [],
+    "low_balance_days_ahead": null,
+    "llm_failures": 0,
+    "repeat_alerts": 0,
+    "llm_calls": 4,
+    "llm_retries": 0
+  }
+}

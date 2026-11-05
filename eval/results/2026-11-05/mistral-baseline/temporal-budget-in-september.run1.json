@@ -1,0 +1,67 @@
+{
+  "record": {
+    "scenario_id": "temporal-budget-in-september",
+    "run": 1,
+    "answer": " The food and drink budget limit was $320.00 in September 2026. This is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [
+      "food_and_drink budget limit: $320.00 in September 2026"
+    ],
+    "sources": [
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Needs: 50%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "About half of your budget should go toward needs. These are expenses that must be met no matter what, such as:\n\n- Utility bills\n- Rent or mortgage payments\n- Health care\n- Groceries\n\nIf you can honestly say “I can’t live without it,” you have identified a need. Minimum required payments on a credit card or a loan also belong in this category."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Savings: 20%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "The remaining 20% of your budget should go toward the future. You may put money in an emergency fund, contribute to a retirement account, or save toward a down payment on a home. Paying down debt beyond the minimum payment amount belongs in this category, too."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "In summary",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Options to save for the future at UNFCU include savings accounts and share certificates.\n\nThe 50-30-20 rule is just one way to consider organizing your budget. To find the perfect fit for your situation, consult a professional financial planner."
+      }
+    ],
+    "latency_s": 3.697205792181194,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": true,
+    "similarity": 0.9565938812439029,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly and accurately reflects the provided tool result, offering a clear and concise response."
+    },
+    "judge_passed": true
+  }
+}

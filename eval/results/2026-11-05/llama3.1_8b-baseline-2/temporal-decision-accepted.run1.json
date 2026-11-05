@@ -1,0 +1,76 @@
+{
+  "record": {
+    "scenario_id": "temporal-decision-accepted",
+    "run": 1,
+    "answer": "You accepted the proposal to raise your entertainment limit to $200. This is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "search_kb",
+        "args": {
+          "query": "accepted proposal to raise entertainment limit"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"purpose\":\"kb\",\"results\":[{\"title\":\"Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service\",\"section\":\"Deferral limits for 401(k) plans\",\"source_url\":\"https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits\",\"text\":\"The limit on employee elective deferrals (for traditional and safe harbor plans)** **is:\\n\\n- $24,500 in 2026, subject to cost-of-living adjustments\\n\\nGenerally, you aggregate all elective deferrals you made to all plans in which you participate to determine if you have exceeded these limits. If a plan participant’s elective deferrals are more than the annual limit, find out how you can correct this plan mistake.\"},{\"title\":\"Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service\",\"section\":\"Deferral limits for a SIMPLE 401(k) plan\",\"source_url\":\"https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits\",\"text\":\"The limit on employee elective deferrals to a SIMPLE 401(k) plan is:\\n\\n- $17,000 in 2026, subject to cost-of-living adjustments.\"},{\"title\":\"Retirement topics - 401(k) and profit-sharing plan contribution limits | Internal Revenue Service\",\"section\":\"Overall limit on contributions\",\"source_url\":\"https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-401k-and-profit-sharing-plan-contribution-limits\",\"text\":\"make a nonelective contribution of $57,000 to his solo 401(k) plan. This $57,000 limit is not reduced by the elective deferrals Greg made under his employer’s plan because the limit on annual additions applies to each plan separately.\\n\\n**Example 2**: In **Example 1**, if Greg were 52 years old and eligible to make catch-up contributions, he could contribute an additional $6,500 of elective deferrals for 2020. His catch-up contribution could be split between the plans in any proportion he chooses. Or, Greg may contribute the full $6,500 catch-up contribution to his solo 401(k) plan, making a total contribution of $63,500 for 2020. This is because, although he made nonelective contribution to his solo 401(k) plan up to the maximum of $57,000, the $57,000 limit is not reduced by the elective deferral catch-up contributions.\"},{\"title\":\"Budgeting basics: The 50-30-20 rule\",\"section\":\"Wants: 30%\",\"source_url\":\"https://www.unfcu.org/guides/the-50-30-20-rule\",\"text\":\"You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\\n\\n- Subscriptions\\n- Supplies for hobbies\\n- Restaurant meals\\n- Vacations\"}]}"
+    ],
+    "graph_facts": [
+      "Advice on October 4, 2026: \"Your new club repeats monthly, so I propose raising the entertainment limit to $200.\" The user's decision: accepted."
+    ],
+    "sources": [
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "In brief",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "- Understanding your spending can help you better plan for the future.\n- The 50-30-20 rule organizes spending into needs, wants, and goals.\n\nCreating a budget can help you make confident decisions and enjoy peace of mind. A detailed budget, though, can be complex to manage.\n\nThe 50-30-20 rule splits expenses into just three categories. It also offers recommendations on how much money to use for each. With some basic information, you can get on the road to financial well-being."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Getting started",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Start by taking a look at your paycheck. If taxes are withheld, subtract that amount from your total earnings. Do not subtract other amounts that may be withheld or automatically deducted, like health insurance or retirement contributions. Those will become part of your budget.\n\nThe 50-30-20 rule recommends putting 50% of your money toward needs, 30% toward wants, and 20% toward savings. The savings category also includes money you will need to realize your future goals. Let’s take a closer look at each category."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "In summary",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Options to save for the future at UNFCU include savings accounts and share certificates.\n\nThe 50-30-20 rule is just one way to consider organizing your budget. To find the perfect fit for your situation, consult a professional financial planner."
+      }
+    ],
+    "latency_s": 5.719843792263418,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": false,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.9736533939612892,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly and accurately reflects the provided information about the user's decision and the proposed budget increase."
+    },
+    "judge_passed": true
+  }
+}

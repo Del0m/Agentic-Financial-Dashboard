@@ -1,0 +1,47 @@
+{
+  "record": {
+    "scenario_id": "subs-several-listed",
+    "run": 1,
+    "answer": "You have the following subscriptions:\n\n- Clipflix: $15.49 per month\n- FitClub Gym: $40.00 per month\n- Streamly: $9.99 per month\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_b7b7\",\"purpose\":\"recurring\",\"data\":{\"streams\":[{\"merchant\":\"Clipflix\",\"category\":\"ENTERTAINMENT\",\"frequency\":\"monthly\",\"typical\":15.49,\"last\":15.49,\"previous\":null,\"next_date\":\"2026-12-02\"},{\"merchant\":\"FitClub Gym\",\"category\":\"PERSONAL_CARE\",\"frequency\":\"monthly\",\"typical\":40.0,\"last\":40.0,\"previous\":null,\"next_date\":\"2026-11-17\"},{\"merchant\":\"Streamly\",\"category\":\"ENTERTAINMENT\",\"frequency\":\"monthly\",\"typical\":9.99,\"last\":9.99,\"previous\":null,\"next_date\":\"2026-11-25\"}]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 7.206913500092924,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 6,
+      "total": 6,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9722272888714948,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately lists the subscriptions and amounts from the provided data, and includes a standard disclaimer."
+    },
+    "judge_passed": true
+  }
+}

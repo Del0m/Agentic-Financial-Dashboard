@@ -1,0 +1,15 @@
+digraph G {
+rankdir=LR; bgcolor="white"; pad=0.3;
+node [shape=box,style="rounded,filled",fillcolor="#eaf2f8",fontname="Helvetica"];
+edge [fontname="Helvetica",fontsize=10,color="#566573"];
+graph [label="Question: What guidance is relevant to this account?\nIllustrative example · synthetic personal data", labelloc="t", fontsize=18, fontname="Helvetica", nodesep=0.5, ranksep=1.0];
+"alice" [label="Alice\nuser",fillcolor="#eaf2f8"];
+"account" [label="Retirement account\nsubtype: roth",fillcolor="#eaf2f8"];
+"roth-ira" [label="Roth IRA\nshared concept",fillcolor="#d5f5e3"];
+"after-tax-contribution" [label="After-tax contribution",fillcolor="#d5f5e3"];
+"irs-roth-comparison-chart" [label="Roth comparison chart |\nInternal Revenue Service",fillcolor="#d5f5e3"];
+"alice" -> "account" [label="HAS_ACCOUNT\npersonal ownership"];
+"account" -> "roth-ira" [label="IS_A\naccount subtype bridge"];
+"roth-ira" -> "after-tax-contribution" [label="HAS_RULE\nstored rule\nvalid from 2000-01-01"];
+"roth-ira" -> "irs-roth-comparison-chart" [label="MENTIONED_IN\nsource provenance"];
+}

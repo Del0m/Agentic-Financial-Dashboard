@@ -1,0 +1,284 @@
+{
+  "with": "qwen2.5_14b-chat-graph",
+  "without": "qwen2.5_14b-chat-none",
+  "metric": "chat",
+  "commit": "635b52972fe1653ce6942393594c8799da20357a",
+  "groups": {
+    "all": {
+      "scenarios": 34,
+      "wins": 11,
+      "losses": 1,
+      "ties": 22,
+      "passed_with": 33,
+      "passed_without": 23,
+      "verdict": "helps"
+    },
+    "temporal": {
+      "scenarios": 15,
+      "wins": 10,
+      "losses": 0,
+      "ties": 5,
+      "passed_with": 15,
+      "passed_without": 5,
+      "verdict": "helps"
+    },
+    "graph_suited": {
+      "scenarios": 6,
+      "wins": 1,
+      "losses": 0,
+      "ties": 5,
+      "passed_with": 6,
+      "passed_without": 5,
+      "verdict": "does not help"
+    },
+    "graph_unsuited": {
+      "scenarios": 13,
+      "wins": 0,
+      "losses": 1,
+      "ties": 12,
+      "passed_with": 12,
+      "passed_without": 13,
+      "verdict": "does not help"
+    }
+  },
+  "scenarios": [
+    {
+      "scenario": "abstain-balance-2019",
+      "group": "temporal",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "abstain-credit-score",
+      "group": "graph_unsuited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "abstain-roth-2030",
+      "group": "graph_suited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "abstain-shop-never-visited",
+      "group": "temporal",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "cash-before-payday",
+      "group": "graph_unsuited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "cash-no-income",
+      "group": "graph_unsuited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "debt-avalanche-vs-snowball",
+      "group": "graph_unsuited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "debt-higher-apr-smaller-balance",
+      "group": "graph_unsuited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "debt-highest-apr",
+      "group": "graph_unsuited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "debt-none",
+      "group": "graph_unsuited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "debt-plan-extra-200",
+      "group": "graph_unsuited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "income-last-30-days",
+      "group": "graph_unsuited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "kb-emergency-fund",
+      "group": "graph_suited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "kb-roth-vs-401k",
+      "group": "graph_suited",
+      "with": true,
+      "without": false,
+      "result": "win"
+    },
+    {
+      "scenario": "mixed-card-vs-emergency",
+      "group": "graph_unsuited",
+      "with": false,
+      "without": true,
+      "result": "loss"
+    },
+    {
+      "scenario": "recurring-subscriptions",
+      "group": "graph_suited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "savings-balance",
+      "group": "graph_unsuited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "spending-food-30d",
+      "group": "graph_unsuited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "spending-refund-excluded",
+      "group": "graph_unsuited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "subs-price-rose",
+      "group": "temporal",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "subs-several-listed",
+      "group": "graph_suited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "subs-unused-cancel-savings",
+      "group": "graph_suited",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "temporal-401k-2023",
+      "group": "temporal",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "temporal-401k-2024",
+      "group": "temporal",
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "temporal-401k-this-year",
+      "group": "temporal",
+      "with": true,
+      "without": false,
+      "result": "win"
+    },
+    {
+      "scenario": "temporal-budget-in-september",
+      "group": "temporal",
+      "with": true,
+      "without": false,
+      "result": "win"
+    },
+    {
+      "scenario": "temporal-budget-since-august",
+      "group": "temporal",
+      "with": true,
+      "without": false,
+      "result": "win"
+    },
+    {
+      "scenario": "temporal-decision-accepted",
+      "group": "temporal",
+      "with": true,
+      "without": false,
+      "result": "win"
+    },
+    {
+      "scenario": "temporal-decision-dismissed",
+      "group": "temporal",
+      "with": true,
+      "without": false,
+      "result": "win"
+    },
+    {
+      "scenario": "temporal-first-shop",
+      "group": "temporal",
+      "with": true,
+      "without": false,
+      "result": "win"
+    },
+    {
+      "scenario": "temporal-gym-start",
+      "group": "temporal",
+      "with": true,
+      "without": false,
+      "result": "win"
+    },
+    {
+      "scenario": "temporal-price-change-month",
+      "group": "temporal",
+      "with": true,
+      "without": false,
+      "result": "win"
+    },
+    {
+      "scenario": "temporal-roth-2024",
+      "group": "temporal",
+      "with": true,
+      "without": false,
+      "result": "win"
+    },
+    {
+      "scenario": "temporal-subscription-stopped",
+      "group": "temporal",
+      "with": true,
+      "without": false,
+      "result": "win"
+    }
+  ]
+}

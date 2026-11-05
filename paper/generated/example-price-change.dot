@@ -1,0 +1,12 @@
+digraph G {
+rankdir=LR; bgcolor="white"; pad=0.3;
+node [shape=box,style="rounded,filled",fillcolor="#eaf2f8",fontname="Helvetica"];
+edge [fontname="Helvetica",fontsize=10,color="#566573"];
+graph [label="Question: What changed in my gym subscription?\nIllustrative example · synthetic personal data", labelloc="t", fontsize=18, fontname="Helvetica", nodesep=0.5, ranksep=1.0];
+"alice" [label="Alice\nuser",fillcolor="#eaf2f8"];
+"gym-stream" [label="Gym membership\nrecurring stream",fillcolor="#eaf2f8"];
+"gym" [label="Neighborhood Gym\nmerchant",fillcolor="#eaf2f8"];
+"alice" -> "gym-stream" [label="SUBSCRIBES\n$35 / month\nvalid: Jan 1–Apr 1, 2026"];
+"alice" -> "gym-stream" [label="SUBSCRIBES\n$40 / month\nvalid: Apr 1–Jun 1, 2026"];
+"gym-stream" -> "gym" [label="SUBSCRIBES\nmerchant identity"];
+}

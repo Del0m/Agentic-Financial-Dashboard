@@ -1,0 +1,334 @@
+{
+  "overall": {
+    "runs": 0
+  },
+  "scenarios": {},
+  "by_tag": {},
+  "budget": {
+    "runs": 48,
+    "errors": 0,
+    "pass_rate": 0.9375,
+    "pass_all_runs_rate": 0.9375,
+    "checks": {
+      "flags": 1.0,
+      "cause": 0.9,
+      "action": 1.0,
+      "flag_by": 1.0,
+      "alert_kinds": 1.0,
+      "message": 1.0,
+      "lead_time": 1.0
+    },
+    "latency_mean_s": 9.196799967059633,
+    "latency_p95_s": 17.583107749931514,
+    "control_runs": 12,
+    "false_alarm_rate": 0.0,
+    "time_to_flag_days_mean": 0,
+    "missed_alerts": 0,
+    "low_balance_days_ahead_mean": 6,
+    "llm_failures": 0,
+    "by_tag": {
+      "needs_graph": {
+        "runs": 12,
+        "pass_rate": 1.0
+      },
+      "one_time": {
+        "runs": 9,
+        "pass_rate": 1.0
+      },
+      "recurring": {
+        "runs": 9,
+        "pass_rate": 1.0
+      },
+      "reclassified": {
+        "runs": 3,
+        "pass_rate": 1.0
+      },
+      "seasonal": {
+        "runs": 9,
+        "pass_rate": 0.6666666666666666
+      },
+      "no_overspend_control": {
+        "runs": 12,
+        "pass_rate": 1.0
+      },
+      "signal": {
+        "runs": 6,
+        "pass_rate": 1.0
+      }
+    },
+    "scenarios": {
+      "budget-graph-previously-dismissed": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": 1.0,
+          "action": 1.0,
+          "flag_by": null,
+          "alert_kinds": null,
+          "message": 1.0,
+          "lead_time": null
+        },
+        "latency_mean_s": 13.557115208202353,
+        "latency_p95_s": 13.627487249672413
+      },
+      "budget-graph-price-increase": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": 1.0,
+          "action": 1.0,
+          "flag_by": null,
+          "alert_kinds": null,
+          "message": null,
+          "lead_time": null
+        },
+        "latency_mean_s": 9.375997875041017,
+        "latency_p95_s": 9.593874332960695
+      },
+      "budget-graph-reclassified": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": 1.0,
+          "action": 1.0,
+          "flag_by": null,
+          "alert_kinds": null,
+          "message": 1.0,
+          "lead_time": null
+        },
+        "latency_mean_s": 13.237912958332648,
+        "latency_p95_s": 13.38976391684264
+      },
+      "budget-graph-seasonal-13mo": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": 1.0,
+          "action": 1.0,
+          "flag_by": null,
+          "alert_kinds": null,
+          "message": null,
+          "lead_time": null
+        },
+        "latency_mean_s": 17.70576308341697,
+        "latency_p95_s": 17.79646975034848
+      },
+      "budget-one-time-known-shop": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": 1.0,
+          "action": 1.0,
+          "flag_by": 1.0,
+          "alert_kinds": null,
+          "message": 1.0,
+          "lead_time": null
+        },
+        "latency_mean_s": 10.323491403056929,
+        "latency_p95_s": 10.410589499864727
+      },
+      "budget-one-time-new-shop": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": 1.0,
+          "action": 1.0,
+          "flag_by": 1.0,
+          "alert_kinds": null,
+          "message": 1.0,
+          "lead_time": null
+        },
+        "latency_mean_s": 13.164456291279444,
+        "latency_p95_s": 13.202517041936517
+      },
+      "budget-recurring-new-gym": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": 1.0,
+          "action": 1.0,
+          "flag_by": 1.0,
+          "alert_kinds": null,
+          "message": 1.0,
+          "lead_time": null
+        },
+        "latency_mean_s": 11.780497153134396,
+        "latency_p95_s": 11.881528167054057
+      },
+      "budget-recurring-wine-club": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": 1.0,
+          "action": 1.0,
+          "flag_by": 1.0,
+          "alert_kinds": null,
+          "message": 1.0,
+          "lead_time": null
+        },
+        "latency_mean_s": 10.091121416538954,
+        "latency_p95_s": 10.27751012519002
+      },
+      "budget-seasonal-back-to-school": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": 1.0,
+          "action": 1.0,
+          "flag_by": 1.0,
+          "alert_kinds": null,
+          "message": null,
+          "lead_time": null
+        },
+        "latency_mean_s": 10.083420513973882,
+        "latency_p95_s": 10.414395709056407
+      },
+      "budget-seasonal-holidays": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 0.0,
+        "pass_all_runs_rate": 0.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": 0.0,
+          "action": 1.0,
+          "flag_by": 1.0,
+          "alert_kinds": null,
+          "message": null,
+          "lead_time": null
+        },
+        "latency_mean_s": 15.066595958545804,
+        "latency_p95_s": 15.277453999966383
+      },
+      "control-flat-spending": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": null,
+          "action": null,
+          "flag_by": null,
+          "alert_kinds": null,
+          "message": null,
+          "lead_time": null
+        },
+        "latency_mean_s": 0.5409600837156177,
+        "latency_p95_s": 0.5828760829754174
+      },
+      "control-rent-paid-early": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": null,
+          "action": null,
+          "flag_by": null,
+          "alert_kinds": null,
+          "message": null,
+          "lead_time": null
+        },
+        "latency_mean_s": 0.30369666622330743,
+        "latency_p95_s": 0.3214555406011641
+      },
+      "control-steady-spender": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": null,
+          "action": null,
+          "flag_by": null,
+          "alert_kinds": null,
+          "message": null,
+          "lead_time": null
+        },
+        "latency_mean_s": 4.62227425010254,
+        "latency_p95_s": 5.05142991617322
+      },
+      "control-usual-order-early": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": 1.0,
+          "cause": null,
+          "action": null,
+          "flag_by": null,
+          "alert_kinds": null,
+          "message": null,
+          "lead_time": null
+        },
+        "latency_mean_s": 0.3429068614107867,
+        "latency_p95_s": 0.3819831251166761
+      },
+      "signal-low-balance-before-payday": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": null,
+          "cause": null,
+          "action": null,
+          "flag_by": null,
+          "alert_kinds": 1.0,
+          "message": 1.0,
+          "lead_time": 1.0
+        },
+        "latency_mean_s": 2.2548490137172243,
+        "latency_p95_s": 2.281995290890336
+      },
+      "signal-price-increase": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "flags": null,
+          "cause": null,
+          "action": null,
+          "flag_by": null,
+          "alert_kinds": 1.0,
+          "message": 1.0,
+          "lead_time": null
+        },
+        "latency_mean_s": 14.697740736262253,
+        "latency_p95_s": 14.879816875327379
+      }
+    }
+  }
+}

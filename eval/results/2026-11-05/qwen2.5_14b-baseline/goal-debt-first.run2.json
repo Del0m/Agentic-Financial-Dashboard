@@ -1,0 +1,50 @@
+{
+  "record": {
+    "scenario_id": "goal-debt-first",
+    "run": 2,
+    "status": "ok",
+    "reason": null,
+    "cap_cents": 81600,
+    "surplus_cents": 102000,
+    "offered": [
+      "debt_payoff",
+      "emergency_fund",
+      "savings"
+    ],
+    "attempts": 1,
+    "plans": [
+      {
+        "kind": "debt_payoff",
+        "priority": 1,
+        "monthly_cents": 40800,
+        "strategy": "avalanche",
+        "target_cents": 2160000,
+        "target_date": "2029-09-01",
+        "rationale": "With a high APR of 24.99% on the Platinum Card, prioritizing debt payoff will save you the most money in interest over time."
+      },
+      {
+        "kind": "emergency_fund",
+        "priority": 2,
+        "monthly_cents": 40800,
+        "strategy": null,
+        "target_cents": 685178,
+        "target_date": "2028-04-01",
+        "rationale": "Building an emergency fund is the next priority after paying off high-interest debt, to cover unexpected expenses without incurring more debt."
+      }
+    ],
+    "latency_s": 5.971391499973834,
+    "error": null,
+    "kind": "goal"
+  },
+  "scores": {
+    "checks": {
+      "status": true,
+      "banned_kinds": true,
+      "required_kinds": true,
+      "first_kind": true,
+      "under_cap": true
+    },
+    "passed": true,
+    "attempts": 1
+  }
+}

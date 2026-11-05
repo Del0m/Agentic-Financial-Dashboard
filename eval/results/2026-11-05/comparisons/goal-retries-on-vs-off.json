@@ -1,0 +1,69 @@
+{
+  "with": "qwen2.5_14b-baseline",
+  "without": "qwen2.5_14b-goal-retries-off",
+  "metric": "retries",
+  "commit": "635b52972fe1653ce6942393594c8799da20357a",
+  "groups": {
+    "all": {
+      "scenarios": 6,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "passed_with": 6,
+      "passed_without": 6,
+      "verdict": "does not help"
+    }
+  },
+  "scenarios": [
+    {
+      "scenario": "goal-cap-too-small",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "goal-debt-first",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "goal-emergency-fund-no-debts",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "goal-no-surplus",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "goal-nothing-offered",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    },
+    {
+      "scenario": "goal-respects-skipped-kind",
+      "group": null,
+      "with": true,
+      "without": true,
+      "result": "tie"
+    }
+  ],
+  "fire_rates": {
+    "resend": null,
+    "goal_correction": 0.0
+  },
+  "uninformative": {
+    "resend": true,
+    "goal_correction": true
+  }
+}

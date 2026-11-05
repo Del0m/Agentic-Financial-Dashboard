@@ -1,0 +1,47 @@
+{
+  "record": {
+    "scenario_id": "abstain-roth-2030",
+    "run": 3,
+    "answer": "The Roth IRA contribution limit for 2030 is not available in the provided guidance, which covers years up to 2026. For the most accurate information, please refer to the IRS guidelines for 2030.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [
+      "Individual retirement account, rollover: The IRA contribution limit does not apply to rollover contributions",
+      "Roth IRA, after-tax contribution: Roth IRA contributions are made with after-tax dollars.",
+      "Roth IRA, income limit: Roth IRA contributions might be limited if your income exceeds a certain level.",
+      "Roth IRA: is a Individual retirement account",
+      "Traditional IRA, income limit: You may not be able to deduct all of your traditional IRA contributions if you or your spouse participates in another retirement plan at work.",
+      "Annual contribution limit, Individual retirement account, Roth IRA, limit for 2030: not in the guidance, which covers 2020 to 2026. Say this figure isn't available"
+    ],
+    "sources": [],
+    "latency_s": 7.45602879114449,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9069881763741837,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The answer correctly states the information isn't available and directs the user to the IRS, but lacks specific product or action recommendations."
+    },
+    "judge_passed": true
+  }
+}

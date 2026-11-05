@@ -1,0 +1,42 @@
+{
+  "record": {
+    "scenario_id": "temporal-budget-since-august",
+    "run": 2,
+    "answer": "Your food and drink budget limit was $300.00 in August 2026, increased to $320.00 in September 2026, and further to $350.00 in October 2026, remaining at $350.00 for November 2026.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [
+      "food_and_drink budget limit: $300.00 in August 2026, $320.00 in September 2026, $350.00 in October 2026, $350.00 in November 2026"
+    ],
+    "sources": [],
+    "latency_s": 7.739923915825784,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": true,
+    "similarity": 0.9402402462354656,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately and completely reflects the provided data regarding the user's food and drink budget changes."
+    },
+    "judge_passed": true
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "record": {
+    "scenario_id": "temporal-gym-start",
+    "run": 1,
+    "answer": "It looks like you don't have any gym membership or recurring charges listed. You might want to check the details with your gym directly.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_29ca\",\"purpose\":\"recurring\",\"data\":{\"streams\":[]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 7.321398457977921,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "June"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.8836883344451947,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant accurately reflects the tool's data indicating no gym membership is listed, providing a safe and relevant response."
+    },
+    "judge_passed": true
+  }
+}

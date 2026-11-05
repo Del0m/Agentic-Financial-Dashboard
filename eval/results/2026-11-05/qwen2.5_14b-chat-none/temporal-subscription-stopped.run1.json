@@ -1,0 +1,49 @@
+{
+  "record": {
+    "scenario_id": "temporal-subscription-stopped",
+    "run": 1,
+    "answer": "It looks like you no longer have any active Clipflix charges. If you had a subscription, it might have ended on a specific date, but I don't have that information. You may want to check your account history or contact Clipflix for the exact date when your charges stopped.\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_f51e\",\"purpose\":\"recurring\",\"data\":{\"streams\":[]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 7.679985375143588,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "July"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.9421384719696283,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The answer accurately reflects the tool's data indicating no active charges but lacks specific details about a past subscription."
+    },
+    "judge_passed": true
+  }
+}

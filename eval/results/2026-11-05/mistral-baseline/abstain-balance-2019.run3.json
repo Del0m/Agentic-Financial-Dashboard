@@ -1,0 +1,65 @@
+{
+  "record": {
+    "scenario_id": "abstain-balance-2019",
+    "run": 3,
+    "answer": " I don't have the user's historical account data, so I can't provide the exact balance for 2019. However, the user can check their account history or contact their bank for this information. This is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "In summary",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Options to save for the future at UNFCU include savings accounts and share certificates.\n\nThe 50-30-20 rule is just one way to consider organizing your budget. To find the perfect fit for your situation, consult a professional financial planner."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Getting started",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "Start by taking a look at your paycheck. If taxes are withheld, subtract that amount from your total earnings. Do not subtract other amounts that may be withheld or automatically deducted, like health insurance or retirement contributions. Those will become part of your budget.\n\nThe 50-30-20 rule recommends putting 50% of your money toward needs, 30% toward wants, and 20% toward savings. The savings category also includes money you will need to realize your future goals. Let’s take a closer look at each category."
+      },
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Savings: 20%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "The remaining 20% of your budget should go toward the future. You may put money in an emergency fund, contribute to a retirement account, or save toward a down payment on a home. Paying down debt beyond the minimum payment amount belongs in this category, too."
+      },
+      {
+        "title": "Credit cards key terms | Consumer Financial Protection Bureau",
+        "section": "Credit cards key terms",
+        "source_url": "https://www.consumerfinance.gov/consumer-tools/credit-cards/answers/key-terms/",
+        "text": "card issuer. You may also be able to find it listed on the CFPB’s Credit Card Agreement Database. - Credit balance - A credit balance on your billing statement is an amount that the card issuer owes you.\n\nCredits are added to your account each time you make a payment. It may also be added when you return something you bought with a credit card or because of rewards you have earned or a mistake in a prior bill. If the total of the credits exceeds the amount you owe, your statement shows a credit balance.\n\nRead more - Daily periodic rate\n-\nSome card issuers calculate interest on the account using a daily periodic interest rate, which is used to calculate interest by multiplying the rate by the amount owed at the end of the day. This interest amount is then added to the previous day’s balance, which means that interest is compounded on a daily basis.\n\n- Grace period\n-\nA grace period is the period between the end of a billing cycle and the date your payment is due. During this time, you may not be charged interest as long as you pay your balance in full by the due date. Credit card companies are not required to give a grace period. However, most credit cards provide a grace period on purchases.\n\nRead more - Interest rate\n-\nA credit card’s interest rate is the price you pay for borrowing money. For credit cards, the interest rates are typically stated as a yearly rate, and this is called the annual percentage rate (APR). On most cards, you can avoid paying interest on purchases if you pay your balance in full each month by the due date.\n\n- Prescreened credit card offer\n-\nA prescreened credit card offer is when credit card companies use information from credit reporting companies to make firm offers of credit to you if your credit history meets the criteria selected by the card company."
+      }
+    ],
+    "latency_s": 4.732287082821131,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9304587321840836,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 2,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant correctly states it cannot access the data and provides a reasonable suggestion, but it could not fulfill the request due to lack of data."
+    },
+    "judge_passed": false
+  }
+}

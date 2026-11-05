@@ -1,0 +1,72 @@
+{
+  "record": {
+    "scenario_id": "temporal-budget-since-august",
+    "run": 3,
+    "answer": "Your food and drink spending was $0 in August, September, and October. There has been no change in your food and drink budget since August.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_spending",
+        "args": {
+          "category": "FOOD_AND_DRINK",
+          "start_date": "2026-08-01",
+          "end_date": "2026-08-31"
+        }
+      },
+      {
+        "name": "get_spending",
+        "args": {
+          "start_date": "2026-09-01",
+          "end_date": "2026-09-30",
+          "category": "FOOD_AND_DRINK"
+        }
+      },
+      {
+        "name": "get_spending",
+        "args": {
+          "category": "FOOD_AND_DRINK",
+          "start_date": "2026-10-01",
+          "end_date": "2026-10-31"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_8d66\",\"purpose\":\"spending\",\"data\":{\"category\":\"FOOD_AND_DRINK\",\"total\":0.0,\"direction\":\"outflow\",\"count\":0,\"truncated\":false,\"transactions\":[]}}",
+      "{\"user\":\"user_8d66\",\"purpose\":\"spending\",\"data\":{\"category\":\"FOOD_AND_DRINK\",\"total\":0.0,\"direction\":\"outflow\",\"count\":0,\"truncated\":false,\"transactions\":[]}}",
+      "{\"user\":\"user_8d66\",\"purpose\":\"spending\",\"data\":{\"category\":\"FOOD_AND_DRINK\",\"total\":0.0,\"direction\":\"outflow\",\"count\":0,\"truncated\":false,\"transactions\":[]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 12.543754124548286,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 2,
+      "missing": [
+        "300±0",
+        "350±0"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": false,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": true,
+    "similarity": 0.9479982657240229,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The answer accurately reflects the provided data, though it lacks specificity beyond stating the budget was $0."
+    },
+    "judge_passed": true
+  }
+}

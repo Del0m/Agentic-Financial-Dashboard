@@ -1,0 +1,72 @@
+{
+  "record": {
+    "scenario_id": "subs-several-listed",
+    "run": 2,
+    "answer": " To find out which subscriptions you are paying for and how much each costs, you can use the function get_recurring. Here's an example of how to use it:\n\n```\nget_recurring()\n```\n\nThis command will return a list of your recurring charges, subscriptions, and paycheck patterns. The amounts are in dollars.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      },
+      {
+        "title": "Credit cards key terms | Consumer Financial Protection Bureau",
+        "section": "Credit cards key terms",
+        "source_url": "https://www.consumerfinance.gov/consumer-tools/credit-cards/answers/key-terms/",
+        "text": "- Annual percentage rate (APR)\n-\nThe APR, or annual percentage rate, is the standard way to compare how much loans cost. It lets you compare the cost of loan products on an “apples-to-apples” basis. Your credit card company must disclose the APR before you agree to the use the card.\n\nTo calculate the APR, the interest rate and fees are compared to the amount you borrow and calculated over a one-year period. This allows you to compare the costs of a credit card to a six-month installment loan. It is also why APRs are often different from simple interest rates.\n\n- Balance transfer\n-\nA balance transfer lets you move an outstanding balance from one credit card to another, sometimes for a fee. The fee is usually a certain percentage of the amount you transfer or a fixed amount, whichever is more. Many credit card companies offer zero-percent or low-interest balance transfers to invite you to consolidate your debt on one credit card. The promotional interest rate for most balance transfers lasts for a limited time. After that, the interest rate on your new credit card may rise, increasing your payment amount.\n\nIf you’re more than 60 days late on a payment, the credit card company can increase your interest rate on all balances, including the transferred balance.\n\n- Cardholder agreement\n-\nA cardholder agreement states the terms and conditions that apply to a credit card that is offered to a customer. Among other provisions, the cardholder agreement outlines applicable fees, your liability for unauthorized transactions, and the annual percentage rate (APR) of the card. If you lost your cardholder agreement, you can obtain one on the card issuer’s website or by calling the card issuer. You may also be able to find it listed on the CFPB’s Credit Card Agreement Database.\n\n- Credit balance\n-\nA credit balance on your billing statement is an amount that the card issuer owes you."
+      },
+      {
+        "title": "Traditional and Roth IRAs | Internal Revenue Service",
+        "section": "How much can I contribute? (updated July 29, 2024)",
+        "source_url": "https://www.irs.gov/retirement-plans/traditional-and-roth-iras",
+        "text": "The most you can contribute to **all **of your traditional and Roth IRAs is the smaller of:\n\n- For 2021, $6,000, or $7,000 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\n- For 2022, $6,000, or $7,000 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\n- For 2023, $6,500, or $7,500 if you’re age 50 or older by the end of the year; or your taxable compensation for the year.\n- For 2024, $7,000, or $8,000 if you’re age 50 or older by the end of the year; or your taxable compensation for the year."
+      },
+      {
+        "title": "What is compound interest?",
+        "section": "Suggested student activities",
+        "source_url": "https://www.investor.gov/additional-resources/information/youth/teachers-classroom-resources/what-compound-interest",
+        "text": "- Develop age appropriate math questions using various interest rates and the Rule of 72.\n\n- Illustration Using Pizza\n- Ask students: if a slice of plain pizza costs $2, and you buy a slice every day for a year, you'll spend how much? [The correct answer is $730.]\n- If you give up pizza and save the $730 for the year, then invest it, earning 5% interest, after five years, you'll have how much? [The correct answer is $931.69.]\n- How much will you have after 30 years? [The correct answer is $3,155.02.]"
+      }
+    ],
+    "latency_s": 5.654643457848579,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 6,
+      "missing": [
+        "Clipflix",
+        "15.49±0.01",
+        "Streamly",
+        "9.99±0.01",
+        "FitClub Gym",
+        "40±0.01"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": false,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": false,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.7492391467636678,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 2,
+      "safe": 5,
+      "specific": 2,
+      "reason": "The assistant correctly identifies the needed function but cannot provide specific subscription details without accessing data, and thus invents no user-specific figures."
+    },
+    "judge_passed": false
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "overall": {
+    "runs": 0
+  },
+  "scenarios": {},
+  "by_tag": {},
+  "goal": {
+    "runs": 18,
+    "errors": 0,
+    "pass_rate": 1.0,
+    "pass_all_runs_rate": 1.0,
+    "checks": {
+      "status": 1.0,
+      "banned_kinds": 1.0,
+      "required_kinds": 1.0,
+      "first_kind": 1.0,
+      "under_cap": 1.0,
+      "model_not_called": 1.0
+    },
+    "latency_mean_s": 1.7059638401648651,
+    "latency_p95_s": 5.854048666078597,
+    "attempts_mean": 0.5,
+    "by_tag": {
+      "goal_affordability": {
+        "runs": 18,
+        "pass_rate": 1.0
+      }
+    },
+    "scenarios": {
+      "goal-cap-too-small": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "status": 1.0,
+          "banned_kinds": 1.0,
+          "required_kinds": null,
+          "first_kind": null,
+          "under_cap": null,
+          "model_not_called": 1.0
+        },
+        "latency_mean_s": 0.012483500099430481,
+        "latency_p95_s": 0.015385250095278025
+      },
+      "goal-debt-first": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "status": 1.0,
+          "banned_kinds": 1.0,
+          "required_kinds": 1.0,
+          "first_kind": 1.0,
+          "under_cap": 1.0,
+          "model_not_called": null
+        },
+        "latency_mean_s": 5.707240832969546,
+        "latency_p95_s": 5.854048666078597
+      },
+      "goal-emergency-fund-no-debts": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "status": 1.0,
+          "banned_kinds": 1.0,
+          "required_kinds": 1.0,
+          "first_kind": null,
+          "under_cap": 1.0,
+          "model_not_called": null
+        },
+        "latency_mean_s": 2.270719305922588,
+        "latency_p95_s": 2.2808004170656204
+      },
+      "goal-no-surplus": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "status": 1.0,
+          "banned_kinds": 1.0,
+          "required_kinds": null,
+          "first_kind": null,
+          "under_cap": null,
+          "model_not_called": 1.0
+        },
+        "latency_mean_s": 0.013502624351531267,
+        "latency_p95_s": 0.016101124696433544
+      },
+      "goal-nothing-offered": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "status": 1.0,
+          "banned_kinds": 1.0,
+          "required_kinds": null,
+          "first_kind": null,
+          "under_cap": null,
+          "model_not_called": 1.0
+        },
+        "latency_mean_s": 0.012006374696890513,
+        "latency_p95_s": 0.01265408331528306
+      },
+      "goal-respects-skipped-kind": {
+        "runs": 3,
+        "errors": 0,
+        "pass_rate": 1.0,
+        "pass_all_runs_rate": 1.0,
+        "checks": {
+          "status": 1.0,
+          "banned_kinds": 1.0,
+          "required_kinds": null,
+          "first_kind": null,
+          "under_cap": 1.0,
+          "model_not_called": null
+        },
+        "latency_mean_s": 2.219830402949204,
+        "latency_p95_s": 2.231423417106271
+      }
+    }
+  }
+}

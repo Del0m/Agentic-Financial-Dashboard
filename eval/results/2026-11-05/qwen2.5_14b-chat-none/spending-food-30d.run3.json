@@ -1,0 +1,51 @@
+{
+  "record": {
+    "scenario_id": "spending-food-30d",
+    "run": 3,
+    "answer": "You spent $124.25 on food and drink in the last 30 days. The transactions were: $42.10 at Chipotle on 2026-11-02, $18.75 at Starbucks on 2026-10-26, and $63.40 at Trader Joe's on 2026-10-17.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_spending",
+        "args": {
+          "category": "FOOD_AND_DRINK",
+          "start_date": "2026-10-07",
+          "end_date": "2026-11-06"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_5866\",\"purpose\":\"spending\",\"data\":{\"category\":\"FOOD_AND_DRINK\",\"total\":124.25,\"direction\":\"outflow\",\"count\":3,\"truncated\":false,\"transactions\":[{\"date\":\"2026-11-02\",\"amount\":42.1,\"merchant\":\"Chipotle\"},{\"date\":\"2026-10-26\",\"amount\":18.75,\"merchant\":\"Starbucks\"},{\"date\":\"2026-10-17\",\"amount\":63.4,\"merchant\":\"Trader Joe's\"}]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 10.610318125225604,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": true,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9819381421226191,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately summarizes the provided data, including specific transaction details, and includes a disclaimer."
+    },
+    "judge_passed": true
+  }
+}

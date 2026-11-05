@@ -1,0 +1,42 @@
+{
+  "record": {
+    "scenario_id": "temporal-decision-dismissed",
+    "run": 3,
+    "answer": "I don't have information on any specific decisions you made regarding cutting back on coffee. To provide you with accurate information, could you please clarify if you made any changes to your coffee spending or if you'd like to review your recent coffee expenses?\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 5.815966332796961,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "dismiss"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.9207829145964372,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 2,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant correctly states it lacks information but provides a reasonable response, though it couldn't leverage any tool results."
+    },
+    "judge_passed": false
+  }
+}

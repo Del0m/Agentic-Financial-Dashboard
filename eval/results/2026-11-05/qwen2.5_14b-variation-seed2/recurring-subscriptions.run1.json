@@ -1,0 +1,72 @@
+{
+  "record": {
+    "scenario_id": "recurring-subscriptions",
+    "run": 1,
+    "answer": "You have one subscription to Streamly for entertainment, and you pay $15.49 monthly. This is a want, not a need, according to the 50-30-20 budgeting rule. This is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_9aaa\",\"purpose\":\"recurring\",\"data\":{\"streams\":[{\"merchant\":\"Streamly\",\"category\":\"ENTERTAINMENT\",\"frequency\":\"monthly\",\"typical\":15.49,\"last\":15.49,\"previous\":null,\"next_date\":\"2026-12-02\"}]}}"
+    ],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "Budgeting basics: The 50-30-20 rule",
+        "section": "Wants: 30%",
+        "source_url": "https://www.unfcu.org/guides/the-50-30-20-rule",
+        "text": "You subscribe to a streaming service to watch your favorite show, not because you need the subscription to live. Wants are things you enjoy that you spend money on by choice, such as:\n\n- Subscriptions\n- Supplies for hobbies\n- Restaurant meals\n- Vacations"
+      },
+      {
+        "title": "How to reduce your debt | Consumer Financial Protection Bureau",
+        "section": "Step three: Organize your monthly bills",
+        "source_url": "https://www.consumerfinance.gov/about-us/blog/how-reduce-your-debt/",
+        "text": "Understanding what you owe, and when, will help you manage your debt. You can use a bill calendar to keep all your information in one place as you tackle your debt. Use the bill calendar to see all your bills and plan when they’re due. Keeping track of your monthly expenses can help put you one step closer to reaching your goals."
+      },
+      {
+        "title": "How does my credit card company calculate the amount of interest I owe? | Consumer Financial Protection Bureau",
+        "section": "How does my credit card company calculate the amount of interest I owe?",
+        "source_url": "https://www.consumerfinance.gov/ask-cfpb/how-does-my-credit-card-company-calculate-the-amount-of-interest-i-owe-en-51/",
+        "text": "Many credit card companies calculate the interest you owe daily, based on your average daily account balance.\n\nOften card companies charge one interest rate for purchases and different interest rates if you use your credit card to get cash, to write a check using your credit card account, or for other transactions. If your card has a grace period, you can avoid paying interest on purchases if you pay off your balance in full by the due date each month.\n\nHow does the daily interest calculation work?\n\nMany issuers calculate the interest you owe daily, based on the average daily balance. The interest charged daily is called the daily periodic rate. Since interest is accruing daily, not monthly, this means that if you don’t have a grace period, the sooner you pay off all or some of your balance, the less interest you will pay.\n\nHow do I know what APR applies to different types of balances?\n\nYour statement must show each category with a different APR and the amount of the balance that falls in each category. If your card has a grace period , the grace period usually applies only to the category of new purchases and only if you were not already carrying a balance.\n\nHow do my payments affect the amount of interest I owe?\n\nIf your card has a grace period, you can avoid paying interest on purchases if you pay off your card balance in full each month by the due date. When you pay less than the full balance but more than the minimum required, the card issuer must generally apply the amount you pay over the minimum first to the balance with the highest interest rate and any remaining portion to the other balances in descending order based on the applicable interest rate. It is generally up to the card issuer to decide to which balance it will apply the minimum amount portion of your total payment."
+      },
+      {
+        "title": "Credit cards key terms | Consumer Financial Protection Bureau",
+        "section": "Credit cards key terms",
+        "source_url": "https://www.consumerfinance.gov/consumer-tools/credit-cards/answers/key-terms/",
+        "text": "- Annual percentage rate (APR)\n-\nThe APR, or annual percentage rate, is the standard way to compare how much loans cost. It lets you compare the cost of loan products on an “apples-to-apples” basis. Your credit card company must disclose the APR before you agree to the use the card.\n\nTo calculate the APR, the interest rate and fees are compared to the amount you borrow and calculated over a one-year period. This allows you to compare the costs of a credit card to a six-month installment loan. It is also why APRs are often different from simple interest rates.\n\n- Balance transfer\n-\nA balance transfer lets you move an outstanding balance from one credit card to another, sometimes for a fee. The fee is usually a certain percentage of the amount you transfer or a fixed amount, whichever is more. Many credit card companies offer zero-percent or low-interest balance transfers to invite you to consolidate your debt on one credit card. The promotional interest rate for most balance transfers lasts for a limited time. After that, the interest rate on your new credit card may rise, increasing your payment amount.\n\nIf you’re more than 60 days late on a payment, the credit card company can increase your interest rate on all balances, including the transferred balance.\n\n- Cardholder agreement\n-\nA cardholder agreement states the terms and conditions that apply to a credit card that is offered to a customer. Among other provisions, the cardholder agreement outlines applicable fees, your liability for unauthorized transactions, and the annual percentage rate (APR) of the card. If you lost your cardholder agreement, you can obtain one on the card issuer’s website or by calling the card issuer. You may also be able to find it listed on the CFPB’s Credit Card Agreement Database.\n\n- Credit balance\n-\nA credit balance on your billing statement is an amount that the card issuer owes you."
+      }
+    ],
+    "latency_s": 8.836559291929007,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.9055780632107916,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately identifies the subscription and monthly cost from the provided data and provides relevant, safe context."
+    },
+    "judge_passed": true
+  }
+}

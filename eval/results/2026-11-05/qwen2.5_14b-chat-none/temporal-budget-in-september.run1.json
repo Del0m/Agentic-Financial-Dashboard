@@ -1,0 +1,53 @@
+{
+  "record": {
+    "scenario_id": "temporal-budget-in-september",
+    "run": 1,
+    "answer": "Your total spending on food and drink for the last 30 days, which includes September, was $0.00. If you need the specific budget limit, you may want to check your budgeting app or records.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_spending",
+        "args": {
+          "category": "FOOD_AND_DRINK",
+          "start_date": "2026-09-01",
+          "end_date": "2026-09-30"
+        }
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_07a0\",\"purpose\":\"spending\",\"data\":{\"category\":\"FOOD_AND_DRINK\",\"total\":0.0,\"direction\":\"outflow\",\"count\":0,\"truncated\":false,\"transactions\":[]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 10.991155792027712,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "320±0"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": false,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.93000735424209,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The answer accurately reflects the tool's data showing $0.00 spent and suggests checking other records for the budget limit, but lacks specificity."
+    },
+    "judge_passed": true
+  }
+}

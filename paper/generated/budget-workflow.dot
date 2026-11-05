@@ -1,0 +1,24 @@
+digraph G {
+rankdir=LR; bgcolor="white"; pad=0.3;
+node [shape=box,style="rounded,filled",fillcolor="#eaf2f8",fontname="Helvetica"];
+edge [fontname="Helvetica",fontsize=10,color="#566573"];
+"start" -> "sync";
+"sync" -> "load_state";
+"load_state" -> "categorize" [style=dashed,label="conditional"];
+"load_state" -> "detect_recurring" [style=dashed,label="conditional"];
+"categorize" -> "update_totals";
+"update_totals" -> "detect_recurring";
+"detect_recurring" -> "update_graph";
+"update_graph" -> "forecast_cash";
+"forecast_cash" -> "detect_overspend" [style=dashed,label="conditional"];
+"forecast_cash" -> "decide_signals" [style=dashed,label="conditional"];
+"detect_overspend" -> "diagnose" [style=dashed,label="conditional"];
+"detect_overspend" -> "decide_signals" [style=dashed,label="conditional"];
+"diagnose" -> "decide_action";
+"decide_action" -> "decide_signals";
+"decide_signals" -> "log_advice";
+"log_advice" -> "await_approval" [style=dashed,label="conditional"];
+"log_advice" -> "persist_state" [style=dashed,label="conditional"];
+"await_approval" -> "persist_state";
+"persist_state" -> "end";
+}

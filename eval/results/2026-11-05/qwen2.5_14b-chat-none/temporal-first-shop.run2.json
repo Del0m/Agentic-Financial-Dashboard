@@ -1,0 +1,42 @@
+{
+  "record": {
+    "scenario_id": "temporal-first-shop",
+    "run": 2,
+    "answer": "I don't have access to your specific transaction history details such as the exact date you first shopped at Book Nook. To find this information, you would need to check your transaction history or account statements for the earliest transaction with Book Nook. If you need help with your current spending or any other financial information, feel free to ask! This is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 7.413998833857477,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 0,
+      "total": 1,
+      "missing": [
+        "March"
+      ],
+      "forbidden_hits": [],
+      "passed": false,
+      "score": 0.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": false,
+    "similarity": 0.8892627966356335,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 2,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant correctly states it cannot access personal data but provides a reasonable suggestion for finding the information, though it did not look up any data."
+    },
+    "judge_passed": false
+  }
+}

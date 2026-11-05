@@ -1,0 +1,47 @@
+{
+  "record": {
+    "scenario_id": "cash-no-income",
+    "run": 1,
+    "answer": "Your checking balance ranges from $400.00 to $1,900.00 over the forecast. It stays above your $100.00 buffer. This assumes no income, because none was found.\n\nThis is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_cash_forecast",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_3671\",\"purpose\":\"cash_flow\",\"data\":{\"status\":\"ok\",\"income\":\"none\",\"buffer\":100.0,\"summary\":\"Your checking balance ranges from $400.00 to $1,900.00 over the forecast. It stays above your $100.00 buffer. This assumes no income, because none was found.\",\"monthly_surplus\":null,\"assumed_no_income\":true,\"days\":[{\"date\":\"2026-11-07\",\"low\":1900.0,\"expected\":1900.0,\"high\":1900.0},{\"date\":\"2026-11-08\",\"low\":1900.0,\"expected\":1900.0,\"high\":1900.0},{\"date\":\"2026-11-09\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-10\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-11\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-12\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-13\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-14\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-15\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-16\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-17\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-18\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-19\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-20\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-21\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-22\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-23\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-24\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-25\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-26\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-27\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-28\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-29\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-11-30\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-12-01\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-12-02\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-12-03\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-12-04\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-12-05\",\"low\":400.0,\"expected\":400.0,\"high\":400.0},{\"date\":\"2026-12-06\",\"low\":400.0,\"expected\":400.0,\"high\":400.0}],\"dip\":null}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 10.232717082835734,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.937151454568528,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The answer directly repeats the tool's summary, accurately reflecting the user's cash flow situation, but lacks specific recommendations."
+    },
+    "judge_passed": true
+  }
+}

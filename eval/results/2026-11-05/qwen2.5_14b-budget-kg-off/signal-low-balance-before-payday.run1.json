@@ -1,0 +1,42 @@
+{
+  "record": {
+    "scenario_id": "signal-low-balance-before-payday",
+    "run": 1,
+    "flags": {},
+    "alerts": [
+      {
+        "day": "2026-10-08",
+        "kind": "low_balance",
+        "category": null,
+        "cause": null,
+        "action": "alert",
+        "severity": "medium",
+        "message": "Low balance warning: Insufficient funds to cover the Landlord bill of $1500 on 2026-10-14, resulting in a shortfall of $10.91.",
+        "signal_days": 6
+      }
+    ],
+    "llm_failures": 0,
+    "llm_calls": 0,
+    "llm_retries": 0,
+    "latency_s": 2.250885124783963,
+    "error": null,
+    "kind": "budget"
+  },
+  "scores": {
+    "checks": {
+      "alert_kinds": true,
+      "message": true,
+      "lead_time": true
+    },
+    "passed": true,
+    "false_alarm": false,
+    "extra_flags": [],
+    "time_to_flag_days": [],
+    "missed_alerts": [],
+    "low_balance_days_ahead": 6,
+    "llm_failures": 0,
+    "repeat_alerts": 0,
+    "llm_calls": 0,
+    "llm_retries": 0
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "record": {
+    "scenario_id": "temporal-401k-this-year",
+    "run": 1,
+    "answer": "The 401(k) employee contribution limit for 2026 is $24,500.00.\n\nThis is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [
+      "401(k), catch-up contribution: $8,000.00 for 2026",
+      "401(k), annual contribution limit: $24,500.00 for 2026",
+      "Individual retirement account, annual contribution limit: $7,500.00 for 2026",
+      "SIMPLE 401(k), annual contribution limit: $17,000.00 for 2026",
+      "Individual retirement account, rollover: The IRA contribution limit does not apply to rollover contributions",
+      "Roth IRA: is a Individual retirement account",
+      "SIMPLE 401(k), catch-up contribution: $4,000.00 for 2026"
+    ],
+    "sources": [],
+    "latency_s": 5.387572374660522,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": true,
+    "similarity": 0.996767816464428,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer directly addresses the question using data provided and includes a disclaimer."
+    },
+    "judge_passed": true
+  }
+}

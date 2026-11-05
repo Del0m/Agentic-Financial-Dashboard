@@ -1,0 +1,40 @@
+{
+  "record": {
+    "scenario_id": "abstain-roth-2030",
+    "run": 1,
+    "answer": "This information isn't related to your personal finances and isn't available through my functions. As of my last update, the 2030 Roth IRA contribution limit wasn't set yet. For the most accurate and up-to-date information, please check the IRS guidelines or a financial advisor. This is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 7.006483332719654,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.8827258113722717,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant correctly states that the information isn't available and provides appropriate disclaimers, but doesn't offer any specific advice."
+    },
+    "judge_passed": true
+  }
+}

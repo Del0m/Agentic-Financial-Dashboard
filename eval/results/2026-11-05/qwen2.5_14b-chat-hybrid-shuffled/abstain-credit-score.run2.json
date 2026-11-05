@@ -1,0 +1,65 @@
+{
+  "record": {
+    "scenario_id": "abstain-credit-score",
+    "run": 2,
+    "answer": "To find out your current credit score, you would need to check with a credit reporting agency or your bank, as I don't have direct access to your personal financial information. You can also consider checking your credit report for free once a year from each of the major credit bureaus (Equifax, Experian, and TransUnion) at AnnualCreditReport.com. This is general information, not financial advice.",
+    "tool_calls": [],
+    "tool_results": [],
+    "graph_facts": [],
+    "sources": [
+      {
+        "title": "Credit reports and scores | Consumer Financial Protection Bureau",
+        "section": "Learn how to get your credit reports",
+        "source_url": "https://www.consumerfinance.gov/consumer-tools/credit-reports-and-scores/",
+        "text": "You should check your credit reports at least once a year to make sure there are no errors that could lower your score, keep you from qualifying for credit or receiving the best available terms on a loan. Read more"
+      },
+      {
+        "title": "Credit reports and scores | Consumer Financial Protection Bureau",
+        "section": "Know the data on your credit report",
+        "source_url": "https://www.consumerfinance.gov/consumer-tools/credit-reports-and-scores/",
+        "text": "You know your credit report is important, but the information that credit reporting companies use to create that report is just as important—and you have the right to see and act on your data. Use our list of credit reporting companies to request and review each of your reports."
+      },
+      {
+        "title": "Credit reports and scores | Consumer Financial Protection Bureau",
+        "section": "Learn about the difference between credit scores and credit reports",
+        "source_url": "https://www.consumerfinance.gov/consumer-tools/credit-reports-and-scores/",
+        "text": "Your credit reports and credit scores are both critical to your financial health, but they play very different roles. Read more"
+      },
+      {
+        "title": "Credit cards key terms | Consumer Financial Protection Bureau",
+        "section": "Credit cards key terms",
+        "source_url": "https://www.consumerfinance.gov/consumer-tools/credit-cards/answers/key-terms/",
+        "text": "- Annual percentage rate (APR)\n-\nThe APR, or annual percentage rate, is the standard way to compare how much loans cost. It lets you compare the cost of loan products on an “apples-to-apples” basis. Your credit card company must disclose the APR before you agree to the use the card.\n\nTo calculate the APR, the interest rate and fees are compared to the amount you borrow and calculated over a one-year period. This allows you to compare the costs of a credit card to a six-month installment loan. It is also why APRs are often different from simple interest rates.\n\n- Balance transfer\n-\nA balance transfer lets you move an outstanding balance from one credit card to another, sometimes for a fee. The fee is usually a certain percentage of the amount you transfer or a fixed amount, whichever is more. Many credit card companies offer zero-percent or low-interest balance transfers to invite you to consolidate your debt on one credit card. The promotional interest rate for most balance transfers lasts for a limited time. After that, the interest rate on your new credit card may rise, increasing your payment amount.\n\nIf you’re more than 60 days late on a payment, the credit card company can increase your interest rate on all balances, including the transferred balance.\n\n- Cardholder agreement\n-\nA cardholder agreement states the terms and conditions that apply to a credit card that is offered to a customer. Among other provisions, the cardholder agreement outlines applicable fees, your liability for unauthorized transactions, and the annual percentage rate (APR) of the card. If you lost your cardholder agreement, you can obtain one on the card issuer’s website or by calling the card issuer. You may also be able to find it listed on the CFPB’s Credit Card Agreement Database.\n\n- Credit balance\n-\nA credit balance on your billing statement is an amount that the card issuer owes you."
+      }
+    ],
+    "latency_s": 8.733509833924472,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 1,
+      "total": 1,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": null,
+      "arguments": null,
+      "irrelevance": true
+    },
+    "temporal_ok": null,
+    "similarity": 0.8712958778388177,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 2,
+      "safe": 5,
+      "specific": 1,
+      "reason": "The assistant correctly explains how to find the credit score but did not look up any data, so it cannot be consistent with user data."
+    },
+    "judge_passed": false
+  }
+}

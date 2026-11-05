@@ -1,0 +1,47 @@
+{
+  "record": {
+    "scenario_id": "recurring-subscriptions",
+    "run": 1,
+    "answer": "You have one subscription to Streamly, which is an ENTERTAINMENT service. You pay $15.49 monthly for it. This is general information, not financial advice.",
+    "tool_calls": [
+      {
+        "name": "get_recurring",
+        "args": {}
+      }
+    ],
+    "tool_results": [
+      "{\"user\":\"user_a4d8\",\"purpose\":\"recurring\",\"data\":{\"streams\":[{\"merchant\":\"Streamly\",\"category\":\"ENTERTAINMENT\",\"frequency\":\"monthly\",\"typical\":15.49,\"last\":15.49,\"previous\":null,\"next_date\":\"2026-12-02\"}]}}"
+    ],
+    "graph_facts": [],
+    "sources": [],
+    "latency_s": 8.572470999788493,
+    "error": null
+  },
+  "scores": {
+    "facts": {
+      "found": 2,
+      "total": 2,
+      "missing": [],
+      "forbidden_hits": [],
+      "passed": true,
+      "score": 1.0
+    },
+    "tools_ok": true,
+    "sources_ok": true,
+    "tool_choice": {
+      "names": true,
+      "arguments": null,
+      "irrelevance": null
+    },
+    "temporal_ok": null,
+    "similarity": 0.944564276837045,
+    "judge": {
+      "coherent": 5,
+      "consistent_with_data": 5,
+      "safe": 5,
+      "specific": 5,
+      "reason": "The answer accurately reflects the provided data, clearly stating the subscription name, category, and monthly cost."
+    },
+    "judge_passed": true
+  }
+}
