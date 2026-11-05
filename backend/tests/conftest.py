@@ -22,6 +22,14 @@ from app.db.session import get_session
 from app.main import app
 
 
+# the graph has its own tests. everything else keeps testing the behaviour underneath it
+@pytest.fixture(autouse=True)
+def graph_off(monkeypatch):
+    from app import config
+    monkeypatch.setattr(config, "KG_CHAT", "vector")
+    monkeypatch.setattr(config, "KG_MODE", "off")
+
+
 @pytest.fixture(autouse=True)
 def force_measured_surplus(request, monkeypatch):
     from app.agents import goal_graph

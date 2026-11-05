@@ -8,7 +8,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from sqlalchemy import select
 
 from app.budget_service.daily import run_daily_locked, sim_prefs
-from app.db.models import Account, AgentRun, Transaction, User
+from app.db.models import Account, AgentRun, CategoryRule, Transaction, User
 
 # simulated days for synthetic users (tpc-21): each advanced day injects that day's generated transactions,
 # runs the month-end slot on the 1st, then the real budget run. the caller holds the user's run lock
@@ -54,6 +54,16 @@ def _inject(session_factory, user_id: str, users, profile, todays: list) -> int:
     return added
 
 
+# a planted user's merchant rule, made on its day like one the user made in the app (tpc-37)
+def _add_rules(session_factory, user_id: str, profile, day: date) -> None:
+    rules = [(merchant, category) for when, merchant, category in profile.rules if when == day]
+    if rules:
+        with session_factory() as s:
+            s.add_all(CategoryRule(user_id=user_id, merchant_name=merchant, category=category, effective_from=day)
+                      for merchant, category in rules)
+            s.commit()
+
+
 def _sim(session_factory, user_id: str) -> dict:
     with session_factory() as s:
         sim = sim_prefs(s, user_id)
@@ -96,6 +106,7 @@ def advance_days(session_factory, user_id: str, days: int, *, model: Optional[Ba
     for _ in range(days):
         day += timedelta(days=1)
         injected = _inject(session_factory, user_id, users, profile, by_day.get(day, []))
+        _add_rules(session_factory, user_id, profile, day)
         state = run_daily_locked(session_factory, user_id, day, model=model, checkpointer=checkpointer)
         _save_date(session_factory, user_id, day)        # only after the run, so a failed day can be retried
         alerts = len(state.get("alert_ids") or [])

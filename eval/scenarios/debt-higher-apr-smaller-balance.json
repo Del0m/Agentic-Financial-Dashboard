@@ -1,7 +1,8 @@
 {
   "id": "debt-higher-apr-smaller-balance",
   "tags": [
-    "high_interest_debt"
+    "high_interest_debt",
+    "graph_unsuited"
   ],
   "question": "Which of my cards should I pay off first?",
   "user": {
@@ -55,6 +56,12 @@
     ],
     "tools": [
       "get_debts"
+    ],
+    "allowed_tools": [
+      "get_debts",
+      "plan_debt_payoff",
+      "get_accounts",
+      "search_kb"
     ]
   }
 }

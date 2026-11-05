@@ -54,3 +54,9 @@ The audit log has exactly one `debts` entry.
 **Why it's there:** It's the end-to-end check that the harness works with real models: the graph runs, the judge returns JSON we can parse, and the scorer accepts it.
 
 **Skipped when:** Ollama is missing any of the three models, the knowledge base is empty, or the scenario file doesn't exist yet.
+
+## `test_budget_run_doesnt_score_alerts_seeded_as_history`
+
+**What it does:** Alerts a profile seeds as past advice aren't recorded as the run's own.
+
+**Why it's there:** `budget-graph-previously-dismissed` failed live because the runner scored its two seeded dismissed cuts, though the agent answered correctly.

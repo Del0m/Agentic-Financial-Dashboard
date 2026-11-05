@@ -306,6 +306,24 @@ The same three rules apply to `sources_ok` with `source_url`s.
 
 **Why they're there:** TPC-27 and TPC-28 chart these.
 
+## `test_tool_choice_counts_missing_and_unlisted_tools`, `test_tool_choice_irrelevance_and_unset_counts`, `test_tool_choice_arguments`
+
+**What they do:** Tool choice is scored on names (a required tool missing or an unlisted one called fails), arguments and irrelevance (any call when none fits fails). A count the scenario doesn't set is `None`, not a pass.
+
+**Why they're there:** `tools_ok` only checks required tools are there, so extra calls never counted. Architecture 6b.5 asks for all three.
+
+## `test_temporal_check_uses_whole_words`
+
+**What it does:** The right year must appear and a wrong one mustn't, as whole words, so "May" isn't found in "Maybe".
+
+**Why it's there:** A substring match would score ordinary words as wrong dates.
+
+## `test_the_judge_sees_graph_facts_as_data_given`
+
+**What it does:** The judge prompt includes the graph facts the model received.
+
+**Why it's there:** The judge scores against the data given, so without these it failed correct answers from the graph. Vector guidance still isn't shown to it, so the paper has to say judge scores aren't given the same inputs across conditions.
+
 ## `test_abstain_no_numbers_rejects_an_invented_score`, `test_abstain_without_no_numbers_allows_the_year_asked_about`
 
 **What they do:** "I don't have a full credit report, but your current credit score is 780" fails when `no_numbers` is set. Without it, the year in a Roth question is still fine.

@@ -1,7 +1,8 @@
 {
   "id": "abstain-balance-2019",
   "tags": [
-    "abstain"
+    "abstain",
+    "temporal"
   ],
   "question": "What was my checking balance in 2019?",
   "user": {
@@ -28,6 +29,10 @@
     "forbid": [
       "http"
     ],
-    "abstain": true
+    "abstain": true,
+    "allowed_tools": [
+      "get_accounts",
+      "get_history"
+    ]
   }
 }

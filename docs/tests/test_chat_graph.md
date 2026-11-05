@@ -165,3 +165,33 @@ Run them from `backend/`:
 **What it does:** Executes get_recurring through the graph, scrubs a five-digit merchant reference and excludes an employer name.
 
 **Why it's there:** Chat reads stored streams only through the privacy gateway.
+
+## `test_date_line_spells_out_the_last_30_days`
+
+**What it does:** The prompt's date line gives the exact dates of the last 30 days.
+
+**Why it's there:** TPC-48. The model asked for the calendar month when the question said the last 30 days, and reported the wrong income.
+
+## `test_prompt_says_personal_questions_need_the_lookup_despite_guidance`
+
+**What it does:** The prompt says a question about the user's own debts needs a lookup even when guidance covers the topic, and says what to answer when there are no debts.
+
+**Why it's there:** TPC-47. With debt guidance in the prompt, the model answered from it and skipped the lookup. The live proof is the three `debt-*` scenarios.
+
+## `test_final_answer_always_carries_the_disclaimer`
+
+**What it does:** An answer without "not financial advice" gets the closing line added once, in the same message. An answer that already has it, in any case, is unchanged, and an empty answer stays empty.
+
+**Why it's there:** The prompt asks for this line, but it was missing from 5 of 22 chat answers in the post-fix baseline. A required line shouldn't depend on the model.
+
+## `test_prompt_follows_the_retrieval_mode`, `test_vector_prompt_is_todays_prompt_byte_for_byte`, `test_retrieval_only_runs_in_vector_modes`
+
+**What they do:** `none` removes the guidance and `search_kb` from the prompt, `graph` removes `search_kb`, and `vector` is unchanged byte for byte. App-side retrieval only runs in the vector modes.
+
+**Why they're there:** Without these, a "no retrieval" condition could still reach retrieval, and the ablation would measure nothing.
+
+## `test_an_empty_reply_with_tools_gets_one_more_try_without_them`
+
+**What it does:** An empty reply with tools bound gets one more call with no tools.
+
+**Why it's there:** `qwen2.5:14b` returned empty answers on `temporal-decision-accepted`. The same prompt with no tools answered, as on the last tool round. This is the only retry in chat, and it isn't part of the retry ablation.

@@ -29,8 +29,8 @@ from sqlalchemy.orm import Session
 from app.budget_engine.styles import STYLES
 from app.budget_service.settings import set_user_style
 from app.db.models import (Account, AdviceLog, AgentRun, Alert, BudgetLine, BudgetPeriod, CategoryRule, Goal, Liability,
-                           PlaidItem, RecurringStream, Transaction, User)
-from eval.budget_users import FORECAST_USERS, GOAL_USERS, PLANTED, PROFILES, RECURRING_USERS, default_start, seed_profile
+                           KGEdge, KGNode, PlaidItem, RecurringStream, Transaction, User)
+from eval.budget_users import FORECAST_USERS, GOAL_USERS, GRAPH_USERS, PLANTED, PROFILES, RECURRING_USERS, default_start, seed_profile
 
 
 # everything the user owns, children before parents so foreign keys hold
@@ -45,6 +45,8 @@ def delete_user(session: Session, user_id: str) -> None:
     if session.get(UserRunClaim, user_id) is not None:
         raise ValueError("Cannot replace a user with an active run.")
     periods = select(BudgetPeriod.id).where(BudgetPeriod.user_id == user_id)
+    session.execute(delete(KGEdge).where(KGEdge.user_id == user_id))
+    session.execute(delete(KGNode).where(KGNode.user_id == user_id))
     session.execute(delete(AdviceLog).where(AdviceLog.user_id == user_id))
     session.execute(delete(Alert).where(Alert.user_id == user_id))
     session.execute(delete(Goal).where(Goal.user_id == user_id))
@@ -64,7 +66,7 @@ def main(argv=None, session_factory=None) -> int:
     parser.add_argument("--start", help="YYYY-MM-DD or 'default': seed history only up to this day and simulate from it")
     parser.add_argument("--style", choices=STYLES, default="caps", help="the style its first budget is fitted with")
     args = parser.parse_args(argv)
-    profiles = {p.id: p for p in PROFILES + PLANTED + GOAL_USERS + RECURRING_USERS + FORECAST_USERS}
+    profiles = {p.id: p for p in PROFILES + PLANTED + GOAL_USERS + RECURRING_USERS + FORECAST_USERS + GRAPH_USERS}
     profile = profiles.get(args.profile)
     if profile is None:
         print(f"unknown profile {args.profile!r}; choose one of: {', '.join(profiles)}")

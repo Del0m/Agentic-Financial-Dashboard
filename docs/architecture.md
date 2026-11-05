@@ -299,6 +299,7 @@ Budget periods are **calendar months** (decided). `days_in_period` is the length
 elapsed_fraction = days_elapsed / days_in_period
 pace = spent / (limit * elapsed_fraction)
 flag if pace >= 1.10 and days_elapsed >= 5     # flexible categories
+        and spent > usual_by_day                # usual spending by this day of the month (TPC-45)
 flag if spent > limit                          # any category, any day
 ```
 
@@ -310,7 +311,7 @@ This is `budget_engine/pace.py` (`evaluate`). Spending in a category with no bud
 - ENTERTAINMENT at 1.48, because a $15.99 subscription is charged on day 5;
 - TRANSPORTATION at 1.12, because of how many Mondays had passed.
 
-TPC-33 moving subscriptions into the fixed set was expected to fix the first. The TPC-26 baseline still flags it: `control-steady-spender` fails on these flags, and TPC-45 tracks tuning the thresholds against the false-alarm metric.
+TPC-33 moving subscriptions into the fixed set was expected to fix the first. The TPC-26 baseline still flagged it, so TPC-45 added a second test. A pace flag now also needs spending above what's usual by this day of the month: the median of the last 3 months' spending up to the same day, plus one normal purchase if the category has at least 4 purchases a month, for weekly timing. With little history, usual is 0 and pace decides alone. The 1.10 and 5-day thresholds are unchanged, because raising them couldn't fix a monthly charge: $15.99 on day 5 stays above 1.10 pace until day 28.
 
 ### 6.5 Period close and adaptation
 At the end of each calendar month: for each line, compare `limit` vs actual. Apply any `adjust_next_budget` actions the user accepted. For lines without an action, nudge toward actual with smoothing: `new = 0.7 * old + 0.3 * actual`, clamped to ±15% per period. This keeps the budget from chasing one bad month. The "does the budget improve over time" benchmark checks this works.
@@ -509,6 +510,12 @@ kg_edges   id, user_id (null = guidance), src_id, rel, dst_id, value_json,
 
 **Two clocks, on purpose.** Valid time says when something was true in the world: the gym cost $35 from March to August. Transaction time says when the system believed it. The second clock matters when a fact is corrected after the fact, for example when the user recategorizes July's purchases in October. The old edge is *expired*, not deleted, and the corrected one is recorded. That lets the agent replay "what did I know on the day I raised that alert?", and lets the eval score a past decision against what the agent knew at the time. Nothing in `kg_edges` is ever deleted.
 
+TPC-35 uses calendar-date valid intervals and aware-UTC transaction intervals, both half-open: the start is included and the end is excluded. `expired_at IS NULL` means a current belief, even when its valid interval has already ended. Closing a valid interval also creates a replacement version; editing the original `valid_to` would rewrite what the system believed before learning of the closure. A real change therefore retains three rows: the original belief, its replacement with a bounded valid interval, and the new value. Current queries see the latter two. A backfill records when the application actually learned the facts; it does not invent historical recording times.
+
+Shared nodes need a separate partial unique index on `(kind, key)` where `user_id IS NULL`, in addition to owned-node uniqueness. Partial edge indexes enforce one current open assertion and one current interval start per relationship key; `CATEGORIZED_AS` keys on the merchant and relation rather than destination. The store validates bounded overlaps while holding a database write lock on the source node. Foreign keys and interval checks protect stored history. User operations read owned facts plus shared guidance and validate both endpoints; shared maintenance is an explicit separate scope.
+
+Node identity (owner, kind, key) is stable. Labels and properties describe current display metadata; facts needed for historical replay belong on versioned edges. The complete implementation and test contract is in [the TPC-35 plan](superpowers/plans/2026-11-03-tpc-35-temporal-store.md).
+
 Node kinds: `user`, `institution`, `account`, `merchant`, `category`, `stream`, `advice` (user half); `concept`, `source` (guidance half). Merchant keys use the same trimmed, casefolded name as `category_rules`.
 
 **User relations** (projected by code):
@@ -537,27 +544,37 @@ Node kinds: `user`, `institution`, `account`, `merchant`, `category`, `stream`, 
 
 ### 6b.2 Building and querying (`app/kg/`)
 
-- **`store.py`:** `assert_edge(src, rel, dst, value, valid_from, valid_to=None, source, evidence, correct=False)`.
-  - If the same current edge already has the same value, nothing happens, so projecting twice is safe.
-  - If the value differs, the open edge is closed at the new `valid_from` and a new edge opens: the world changed.
-  - With `correct=True`, the old edge gets `expired_at = now` and its replacement keeps the original valid time: we were wrong.
-  - `CATEGORIZED_AS` allows one open category per merchant; the other relations allow one open edge per (src, rel, dst).
+- **`store.py`:** `upsert_node`, `assert_edge`, and `close_edge` receive a caller-owned SQLAlchemy session and explicit `user_id` scope (`None` for shared maintenance). They flush but never commit the caller's transaction.
+  - An exact assertion retry compares the relationship, valid interval, value, source, and evidence and is a no-op. Reordered JSON object keys do not change equality. An unchanged later observation of an open fact is also a no-op; equal bounded observations in different months remain separate facts.
+  - A real change must follow the existing interval's start. Atomically expire the original belief, insert its bounded replacement, and open the new value at the change date. All replacement rows use one transaction timestamp.
+  - With `correct=True`, `target_edge_id` identifies a current-belief assertion, including a bounded historical one. Expire it and insert a corrected replacement retaining the exact original valid bounds. Stale targets and interval-boundary edits are rejected.
+  - `close_edge` expires and replaces an open assertion with a bounded version. An identical close against the current bounded replacement is a no-op; an expired target requires reloading.
+  - Changes and backfill proceed chronologically. Exact historical retries and targeted corrections are supported; ambiguous overlaps, new backdated inserts, and same-date competing changes are rejected rather than split automatically.
+  - `CATEGORIZED_AS` allows one open category per merchant; the other relations allow one open edge per (src, rel, dst). Owned writes require an owned source and an owned or shared destination, never another user's node. Only `concept` and `source` nodes are shared; other kinds are owned. Shared writes use shared endpoints only.
 - **`project.py`:** pure functions from DB rows to edge assertions, unit-tested like `budget_engine/`.
   - The current month is re-projected on every run.
   - Closed months are projected once by close, with the final actuals.
   - A transaction whose category changes retroactively re-projects its month with `correct=True`.
-- **`query.py`:** each query takes the user, an `as_of` date (default: the user's today, simulated or real), and an optional `known_at` for transaction time.
+- **`query.py`:** database queries take a session and explicit user scope. Snapshot and neighborhood queries use `on_date` (default: the user's today, simulated or real); range queries take explicit `[start, end)` windows. `known_at` selects the belief at an aware-UTC instant; omitting it selects current-belief rows. Recording timestamps always use real UTC, independently of simulation dates.
 
   | Query | Returns |
   |---|---|
-  | `as_of(user, date, known_at=None)` | the graph as it was valid on that date |
-  | `history(node, rel=None)` | that node's edges in time order |
-  | `months_active(merchant, window)` | the months the merchant had spending |
-  | `same_month_last_year(category)` | that category's merchants and spending a year earlier |
-  | `changes(user, start, end)` | edges opened or closed in the window |
-  | `neighborhood(nodes, as_of, hops=1, limit=25)` | the nodes' neighbours, at most `limit` edges |
-  | `triples(edges)` | one line per edge, e.g. `Roth IRA —HAS_LIMIT→ annual contribution: $7,000 (tax year 2025) [irs-ira-contribution-limits]` |
+  | `as_of(session, user_id=..., on_date=..., known_at=None)` | visible edges and their endpoint nodes at the requested valid date and knowledge time |
+  | `history(session, user_id=..., node_id=..., rel=None, known_at=None, audit=False)` | time-ordered intervals; audit mode explicitly includes retained expired versions |
+  | `months_active(session, user_id=..., merchant_id=..., start=..., end=..., known_at=None)` | distinct month starts in the window with positive net spending |
+  | `same_month_last_year(session, user_id=..., category=..., on_date=..., known_at=None)` | spending edges from the prior calendar year's same month, using the category recorded in each fact |
+  | `changes(session, user_id=..., start=..., end=..., known_at=None)` | edges whose valid start or end falls in the window; recording a correction is not itself a real-world change |
+  | `neighborhood(session, user_id=..., node_ids=..., on_date=..., known_at=None, hops=1, limit=25)` | deterministic traversal in both directions, scoped at every hop, with an explicit truncation indicator |
+  | `triples(snapshot)` | safe readable lines from scoped nodes/edges, including money, validity, and selected provenance |
 
+The store/query foundation is independent of agent prompts. The projection, agent integration, and extraction steps below are subsequent tickets; an empty migrated graph is valid until those producers populate it.
+
+- **As built (TPC-36), `app/kg/project.py`:**
+  - The daily run's first pass for a user builds their whole history, oldest first, so seeded and simulated users need no extra step. `scripts/build_kg.py` does the same on demand.
+  - `update_graph` sits after `detect_recurring`, so a new stream is projected on the run that found it. It's still between `update_totals` and `detect_overspend`.
+  - Advice is projected in `log_advice`, not on the next run, so a decision can correct a pending belief that's already there. A decision projects in the same transaction as the alert's new status.
+  - A projection that fails rolls back only itself, and never stops the run, a close or a user's decision. The next run heals it, and the run's summary records `graph_error`.
+  - **Limits:** a rule edge's date is the rule's date, but the first backfill applies today's rules to older months, because that's what the app's category lookup does. A new fact for a month older than the merchant's latest edge is refused by the store, so it's skipped and reported. `CONNECTED` waits for TPC-41, and the bridge maps use the concept keys TPC-38 must match.
 - **When the user half updates:**
   - A new node, `update_graph`, runs in the budget graph between `update_totals` and `detect_overspend`. It is deterministic and incremental.
   - The close graph's `persist` projects the closed month and the new period's `BUDGETS`.
@@ -591,6 +608,11 @@ Code still does every number. The LLM still only names the cause and picks the a
 - **New tool `get_history(entity, relation?)`:** the time-ordered edges for one entity, for explicit "when did / how has" questions. This brings the chat agent to 8 tools.
 - **Privacy:** user-half triples are built through a new gateway purpose, `graph`, with the same allowlist as `spending`. Pseudonymized user, no account numbers, inflow streams as category and amount only. Every prompt is audited. The guidance half is public text and skips the gateway, like `search_kb`.
 - **Modes** for the eval: `KG_CHAT=vector` (today's behaviour), `graph`, `hybrid` (the default).
+
+**As built (TPC-37 to TPC-39):**
+- **Guidance graph (TPC-38):** `scripts/extract_kg.py` writes `eval/kg/raw_graph.json`. `eval/kg_quality.py` applies the recorded review in `kb/graph_review.json` to build `kb/graph.json`, and scores the raw output, so precision and recall measure the model. The knowledge base has no 2025 401(k) limit, so the graph has none.
+- **Budget agent (TPC-37):** code stops a cut or new limit on a `reclassified` category, and a third proposal of a cut dismissed twice. A price rise uses `previous_cents`, because the detector's typical amount lags the first raised charge.
+- **Chat (TPC-39):** `app/kg/retrieve.py` links by rule. A merchant or advice links on any uncommon word in its name, so "gym" finds FitClub Gym, which is looser than the exact or alias match first planned. Merchants, budgets and advice report their history, not one date's snapshot, so "when did it start" can be answered. `KG_CHAT` adds `none` and `hybrid-shuffled` for the ablation, and `hybrid-shuffled` swaps values between facts with a fixed seed.
 
 ### 6b.5 Evaluation: the ablation
 
@@ -988,6 +1010,9 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-03 | Code applies the `one_time` rule and states it as `looks_one_time`. The graph's prompt instructions and reply schema are only used when the graph has facts for the category. `budget-seasonal-holidays` still fails with the graph on, and is kept as a reported finding, not tuned further | TPC-46. The model called a 35% purchase `one_time` when asked to compare it to 0.5. Both seasonal scenarios pass with the graph off. With it on, one history fact about a regular shop brings in the graph's instructions, and the holiday scenario answers `one_time`. Trimming the graph's output until it passes would hide a case the ablation exists to report. The prompt was changed several times against these scenarios, which the paper discloses |
+| 2026-11-03 | Code adds the closing "not financial advice" line when a chat answer leaves it out, in a `finish` node after the agent | The prompt asks for it, but it was missing from 5 of 22 answers in the TPC-27 post-fix baseline. A required line shouldn't depend on the model. It replaces the same message, so history and the eval match what the user saw |
+| 2026-11-03 | A pace flag also needs spending above what's usual by this day of the month: the 3-month median up to that day, plus one normal purchase for categories with at least 4 purchases a month. `PACE_FLAG` stays 1.10 and `MIN_DAYS` stays 5 | TPC-45. Raising thresholds can't fix a monthly charge. Medians keep a club that started last month from becoming normal, and the timing allowance applies only to weekly spending, so it can't hide a new monthly charge. This rule was developed against `control-steady-spender` and `budget-recurring-wine-club`, so those two aren't independent evidence that it works |
 | 2026-11-02 | The chat system prompt states today and the calendar bounds of this month and last month, from the gateway's `today()` | Without a date the model searched 2023 for "last month"; with only the date it read "last month" as the last 30 days. A simulated user's chat follows the simulation, like its dashboard; the debt planner stays on the real date, like the dashboard's payoff card |
 | 2026-11-02 | The Docker demo runs on a simulated date, set up by one-off `init` and `models` services | Planted data is dated and pace depends on the day of the month, so a demo tied to today would look different every day; the 9 GB model download mustn't block startup |
 | 2026-10-04 | Python/FastAPI backend, Next.js frontend, SQLite→Postgres | One language for agents + API; React Plaid Link support |

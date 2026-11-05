@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-from app.db.models import Account, Liability, Transaction, User
+from app.db.models import Account, AdviceLog, Alert, BudgetPeriod, Liability, Transaction, User
 from eval.fixtures import ScenarioError, load_scenario, load_scenarios, seed, temp_db
 
 REPO = Path(__file__).resolve().parents[2]
@@ -121,7 +121,7 @@ def test_only_unknown_id_rejected(tmp_path):
 
 
 def test_committed_scenarios_load():
-    assert len(load_scenarios(REPO / "eval" / "scenarios")) == 40
+    assert len(load_scenarios(REPO / "eval" / "scenarios")) == 56
 
 
 # the payoff scenario's facts are the planner's numbers (tpc-32); months and interest don't depend on the start date
@@ -296,12 +296,90 @@ def test_bad_goal_scenario_rejected(tmp_path, edit, field):
 # the ticket's done-when and its six categories
 def test_committed_scenarios_cover_the_ticket():
     scenarios = load_scenarios(REPO / "eval" / "scenarios")
-    assert 30 <= len(scenarios) <= 50
+    # the ticket's 30-50 golden scenarios; the temporal ones are for the graph ablation (tpc-27)
+    assert 30 <= len([s for s in scenarios if "needs_graph" not in s.tags]) <= 50
     assert all(s.golden_answer.strip() for s in scenarios)
     tags = {tag for s in scenarios for tag in s.tags}
     assert {"high_interest_debt", "unused_subscription", "one_time", "recurring", "seasonal", "no_overspend_control",
             "goal_affordability"} <= tags
     kinds = [s.kind for s in scenarios]
-    assert (kinds.count("chat"), kinds.count("budget"), kinds.count("goal")) == (22, 12, 6)
+    assert (kinds.count("chat"), kinds.count("budget"), kinds.count("goal")) == (34, 16, 6)
     assert len([s for s in scenarios if "abstain" in s.tags and s.expect.abstain]) == 4
     assert all(s.tags for s in scenarios)
+
+
+def test_tool_rules_load(tmp_path):
+    def edit(d):
+        d["expect"]["allowed_tools"] = ["get_debts", "search_kb"]
+    s = load_scenario(write(tmp_path, edit))
+    assert s.expect.allowed_tools == ("get_debts", "search_kb")
+    assert s.expect.tools_none is False
+
+
+def test_allowed_tools_must_include_the_required_ones(tmp_path):
+    rejected(write(tmp_path, lambda d: d["expect"].update(allowed_tools=["search_kb"])), "allowed_tools")
+
+
+def test_allowed_tools_must_be_real_tools(tmp_path):
+    rejected(write(tmp_path, lambda d: d["expect"].update(allowed_tools=["get_debts", "get_debt"])), "allowed_tools")
+
+
+def test_tools_none_cant_be_set_with_required_tools(tmp_path):
+    rejected(write(tmp_path, lambda d: d["expect"].update(tools_none=True)), "tools_none")
+
+
+def test_temporal_check_needs_a_right_answer(tmp_path):
+    rejected(write(tmp_path, lambda d: d["expect"].update(temporal={"right": []})), "temporal.right")
+
+
+def test_a_pinned_scenario_seeds_from_its_own_date(tmp_path):
+    from app.budget_service.daily import sim_today
+    s = load_scenario(write(tmp_path, lambda d: d.update(today="2026-11-06", author="claude")))
+    assert (s.today, s.author) == (date(2026, 11, 6), "claude")
+    with temp_db() as Session, Session() as session:
+        user_id = seed(session, s, TODAY)
+        assert sim_today(session, user_id) == date(2026, 11, 6)
+        days = {t.date for t in session.scalars(select(Transaction))}
+    assert date(2026, 11, 2) in days     # days_ago 4 counts back from the pinned date, not from the caller's
+
+
+def test_every_chat_scenario_has_one_group():
+    groups = {"temporal", "graph_suited", "graph_unsuited"}
+    for s in load_scenarios(REPO / "eval" / "scenarios"):
+        if s.kind == "chat":
+            assert len(groups & set(s.tags)) == 1, s.id
+
+
+def test_tool_args_load_and_bad_ones_are_rejected(tmp_path):
+    good = load_scenario(write(tmp_path, lambda d: d["expect"].update(tool_args={"get_spending": {"category": ["INCOME"]}})))
+    assert good.expect.tool_args == {"get_spending": {"category": ("INCOME",)}}
+    rejected(write(tmp_path, lambda d: d["expect"].update(tool_args={"nope": {"a": ["b"]}})), "tool_args")
+    rejected(write(tmp_path, lambda d: d["expect"].update(tool_args={"get_spending": {"category": []}})), "tool_args")
+
+
+def test_budget_and_advice_history_seed(tmp_path):
+    def edit(d):
+        d.update(today="2026-11-06")
+        d["user"]["budget"] = [{"start": "2026-09-01", "category": "FOOD_AND_DRINK", "limit": 320},
+                               {"start": "2026-11-01", "category": "FOOD_AND_DRINK", "limit": 350}]
+        d["user"]["advice"] = [{"day": "2026-09-12", "category": "FOOD_AND_DRINK", "action": "suggest_cuts",
+                                "message": "Cut back.", "decision": "dismissed"}]
+    s = load_scenario(write(tmp_path, edit))
+    with temp_db() as Session, Session() as session:
+        seed(session, s, TODAY)
+        periods = {p.start_date: p for p in session.scalars(select(BudgetPeriod))}
+        assert periods[date(2026, 9, 1)].status == "closed" and periods[date(2026, 11, 1)].status == "open"
+        assert periods[date(2026, 9, 1)].lines[0].limit_cents == 32000
+        alert, advice = session.scalars(select(Alert)).one(), session.scalars(select(AdviceLog)).one()
+        assert alert.status == advice.outcome == "dismissed" and advice.alert_id == alert.id
+        assert alert.period_id == periods[date(2026, 9, 1)].id
+
+
+@pytest.mark.parametrize("field, entry, problem", [
+    ("budget", {"start": "2026-09-02", "category": "FOOD_AND_DRINK", "limit": 1}, "start"),
+    ("budget", {"start": "2026-09-01", "category": "FOOD", "limit": 1}, "category"),
+    ("advice", {"day": "2026-09-12", "category": "X", "action": "shout", "message": "m", "decision": "dismissed"}, "action"),
+    ("advice", {"day": "2026-09-12", "category": "X", "action": "alert", "message": "m", "decision": "maybe"}, "decision"),
+])
+def test_bad_history_rejected(tmp_path, field, entry, problem):
+    rejected(write(tmp_path, lambda d: d["user"].update({field: [entry]})), problem)

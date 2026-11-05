@@ -29,7 +29,7 @@ def test_run_once_captures_everything(tmp_path):
 
     assert isinstance(rec, RunRecord)
     assert (rec.scenario_id, rec.run, rec.error) == ("debt-highest-apr", 2, None)
-    assert rec.answer == "Pay the Platinum Card first."
+    assert rec.answer.startswith("Pay the Platinum Card first.\n\n")
     assert rec.tool_calls == [{"name": "get_debts", "args": {}}]
     assert "Platinum Card" in rec.tool_results[0] and "24.99" in rec.tool_results[0]
     assert rec.sources == [FakeKB.RESULT]
@@ -107,3 +107,16 @@ def test_live_debt_highest_apr(tmp_path):
 
     assert rec.error is None
     assert scores["judge"] is not None
+
+
+def test_budget_run_doesnt_score_alerts_seeded_as_history(tmp_path):
+    from eval.agent_runner import run_budget_once
+    from eval.fixtures import load_scenarios
+    from pathlib import Path
+    from tests.fakes import SchemaReplyModel
+    repo = Path(__file__).resolve().parents[2]
+    s = next(x for x in load_scenarios(repo / "eval" / "scenarios") if x.id == "budget-graph-previously-dismissed")
+    rec = run_budget_once(s, model=SchemaReplyModel(), audit_path=tmp_path / "a.jsonl")
+    assert rec.error is None
+    assert all(a["day"] >= "2026-10-09" for a in rec.alerts)
+    assert not any(a["message"].startswith("Food is running hot") for a in rec.alerts)

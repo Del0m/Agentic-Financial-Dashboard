@@ -19,6 +19,7 @@ from tests.fakes import FakeKB, SchemaReplyModel, ScriptedChatModel
 REPO = Path(__file__).resolve().parents[2]
 SCENARIOS = load_scenarios(REPO / "eval" / "scenarios")
 CHAT = [s for s in SCENARIOS if s.kind == "chat"]
+NON_TEMPORAL = [s for s in CHAT if not s.id.startswith("temporal-")]
 BUDGET = [s for s in SCENARIOS if s.kind == "budget"]
 GOAL = [s for s in SCENARIOS if s.kind == "goal"]
 
@@ -27,7 +28,7 @@ pytestmark = [pytest.mark.cash_forecast, pytest.mark.forecast_surplus]
 
 # scenarios whose golden answer is right and whose agent isn't yet. each stays failing in the results until its ticket is
 # fixed, and a new mismatch fails test_budget_code_decisions_match_the_golden_answer
-KNOWN_FAILURES = {"control-steady-spender": "TPC-45"}
+KNOWN_FAILURES = {}
 
 
 def scenario(sid):
@@ -164,8 +165,9 @@ def _tool_outputs(s, tools) -> str:
     return "\n".join(out)
 
 
-# a number the tools can't produce is one the model could only pass by doing arithmetic or by chance
-@pytest.mark.parametrize("s", CHAT, ids=ids(CHAT))
+# a number the tools can't produce is one the model could only pass by doing arithmetic or by chance.
+# temporal scenarios are left out: their numbers come from dated guidance, not from a tool
+@pytest.mark.parametrize("s", NON_TEMPORAL, ids=ids(NON_TEMPORAL))
 def test_chat_number_facts_come_from_the_expected_tools(s, audit):
     with temp_db() as Session, Session() as session:
         user_id = seed(session, s, date.today())      # the gateway's own clock, as in a real run

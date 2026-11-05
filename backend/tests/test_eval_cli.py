@@ -149,6 +149,29 @@ def test_kind_defaults_to_every_kind(agents):
     assert json.loads((out / "g1.run1.json").read_text())["scores"]["checks"]["model_not_called"] is True
 
 
+def test_kind_hash_matches_full_baseline_and_tracks_scenario_changes(agents):
+    def run_config(*args):
+        assert run_eval.main(["--runs", "1", "--model", "m", *args]) == 0
+        [folder] = (agents / "results").glob(f"*/m-{args[-1]}")
+        return json.loads((folder / "config.json").read_text())
+
+    full = run_config("--label", "full")
+    budget = run_config("--kind", "budget", "--label", "budget")
+    assert set(full["scenario_hashes_by_kind"]) == {"chat", "budget", "goal"}
+    assert set(budget["scenario_hashes_by_kind"]) == {"budget"}
+    assert full["scenario_hash"] != budget["scenario_hash"]
+    assert full["scenario_hashes_by_kind"]["budget"] == budget["scenario_hashes_by_kind"]["budget"]
+
+    path = run_eval.SCENARIOS_DIR / "b1.json"
+    data = json.loads(path.read_text())
+    data["tags"].append("changed")
+    path.write_text(json.dumps(data))
+    changed = run_config("--label", "changed")
+    assert changed["scenario_hashes_by_kind"]["budget"] != full["scenario_hashes_by_kind"]["budget"]
+    for kind in ("chat", "goal"):
+        assert changed["scenario_hashes_by_kind"][kind] == full["scenario_hashes_by_kind"][kind]
+
+
 def test_kind_rejects_an_unknown_value():
     with pytest.raises(SystemExit):
         run_eval.parse_args(["--kind", "close"])
@@ -195,3 +218,31 @@ def test_chat_summary_carries_tags(offline, monkeypatch):
     assert run_eval.main(["--runs", "1", "--model", "m"]) == 0
     [out] = list((offline / "results").glob("*/m"))
     assert json.loads((out / "summary.json").read_text())["by_tag"] == {"debt": {"runs": 1, "fact_pass_rate": 1.0}}
+
+
+def test_skip_tag_leaves_out_tagged_scenarios(offline, capsys):
+    assert run_eval.parse_args(["--skip-tag", "temporal", "--skip-tag", "x"]).skip_tag == ["temporal", "x"]
+    assert run_eval.parse_args([]).skip_tag == []
+
+
+def test_new_flags_parse():
+    args = run_eval.parse_args(["--retrieval", "none", "--kg", "on", "--retries", "off", "--temperature", "0.7",
+                                "--seed", "3", "--today", "2026-11-06", "--label", "chat-none", "--limit", "4"])
+    assert (args.retrieval, args.kg, args.retries, args.temperature, args.seed, args.label, args.limit) == \
+        ("none", "on", "off", 0.7, 3, "chat-none", 4)
+    assert args.today == date(2026, 11, 6)
+
+
+def test_defaults_keep_todays_run():
+    args = run_eval.parse_args([])
+    assert (args.retrieval, args.kg, args.retries, args.temperature, args.seed, args.today, args.label, args.limit) == \
+        (None, None, None, 0.0, None, None, None, None)
+
+
+def test_label_goes_in_the_results_folder(tmp_path):
+    assert run_eval.results_dir(tmp_path, date(2026, 11, 6), "a:b", "chat-none").name == "a_b-chat-none"
+
+
+def test_limit_spreads_across_the_list():
+    assert run_eval.spread(list(range(10)), 4) == [0, 2, 5, 7]
+    assert run_eval.spread([1, 2], 4) == [1, 2]

@@ -1,0 +1,112 @@
+{
+  "id": "temporal-price-change-month",
+  "author": "claude",
+  "today": "2026-11-06",
+  "tags": [
+    "temporal",
+    "needs_graph"
+  ],
+  "question": "When did Streamly's price go up?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2400.0
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 249,
+        "amount": 9.99,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 218,
+        "amount": 9.99,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 188,
+        "amount": 9.99,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 157,
+        "amount": 9.99,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 127,
+        "amount": 9.99,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 96,
+        "amount": 12.99,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 65,
+        "amount": 12.99,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 35,
+        "amount": 12.99,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 4,
+        "amount": 12.99,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      }
+    ]
+  },
+  "golden_answer": "Streamly went up from $9.99 to $12.99 in August 2026. This is general information, not financial advice.",
+  "expect": {
+    "facts": [
+      {
+        "text": "August"
+      }
+    ],
+    "forbid": [
+      "http"
+    ],
+    "tools": [],
+    "allowed_tools": [
+      "get_recurring",
+      "get_spending",
+      "get_history"
+    ],
+    "sources": [],
+    "temporal": {
+      "right": [
+        "August"
+      ],
+      "wrong": [
+        "July",
+        "September"
+      ]
+    }
+  }
+}

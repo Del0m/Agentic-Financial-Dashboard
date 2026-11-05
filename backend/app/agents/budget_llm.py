@@ -1,8 +1,10 @@
 import logging
 import re
+from collections import Counter
 from typing import Annotated, Literal, Optional, Sequence
 
 import httpx
+from app import config
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from ollama import ResponseError
@@ -19,14 +21,32 @@ DIAGNOSE_PROMPT = (
     "from the user's transactions. Classify the cause as exactly one of these, checking them in this order:\n"
     "1. recurring: a merchant whose pattern is started_recently (it began charging since the budget was set "
     "and now charges every month) explains much of the spending, at about its typical amount.\n"
-    "2. one_time: otherwise, the largest purchase explains most of the spending (share_of_spent above 0.5) "
-    "and its merchant's pattern is new or occasional, or it is far above what that merchant usually comes to (times_typical "
-    "of 2 or more). A big purchase at a regular shop is one_time, not recurring.\n"
+    "2. one_time: otherwise, only if largest.looks_one_time is true. If it is false, the cause is not one_time, even "
+    "at a merchant that's new.\n"
     "3. seasonal: otherwise, spending spread across several purchases with no single one dominating, in a "
     "month with typical seasonal spending (holidays in November and December, back-to-school in August and "
     "September, summer travel). Use the month.\n"
     "Use only the facts given and quote numbers exactly as they appear. Answer in JSON with cause and a "
     "one-sentence evidence."
+)
+
+# added only with KG_MODE on, so the prompts with the graph off stay byte-identical
+GRAPH_DIAGNOSE_PROMPT = (
+    "\n\nThe facts also have graph_facts, from up to 13 months of history. Before the causes above, check:\n"
+    "a. reclassified: graph_facts.rule_moves shows a merchant rule moved spending into this category this month, and "
+    "that moved amount explains the overspend. The user's spending didn't change, only where it's counted.\n"
+    "b. recurring: graph_facts.price_changes shows a merchant's regular charge went up, and that explains the "
+    "overspend.\n"
+    "c. seasonal: the merchants were active_same_month_last_year, or same_month_last_year_total is near this month's "
+    "spending, so this is the time of year, whichever month it is. That comes before one_time and before a new-looking "
+    "merchant, because months_active_in_last_13 sees further back than the merchant's pattern.\n"
+    "These only add evidence. If graph_facts shows none of this, or the history doesn't reach last year, that says "
+    "nothing against a cause: use the causes above exactly as they are written. one_time still needs "
+    "largest.looks_one_time to be true."
+)
+GRAPH_DECIDE_PROMPT = (
+    "\n\nThe facts also have graph_facts. For a reclassified cause, choose alert and explain that a rule moved the "
+    "spending, or no_op. Don't choose suggest_cuts if graph_facts.advice_history shows the user dismissed it twice."
 )
 
 DECIDE_PROMPT = (
@@ -58,6 +78,12 @@ Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 class Diagnosis(BaseModel):
     cause: Literal["one_time", "seasonal", "recurring"]
+    evidence: Text
+
+
+# with the graph on, a rule that moved spending has its own cause. kept apart so the schema with it off is unchanged
+class GraphDiagnosis(BaseModel):
+    cause: Literal["reclassified", "one_time", "seasonal", "recurring"]
     evidence: Text
 
 
@@ -93,9 +119,13 @@ def decide_signal(model: BaseChatModel, context: str) -> Optional[SignalAction]:
 # graph still writes its plain fallback alert: an outage must not hide an overspend. a caller with no fallback
 # passes raise_unreachable
 def invoke_structured(model: BaseChatModel, schema: type[BaseModel], messages: list,
-                      retries: int = 1, raise_unreachable: bool = False) -> Optional[BaseModel]:
+                      retries: int = 1, raise_unreachable: bool = False,
+                      stats: Optional[Counter] = None) -> Optional[BaseModel]:
     bound = model.bind(format=schema.model_json_schema())
-    for _ in range(retries + 1):
+    for attempt in range((retries if config.RETRIES_ENABLED else 0) + 1):
+        if stats is not None:
+            # how often a resend fired, so an ablation of a mechanism that never ran isn't read as "no benefit"
+            stats["retries" if attempt else "calls"] += 1
         try:
             text = str(bound.invoke(messages).content)
         except UNREACHABLE as exc:
@@ -124,13 +154,24 @@ def _earlier(alerts: Sequence[dict], severity: str) -> str:
 
 
 def diagnose_messages(context: str) -> list:
-    return [SystemMessage(DIAGNOSE_PROMPT), HumanMessage(f"Facts:\n{context}")]
+    prompt = DIAGNOSE_PROMPT + GRAPH_DIAGNOSE_PROMPT if _has_graph_facts(context) else DIAGNOSE_PROMPT
+    return [SystemMessage(prompt), HumanMessage(f"Facts:\n{context}")]
 
 
 _RANK = {"medium": 1, "high": 2}
 
 
-def decide_messages(context: str, diagnosis: Optional[Diagnosis], projected_cents: int, proposed_cents: int,
+# the graph's instructions come with its facts. with nothing to add, the model gets the same prompt as with the graph
+# off: those instructions alone turned spread spending at new shops into one_time or recurring (tpc-46)
+def _has_graph_facts(context: str) -> bool:
+    return config.KG_MODE == "on" and '"graph_facts":' in context
+
+
+def diagnosis_schema(context: str) -> type[BaseModel]:
+    return GraphDiagnosis if _has_graph_facts(context) else Diagnosis
+
+
+def decide_messages(context: str, diagnosis: Optional[BaseModel], projected_cents: int, proposed_cents: int,
                     severity: str, earlier: Sequence[dict] = ()) -> list:
     cause = f"{diagnosis.cause}: {diagnosis.evidence}" if diagnosis else "unknown (the cause could not be determined)"
     # a holiday month or a one-off says nothing about next month, so only a recurring cause gets a proposal
@@ -138,7 +179,8 @@ def decide_messages(context: str, diagnosis: Optional[Diagnosis], projected_cent
         proposal = f"${proposed_cents / 100:,.2f}"
     else:
         proposal = "none: adjust_next_budget is only for a recurring cause"
-    return [SystemMessage(DECIDE_PROMPT), HumanMessage(
+    prompt = DECIDE_PROMPT + GRAPH_DECIDE_PROMPT if _has_graph_facts(context) else DECIDE_PROMPT
+    return [SystemMessage(prompt), HumanMessage(
         f"Facts:\n{context}\n\nDiagnosis: {cause}\nSeverity of this flag: {severity}\n"
         f"Earlier alerts for this category this month: {_earlier(earlier, severity)}\n"
         f"Projected spending by month end: ${projected_cents / 100:,.2f}\n"

@@ -1,7 +1,8 @@
 {
   "id": "income-last-30-days",
   "tags": [
-    "spending"
+    "spending",
+    "graph_unsuited"
   ],
   "question": "How much money came in as income over the last 30 days?",
   "user": {
@@ -57,6 +58,17 @@
     ],
     "tools": [
       "get_spending"
-    ]
+    ],
+    "allowed_tools": [
+      "get_spending",
+      "get_accounts"
+    ],
+    "tool_args": {
+      "get_spending": {
+        "category": [
+          "INCOME"
+        ]
+      }
+    }
   }
 }

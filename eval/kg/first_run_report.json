@@ -1,0 +1,1616 @@
+{
+  "dropped": [
+    {
+      "subject": "Savings account",
+      "relation": "HAS_RULE",
+      "object": "Balance",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": "It’s a good idea to be mindful of your balances, however, so you don’t incur overdraft fees if there’s not enough money in your checking account at the time of the automatic transaction.",
+      "why": "concept isn't in the list",
+      "source": "cfpb-emergency-fund",
+      "chunk_index": 9
+    },
+    {
+      "subject": "Checking account",
+      "relation": "HAS_RULE",
+      "object": "Balance",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": "It’s a good idea to be mindful of your balances, however, so you don’t incur overdraft fees if there’s not enough money in your checking account at the time of the automatic transaction.",
+      "why": "concept isn't in the list",
+      "source": "cfpb-emergency-fund",
+      "chunk_index": 9
+    },
+    {
+      "subject": "Federal student loan",
+      "relation": "ALTERNATIVE_TO",
+      "object": "Private student loan",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "cfpb-student-loans",
+      "chunk_index": 1
+    },
+    {
+      "subject": "FDIC deposit insurance",
+      "relation": "HAS_LIMIT",
+      "object": "Deposit insurance limit",
+      "tax_year": null,
+      "dollars": 250000.0,
+      "condition": "None specified, likely applies to all depositors regardless of income",
+      "text": null,
+      "why": "no tax year",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 0
+    },
+    {
+      "subject": "FDIC deposit insurance",
+      "relation": "HAS_LIMIT",
+      "object": "Deposit insurance limit",
+      "tax_year": null,
+      "dollars": 250000.0,
+      "condition": null,
+      "text": null,
+      "why": "no tax year",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 1
+    },
+    {
+      "subject": "FDIC deposit insurance",
+      "relation": "HAS_LIMIT",
+      "object": "Deposit insurance limit",
+      "tax_year": null,
+      "dollars": 250000.0,
+      "condition": null,
+      "text": null,
+      "why": "no tax year",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 2
+    },
+    {
+      "subject": "FDIC deposit insurance",
+      "relation": "HAS_LIMIT",
+      "object": "Deposit insurance limit",
+      "tax_year": null,
+      "dollars": 250000.0,
+      "condition": "for each account ownership category",
+      "text": null,
+      "why": "no tax year",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Certain Retirement Accounts",
+      "relation": "IS_A",
+      "object": "Retirement account",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Individual Retirement Accounts (IRAs)",
+      "relation": "IS_A",
+      "object": "Individual retirement account",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Individual Retirement Accounts (IRAs)",
+      "relation": "IS_A",
+      "object": "Roth IRA",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Individual Retirement Accounts (IRAs)",
+      "relation": "IS_A",
+      "object": "Traditional IRA",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 5
+    },
+    {
+      "subject": "FDIC deposit insurance",
+      "relation": "HAS_RULE",
+      "object": "All of your deposits in the same ownership category in the same FDIC-insured bank are added together for the purpose of determining FDIC deposit insurance coverage",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 5
+    },
+    {
+      "subject": "FDIC deposit insurance",
+      "relation": "HAS_RULE",
+      "object": "you may qualify for more than $250,000 in FDIC deposit insurance coverage if you deposit money in accounts that are in different ownership categories",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Diversification",
+      "relation": "IS_A",
+      "object": "Strategy",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Diversification",
+      "relation": "HAS_RULE",
+      "object": "Don’t put all your eggs in one basket.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Diversification",
+      "relation": "HAS_RULE",
+      "object": "Allocate your investments among different kinds of assets.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Diversification",
+      "relation": "HAS_RULE",
+      "object": "Spread your investments within each asset class.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Diversification",
+      "relation": "HAS_RULE",
+      "object": "Invest in different industry sectors.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Diversification",
+      "relation": "HAS_RULE",
+      "object": "Hold a number of different stocks or bonds.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Mutual fund",
+      "relation": "IS_A",
+      "object": "Investment company",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "ETF",
+      "relation": "IS_A",
+      "object": "Investment company",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "ETF",
+      "relation": "ALTERNATIVE_TO",
+      "object": "Stocks",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "ETF",
+      "relation": "ALTERNATIVE_TO",
+      "object": "Bonds",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Compound interest",
+      "relation": "IS_A",
+      "object": "Interest",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-compound-interest",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Compound interest",
+      "relation": "HAS_RULE",
+      "object": "Compound interest is the interest you earn on interest.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-compound-interest",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Compound interest",
+      "relation": "HAS_RULE",
+      "object": "If you have $100 and it earns 5% interest each year, you'll have $105 at the end of the first year.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-compound-interest",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Compound interest",
+      "relation": "HAS_RULE",
+      "object": "At the end of the second year, you'll have $110.25.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-compound-interest",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Compound interest",
+      "relation": "HAS_RULE",
+      "object": "Not only did you earn $5 on the initial $100 deposit, you also earned $0.25 on the $5 in interest.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-compound-interest",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Compound interest",
+      "relation": "HAS_RULE",
+      "object": "Even if you never add another dime to that account, in 10 years you'll have more than $162 thanks to the power of compound interest.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-compound-interest",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Compound interest",
+      "relation": "HAS_RULE",
+      "object": "In 25 years you'll have almost $340.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-compound-interest",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Rule of 72",
+      "relation": "IS_A",
+      "object": "Estimation method",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-compound-interest",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Rule of 72",
+      "relation": "HAS_RULE",
+      "object": "The Rule of 72 is a great way to estimate how your investment will grow over time.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-compound-interest",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Rule of 72",
+      "relation": "HAS_RULE",
+      "object": "If you know the interest rate, the Rule of 72 can tell you approximately how long it will take for your investment to double in value.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-compound-interest",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Rule of 72",
+      "relation": "HAS_RULE",
+      "object": "Simply divide the number 72 by your investment’s expected rate of return (interest rate).",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-compound-interest",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Rule of 72",
+      "relation": "HAS_RULE",
+      "object": "Assuming an expected rate of return of 9%, your investment will double in value about every 8 years (72 divided by 9 equals 8).",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-compound-interest",
+      "chunk_index": 0
+    },
+    {
+      "subject": "401(k)",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": "Employee elective salary deferrals",
+      "text": null,
+      "why": "no tax year",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "403(b)",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": "Employee elective salary deferrals",
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "SARSEP IRA plans",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": "Employee elective salary deferrals",
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "SIMPLE IRA plans",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": "Employee elective salary deferrals",
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "403(b)",
+      "relation": "HAS_RULE",
+      "object": "Catch-up contribution",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": "Catch-up contributions are not included in the overall limit on contributions to a participant’s account.",
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "SARSEP IRA plans",
+      "relation": "HAS_RULE",
+      "object": "Catch-up contribution",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": "Catch-up contributions are not included in the overall limit on contributions to a participant’s account.",
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "SIMPLE IRA plans",
+      "relation": "HAS_RULE",
+      "object": "Catch-up contribution",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": "Catch-up contributions are not included in the overall limit on contributions to a participant’s account.",
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "401(k)",
+      "relation": "HAS_RULE",
+      "object": "Your plan's terms may impose a lower limit on elective deferrals.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "401(k)",
+      "relation": "HAS_RULE",
+      "object": "If you are a manager, owner, or highly compensated employee, your plan might need to limit your deferrals to pass nondiscrimination tests.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Catch-up contribution",
+      "relation": "HAS_RULE",
+      "object": "It is up to you to monitor your deferrals to make sure that they do not exceed the applicable limits.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Excess deferrals",
+      "relation": "HAS_RULE",
+      "object": "If you exceed the deferral limit for 2020, you must distribute the excess deferrals by April 15, 2021.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 6
+    },
+    {
+      "subject": "Excess deferrals",
+      "relation": "HAS_RULE",
+      "object": "Excess deferrals for 2020 that are withdrawn by April 15, 2021, are includable in your gross income for 2020.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 6
+    },
+    {
+      "subject": "Excess deferrals",
+      "relation": "HAS_RULE",
+      "object": "Earnings on the excess deferrals are taxed in the year distributed.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 6
+    },
+    {
+      "subject": "Excess deferrals",
+      "relation": "HAS_RULE",
+      "object": "The distribution is not subject to the additional 10% tax on early distributions.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 6
+    },
+    {
+      "subject": "Excess deferrals",
+      "relation": "HAS_RULE",
+      "object": "If the entire deferral is allowed to stay in the plan, the plan may not be a qualified plan.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 6
+    },
+    {
+      "subject": "Excess deferrals",
+      "relation": "HAS_RULE",
+      "object": "Corrective distributions of excess deferrals (including any earnings) are reported to you by the plan on Form 1099-R.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 6
+    },
+    {
+      "subject": "SIMPLE 401(k)",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": "separate, smaller limits",
+      "text": null,
+      "why": "no tax year",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 7
+    },
+    {
+      "subject": "401(k)",
+      "relation": "HAS_RULE",
+      "object": "Employer nonelective contribution",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": "Employer nonelective contributions are included in the annual additions limit.",
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 7
+    },
+    {
+      "subject": "401(k)",
+      "relation": "HAS_RULE",
+      "object": "Allocation of forfeitures",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": "Allocations of forfeitures are included in the annual additions limit.",
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 7
+    },
+    {
+      "subject": "401(k)",
+      "relation": "HAS_RULE",
+      "object": "Elective deferral",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": "Elective deferrals are included in the annual additions limit but catch-up contributions are not included in the elective deferrals limit.",
+      "why": "concept isn't in the list",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 7
+    },
+    {
+      "subject": "Annual contribution limit",
+      "relation": "HAS_LIMIT",
+      "object": "Catch-up contribution",
+      "tax_year": 2026,
+      "dollars": 1100.0,
+      "condition": "if you're age 50 or older",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Annual contribution limit",
+      "relation": "HAS_LIMIT",
+      "object": "Catch-up contribution",
+      "tax_year": 2025,
+      "dollars": 1000.0,
+      "condition": "if you're age 50 or older",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Annual contribution limit",
+      "relation": "HAS_LIMIT",
+      "object": "Catch-up contribution",
+      "tax_year": 2024,
+      "dollars": 1000.0,
+      "condition": "if you're age 50 or older",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Annual contribution limit",
+      "relation": "HAS_LIMIT",
+      "object": "Catch-up contribution",
+      "tax_year": 2023,
+      "dollars": 1000.0,
+      "condition": "if you're age 50 or older",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Qualified reservist repayments",
+      "relation": "HAS_RULE",
+      "object": "Annual contribution limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": "The IRA contribution limit does not apply to qualified reservist repayments",
+      "why": "concept isn't in the list",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Traditional IRA",
+      "relation": "HAS_RULE",
+      "object": "The deduction may be limited if you or your spouse is covered by a retirement plan at work and your income exceeds certain levels.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 1
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_LIMIT",
+      "object": "Income limit",
+      "tax_year": 2024,
+      "dollars": null,
+      "condition": "based on your filing status and income",
+      "text": null,
+      "why": "no amount",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 2
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": 2024,
+      "dollars": null,
+      "condition": "general contribution limit that applies to both Roth and traditional IRAs",
+      "text": null,
+      "why": "no amount",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 2
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": 2023,
+      "dollars": null,
+      "condition": "general contribution limit that applies to both Roth and traditional IRAs",
+      "text": null,
+      "why": "no amount",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 2
+    },
+    {
+      "subject": "Traditional IRA",
+      "relation": "HAS_RULE",
+      "object": "if you're 70 1/2 or older, you can't make a regular contribution to a traditional IRA for 2019 and earlier",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_RULE",
+      "object": "you can still contribute to a Roth IRA regardless of your age for 2019 and earlier",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Traditional IRA",
+      "relation": "HAS_RULE",
+      "object": "you can make rollover contributions to a traditional IRA regardless of your age for 2019 and earlier",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_RULE",
+      "object": "you can make rollover contributions to a Roth IRA regardless of your age for 2019 and earlier",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Traditional IRA",
+      "relation": "HAS_RULE",
+      "object": "there is no age limit on making regular contributions to traditional IRA for 2020 and later",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_RULE",
+      "object": "there is no age limit on making regular contributions to Roth IRA for 2020 and later",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "IRA",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": "if you file a joint return and your spouse had taxable compensation",
+      "text": null,
+      "why": "no tax year",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 4
+    },
+    {
+      "subject": "Traditional IRA",
+      "relation": "HAS_RULE",
+      "object": "you may not be able to deduct all of your traditional IRA contributions if you or your spouse participates in another retirement plan at work",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_LIMIT",
+      "object": "Income limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "no tax year",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Excess IRA contribution",
+      "relation": "HAS_RULE",
+      "object": "Withdrawals",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": "To avoid the 6% tax on excess contributions, you must withdraw the excess contributions from your IRA by the due date of your individual income tax return (including extensions); and any income earned on the excess contribution.",
+      "why": "concept isn't in the list",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 7
+    },
+    {
+      "subject": "Traditional IRA",
+      "relation": "HAS_RULE",
+      "object": "Required minimum distribution",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "a rule with no text",
+      "source": "irs-roth-comparison-chart",
+      "chunk_index": 1
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_RULE",
+      "object": "No requirement to start taking distributions while owner is alive",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-roth-comparison-chart",
+      "chunk_index": 1
+    },
+    {
+      "subject": "Pre-tax 401(k)",
+      "relation": "IS_A",
+      "object": "401(k)",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "a concept related to itself",
+      "source": "irs-roth-comparison-chart",
+      "chunk_index": 1
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_RULE",
+      "object": "You cannot deduct contributions to a Roth IRA.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-roth-iras",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_RULE",
+      "object": "If you satisfy the requirements, qualified distributions are tax-free.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-roth-iras",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_RULE",
+      "object": "You can make contributions to your Roth IRA after you reach age 70 ½.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-roth-iras",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_RULE",
+      "object": "You can leave amounts in your Roth IRA as long as you live.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-roth-iras",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_RULE",
+      "object": "The account or annuity must be designated as a Roth IRA when it is set up.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-roth-iras",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": "The same combined contribution limit applies to all of your Roth and traditional IRAs.",
+      "text": null,
+      "why": "no tax year",
+      "source": "irs-roth-iras",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_LIMIT",
+      "object": "Income limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "no tax year",
+      "source": "irs-roth-iras",
+      "chunk_index": 1
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": 2023,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "no amount",
+      "source": "irs-roth-iras",
+      "chunk_index": 1
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": 2024,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "no amount",
+      "source": "irs-roth-iras",
+      "chunk_index": 1
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_LIMIT",
+      "object": "Income limit",
+      "tax_year": 2022,
+      "dollars": null,
+      "condition": "if you (or your spouse if filing jointly) have taxable compensation and your modified adjusted gross income is below certain amounts",
+      "text": null,
+      "why": "no amount",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 2
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_LIMIT",
+      "object": "Income limit",
+      "tax_year": 2023,
+      "dollars": null,
+      "condition": "if you (or your spouse if filing jointly) have taxable compensation and your modified adjusted gross income is below certain amounts",
+      "text": null,
+      "why": "no amount",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 2
+    },
+    {
+      "subject": "Annual contribution limit",
+      "relation": "HAS_LIMIT",
+      "object": "Income limit",
+      "tax_year": 2021,
+      "dollars": 6000.0,
+      "condition": "if you’re not age 50 or older by the end of the year",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Annual contribution limit",
+      "relation": "HAS_LIMIT",
+      "object": "Income limit",
+      "tax_year": 2022,
+      "dollars": 6000.0,
+      "condition": "if you’re not age 50 or older by the end of the year",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Annual contribution limit",
+      "relation": "HAS_LIMIT",
+      "object": "Income limit",
+      "tax_year": 2023,
+      "dollars": 6500.0,
+      "condition": "if you’re not age 50 or older by the end of the year",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Annual contribution limit",
+      "relation": "HAS_LIMIT",
+      "object": "Income limit",
+      "tax_year": 2024,
+      "dollars": 7000.0,
+      "condition": "if you’re not age 50 or older by the end of the year",
+      "text": null,
+      "why": "year and amount are too far apart",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Required minimum distribution",
+      "relation": "HAS_RULE",
+      "object": "You must start taking distributions by April 1 following the year in which you turn age 72 (70 1/2 if you reach the age of 70 ½ before Jan. 1, 2020) and by December 31 of later years.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 8
+    },
+    {
+      "subject": "Withdrawals",
+      "relation": "HAS_RULE",
+      "object": "Any deductible contributions and earnings you withdraw or that are distributed from your traditional IRA are taxable.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 8
+    },
+    {
+      "subject": "Withdrawals",
+      "relation": "HAS_RULE",
+      "object": "if you are under age 59 ½ you may have to pay an additional 10% tax for early withdrawals unless you qualify for an exception.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 8
+    },
+    {
+      "subject": "Withdrawals",
+      "relation": "HAS_RULE",
+      "object": "Any deductible contributions and earnings you withdraw or that are distributed from your traditional IRA are taxable.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 10
+    },
+    {
+      "subject": "Withdrawals",
+      "relation": "HAS_RULE",
+      "object": "if you are under age 59 ½ you may have to pay an additional 10% tax for early withdrawals unless you qualify for an exception.",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 10
+    },
+    {
+      "subject": "20%",
+      "relation": "IS_A",
+      "object": "Percentage_of_budget",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "unfcu-50-30-20",
+      "chunk_index": 5
+    },
+    {
+      "subject": "paying down debt",
+      "relation": "ALTERNATIVE_TO",
+      "object": "retirement account",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "unfcu-50-30-20",
+      "chunk_index": 5
+    }
+  ],
+  "unknown_names": {
+    "20%": 1,
+    "403(b)": 2,
+    "All of your deposits in the same ownership category in the same FDIC-insured bank are added together for the purpose of determining FDIC deposit insurance coverage": 1,
+    "Allocate your investments among different kinds of assets.": 1,
+    "Allocation of forfeitures": 1,
+    "Any deductible contributions and earnings you withdraw or that are distributed from your traditional IRA are taxable.": 2,
+    "Assuming an expected rate of return of 9%, your investment will double in value about every 8 years (72 divided by 9 equals 8).": 1,
+    "At the end of the second year, you'll have $110.25.": 1,
+    "Balance": 2,
+    "Certain Retirement Accounts": 1,
+    "Compound interest is the interest you earn on interest.": 1,
+    "Corrective distributions of excess deferrals (including any earnings) are reported to you by the plan on Form 1099-R.": 1,
+    "Don’t put all your eggs in one basket.": 1,
+    "ETF": 3,
+    "Earnings on the excess deferrals are taxed in the year distributed.": 1,
+    "Elective deferral": 1,
+    "Employer nonelective contribution": 1,
+    "Estimation method": 1,
+    "Even if you never add another dime to that account, in 10 years you'll have more than $162 thanks to the power of compound interest.": 1,
+    "Excess IRA contribution": 1,
+    "Excess deferrals": 6,
+    "Excess deferrals for 2020 that are withdrawn by April 15, 2021, are includable in your gross income for 2020.": 1,
+    "Hold a number of different stocks or bonds.": 1,
+    "If the entire deferral is allowed to stay in the plan, the plan may not be a qualified plan.": 1,
+    "If you are a manager, owner, or highly compensated employee, your plan might need to limit your deferrals to pass nondiscrimination tests.": 1,
+    "If you exceed the deferral limit for 2020, you must distribute the excess deferrals by April 15, 2021.": 1,
+    "If you have $100 and it earns 5% interest each year, you'll have $105 at the end of the first year.": 1,
+    "If you know the interest rate, the Rule of 72 can tell you approximately how long it will take for your investment to double in value.": 1,
+    "If you satisfy the requirements, qualified distributions are tax-free.": 1,
+    "In 25 years you'll have almost $340.": 1,
+    "Individual Retirement Accounts (IRAs)": 3,
+    "Interest": 1,
+    "Invest in different industry sectors.": 1,
+    "Investment company": 2,
+    "It is up to you to monitor your deferrals to make sure that they do not exceed the applicable limits.": 1,
+    "No requirement to start taking distributions while owner is alive": 1,
+    "Not only did you earn $5 on the initial $100 deposit, you also earned $0.25 on the $5 in interest.": 1,
+    "Percentage_of_budget": 1,
+    "Private student loan": 1,
+    "Qualified reservist repayments": 1,
+    "Rule of 72": 5,
+    "SARSEP IRA plans": 2,
+    "SIMPLE IRA plans": 2,
+    "Simply divide the number 72 by your investment’s expected rate of return (interest rate).": 1,
+    "Spread your investments within each asset class.": 1,
+    "Strategy": 1,
+    "The Rule of 72 is a great way to estimate how your investment will grow over time.": 1,
+    "The account or annuity must be designated as a Roth IRA when it is set up.": 1,
+    "The deduction may be limited if you or your spouse is covered by a retirement plan at work and your income exceeds certain levels.": 1,
+    "The distribution is not subject to the additional 10% tax on early distributions.": 1,
+    "You can leave amounts in your Roth IRA as long as you live.": 1,
+    "You can make contributions to your Roth IRA after you reach age 70 ½.": 1,
+    "You cannot deduct contributions to a Roth IRA.": 1,
+    "You must start taking distributions by April 1 following the year in which you turn age 72 (70 1/2 if you reach the age of 70 ½ before Jan. 1, 2020) and by December 31 of later years.": 1,
+    "Your plan's terms may impose a lower limit on elective deferrals.": 1,
+    "if you are under age 59 ½ you may have to pay an additional 10% tax for early withdrawals unless you qualify for an exception.": 2,
+    "if you're 70 1/2 or older, you can't make a regular contribution to a traditional IRA for 2019 and earlier": 1,
+    "paying down debt": 1,
+    "there is no age limit on making regular contributions to Roth IRA for 2020 and later": 1,
+    "there is no age limit on making regular contributions to traditional IRA for 2020 and later": 1,
+    "you can make rollover contributions to a Roth IRA regardless of your age for 2019 and earlier": 1,
+    "you can make rollover contributions to a traditional IRA regardless of your age for 2019 and earlier": 1,
+    "you can still contribute to a Roth IRA regardless of your age for 2019 and earlier": 1,
+    "you may not be able to deduct all of your traditional IRA contributions if you or your spouse participates in another retirement plan at work": 1,
+    "you may qualify for more than $250,000 in FDIC deposit insurance coverage if you deposit money in accounts that are in different ownership categories": 1
+  },
+  "conflicts": [
+    {
+      "kept": {
+        "src": "catch-up-contribution",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 800000,
+          "condition": "for employees aged 50 or over at the end of the calendar year participating in traditional and safe harbor 401(k) plans"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 4
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "other": {
+        "src": "catch-up-contribution",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 1125000,
+          "condition": "for employees aged 60, 61, 62 or 63 participating in traditional and safe harbor 401(k) plans"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 4
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "catch-up-contribution",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 800000,
+          "condition": "for employees aged 50 or over at the end of the calendar year participating in traditional and safe harbor 401(k) plans"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 4
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "other": {
+        "src": "catch-up-contribution",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 400000,
+          "condition": "for employees aged 50 or over at the end of the calendar year participating in SIMPLE 401(k) plans"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 4
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "catch-up-contribution",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 800000,
+          "condition": "for employees aged 50 or over at the end of the calendar year participating in traditional and safe harbor 401(k) plans"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 4
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "other": {
+        "src": "catch-up-contribution",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 525000,
+          "condition": "for employees aged 60, 61, 62 or 63 participating in SIMPLE 401(k) plans"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 4
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "catch-up-contribution",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 650000,
+          "condition": "for individuals over 50"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 5
+        },
+        "valid_from": "2020-01-01",
+        "valid_to": "2021-01-01"
+      },
+      "other": {
+        "src": "catch-up-contribution",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 2600000,
+          "condition": "for individuals over 50 participating in plans of different employers"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 5
+        },
+        "valid_from": "2020-01-01",
+        "valid_to": "2021-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 7200000,
+          "condition": "lesser of 100% of the participant's compensation or $72,000"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 7
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 8000000,
+          "condition": "lesser of 100% of the participant's compensation or $80,000 including catch-up contributions"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 7
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 7200000,
+          "condition": "lesser of 100% of the participant's compensation or $72,000"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 7
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 8325000,
+          "condition": "lesser of 100% of the participant's compensation or $83,250 for those age 60 to 63"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 7
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_RULE",
+        "dst": "catch-up-contribution",
+        "value": {
+          "text": "Catch-up contributions are not included in the overall limit on contributions to a participant’s account."
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2000-01-01",
+        "valid_to": null
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_RULE",
+        "dst": "catch-up-contribution",
+        "value": {
+          "text": "Catch-up contributions are not included in the $72,000 limit but are included in the $80,000 limit."
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 7
+        },
+        "valid_from": "2000-01-01",
+        "valid_to": null
+      }
+    },
+    {
+      "kept": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 350000,
+          "condition": "for individuals with compensation of $3,500 or less"
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 6
+        },
+        "valid_from": "2020-01-01",
+        "valid_to": "2021-01-01"
+      },
+      "other": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 600000,
+          "condition": "for individuals aged 42"
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 6
+        },
+        "valid_from": "2020-01-01",
+        "valid_to": "2021-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 350000,
+          "condition": "for individuals with compensation of $3,500 or less"
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 6
+        },
+        "valid_from": "2020-01-01",
+        "valid_to": "2021-01-01"
+      },
+      "other": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 700000,
+          "condition": "for individuals aged 50 and over"
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 6
+        },
+        "valid_from": "2020-01-01",
+        "valid_to": "2021-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "contribution-limit",
+        "rel": "HAS_LIMIT",
+        "dst": "income-limit",
+        "value": {
+          "cents": 650000,
+          "condition": "if less, your taxable compensation for the year"
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2023-01-01",
+        "valid_to": "2024-01-01"
+      },
+      "other": {
+        "src": "contribution-limit",
+        "rel": "HAS_LIMIT",
+        "dst": "income-limit",
+        "value": {
+          "cents": 750000,
+          "condition": "if you’re age 50 or older by the end of the year"
+        },
+        "evidence": {
+          "source": "irs-traditional-and-roth-iras",
+          "chunk_index": 5
+        },
+        "valid_from": "2023-01-01",
+        "valid_to": "2024-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "contribution-limit",
+        "rel": "HAS_LIMIT",
+        "dst": "income-limit",
+        "value": {
+          "cents": 700000,
+          "condition": "if less, your taxable compensation for the year"
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2024-01-01",
+        "valid_to": "2025-01-01"
+      },
+      "other": {
+        "src": "contribution-limit",
+        "rel": "HAS_LIMIT",
+        "dst": "income-limit",
+        "value": {
+          "cents": 800000,
+          "condition": "if you’re age 50 or older by the end of the year"
+        },
+        "evidence": {
+          "source": "irs-traditional-and-roth-iras",
+          "chunk_index": 5
+        },
+        "valid_from": "2024-01-01",
+        "valid_to": "2025-01-01"
+      }
+    }
+  ],
+  "failed_chunks": [
+    "fdic-deposit-insurance-3",
+    "irs-roth-comparison-chart-0"
+  ],
+  "kept": 122
+}

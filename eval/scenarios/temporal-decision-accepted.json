@@ -1,0 +1,64 @@
+{
+  "id": "temporal-decision-accepted",
+  "author": "claude",
+  "today": "2026-11-06",
+  "tags": [
+    "temporal",
+    "needs_graph"
+  ],
+  "question": "Did I accept the proposal to raise my entertainment budget?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2400.0
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 3,
+        "amount": 42.1,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Chipotle"
+      }
+    ],
+    "advice": [
+      {
+        "day": "2026-10-04",
+        "category": "ENTERTAINMENT",
+        "action": "adjust_next_budget",
+        "message": "Your new club repeats monthly, so I propose raising the entertainment limit to $200.",
+        "decision": "accepted"
+      }
+    ]
+  },
+  "golden_answer": "Yes, you accepted raising your entertainment limit to $200 in October. This is general information, not financial advice.",
+  "expect": {
+    "facts": [
+      {
+        "text": "accepted"
+      },
+      {
+        "number": 200,
+        "tol": 0
+      }
+    ],
+    "forbid": [
+      "http"
+    ],
+    "tools": [],
+    "allowed_tools": [
+      "get_history"
+    ],
+    "sources": [],
+    "temporal": {
+      "right": [
+        "October"
+      ],
+      "wrong": []
+    }
+  }
+}

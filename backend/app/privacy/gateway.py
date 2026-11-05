@@ -23,7 +23,7 @@ from .scrub import scrub_account_name, scrub_merchant, scrub_note
 # rows are built field by field from these allowlists, never by serializing a model object,
 # so a column added later can't leak by accident.
 
-Purpose = Literal["accounts", "debts", "spending", "diagnose", "debt_plan", "goals", "recurring", "cash_flow"]
+Purpose = Literal["accounts", "debts", "spending", "diagnose", "debt_plan", "goals", "recurring", "cash_flow", "graph"]
 
 ACCOUNT_FIELDS = ("name", "type", "subtype", "balance", "available", "limit")
 DEBT_FIELDS = ("name", "kind", "apr", "balance", "min_payment", "next_due_date")
@@ -66,6 +66,50 @@ def _dollars(cents: Optional[int]) -> Optional[float]:
     return None if cents is None else round(cents / 100, 2)
 
 
+# the graph's facts for one category, with the spending allowlist: scrubbed merchants, dollars, no account details
+def _graph_facts(g: dict) -> dict:
+    return {
+        "merchants": [{"merchant": scrub_merchant(m["merchant"]), "months_active_in_last_13": m["months_active"],
+                       "first_seen": m["first_seen"], "active_same_month_last_year": m["active_same_month_last_year"]}
+                      for m in g["merchants"]],
+        "same_month_last_year_total": _dollars(g["same_month_last_year_cents"]),
+        "rule_moves": [{"merchant": scrub_merchant(r["merchant"]), "since": r["since"], "moved": _dollars(r["moved_cents"])}
+                       for r in g["rule_moves"]],
+        "price_changes": [{"merchant": scrub_merchant(p["merchant"]), "from": _dollars(p["from_cents"]),
+                           "to": _dollars(p["to_cents"]), "since": p["since"]} for p in g["price_changes"]],
+        "advice_history": g["advice_history"],
+        "related_guidance": g["related_guidance"],
+    }
+
+
+# written by code: given the bare days, a small model left out the bill or said "you won't run short" (tpc-27)
+def _cash_summary(result, buffer_cents: int, bill: Optional[str]) -> str:
+    if not result.days:
+        return "No forecast is available."
+    money = lambda cents: f"${cents / 100:,.2f}"
+    low, high = min(d.low_cents for d in result.days), max(d.high_cents for d in result.days)
+    text = f"Your checking balance ranges from {money(low)} to {money(high)} over the forecast."
+    if result.dip is not None:
+        at_dip = next((d.low_cents for d in result.days if d.date == result.dip.date), low)
+        text += (f" You could run short: it reaches {money(at_dip)} on {result.dip.date}, below your "
+                 f"{money(buffer_cents)} buffer. The dip comes from {bill}.")
+    else:
+        text += f" It stays above your {money(buffer_cents)} buffer."
+    if result.income == "none":
+        text += " This assumes no income, because none was found."
+    return text
+
+
+# the one_time rule, worked out here because the model called a 35% purchase one_time against "above 0.5" (tpc-46):
+# most of the spending at a merchant that's new or occasional, or far above what that merchant usually comes to
+def _looks_one_time(facts: OverspendFacts) -> bool:
+    largest = facts.largest
+    if largest is None:
+        return False
+    pattern = next((m.pattern for m in facts.merchants if m.merchant == largest.merchant), None)
+    return (facts.largest_share > 0.5 and pattern in ("new", "occasional")) or (facts.largest_vs_typical or 0) >= 2
+
+
 def _month_name(d: date) -> str:
     return d.strftime("%B %Y")
 
@@ -98,7 +142,8 @@ class PrivacyGateway:
                       extra_monthly_cents: Optional[int] = None, strategy: Optional[str] = None,
                       goal_facts: Optional[GoalFacts] = None,
                       goal_debts: Optional[Sequence[Debt]] = None,
-                      signal: Optional[Signal] = None) -> str:
+                      signal: Optional[Signal] = None,
+                      graph_user: Sequence = (), graph_as_of: Optional[date] = None) -> str:
         if purpose == "diagnose":
             data = self._diagnose(facts, transactions or [])
             data["this_month_alerts"] = [{k: a.get(k) for k in ALERT_MEMORY_FIELDS} for a in this_month_alerts]
@@ -118,6 +163,8 @@ class PrivacyGateway:
             data = self._recurring(signal)
         elif purpose == "cash_flow":
             data = self._cash_flow(signal)
+        elif purpose == "graph":
+            data = {"as_of": graph_as_of.isoformat(), "facts": [f.line for f in graph_user]}
         else:
             raise ValueError(f"unknown purpose: {purpose}")
 
@@ -133,18 +180,31 @@ class PrivacyGateway:
             self._goal_cap_cents = goal_facts.cap_cents
         return prompt
 
+    # what the graph says about a question (tpc-39). facts about the user go through build_context, so they're scrubbed
+    # and audited. guidance is public text and skips it, like search_kb
+    def graph_retrieve(self, question: str, relation: Optional[str] = None, *, history: bool = False) -> dict:
+        from ..kg.retrieve import gather
+        found = gather(self._session, self._user_id, question, self.today(), scrub=scrub_merchant, relation=relation,
+                       history=history)
+        if found.user:
+            self.build_context("graph", graph_user=found.user, graph_as_of=found.as_of)
+        return {"as_of": found.as_of.isoformat(), "facts": [f.line for f in (*found.user, *found.guidance)]}
+
     def _cash_flow(self, signal: Optional[Signal]) -> dict:
         if signal is None:
             from ..budget_service.forecast_service import snapshot
             snap = snapshot(self._session, self._user_id, self.today())
             r = snap.result
+            bill = None if r.dip is None else ("credit card minimum" if r.dip.cause and r.dip.cause.source == "card_min"
+                                               else scrub_merchant(r.dip.cause.name) if r.dip.cause
+                                               else "Everyday spending")
             return {"status": r.status, "income": r.income, "buffer": _dollars(snap.buffer_cents),
+                    "summary": _cash_summary(r, snap.buffer_cents, bill),
                     "monthly_surplus": _dollars(r.monthly_surplus_cents), "assumed_no_income": r.income == "none",
                     "days": [{"date": d.date, "low": _dollars(d.low_cents), "expected": _dollars(d.expected_cents),
                               "high": _dollars(d.high_cents)} for d in r.days],
                     "dip": None if r.dip is None else {"date": r.dip.date, "shortfall": _dollars(r.dip.shortfall_cents),
-                        "bill": "credit card minimum" if r.dip.cause and r.dip.cause.source == "card_min" else
-                                scrub_merchant(r.dip.cause.name) if r.dip.cause else "Everyday spending"}}
+                                                       "bill": bill}}
         n = signal.numbers
         return {"date": n["date"], "days_ahead": n["days_ahead"], "shortfall": _dollars(n["shortfall_cents"]),
                 "buffer": _dollars(n["buffer_cents"]), "bill": scrub_merchant(n["bill"]),
@@ -221,17 +281,28 @@ class PrivacyGateway:
         if strategy is not None and strategy not in STRATEGIES:
             raise ValueError(f"unknown strategy: {strategy}")
         debts = load_debts(self._session, self._user_id)
-        start = add_months(month_start(_today()), 1)
+        start = add_months(month_start(self.today()), 1)
         plans = compare(debts, extra_monthly_cents, start=start)
         names = {d.key: scrub_account_name(d.name) for d in debts}
         month = lambda d: d.strftime("%Y-%m") if d else None
         # an unpaid debt's interest summed over 600 months runs to billions: there's no total to quote
         interest = lambda p: _dollars(p.total_interest_cents) if p.months is not None else None
 
+        # written by code: given the bare fields, a small model left out the total interest on 2 runs of 3 (tpc-48)
+        def summary(p: Plan, base: Plan, ends: bool) -> str:
+            if p.months is None:
+                return "This plan doesn't finish paying off every debt."
+            text = f"{p.months} months to debt-free, ${_dollars(p.total_interest_cents):,.2f} total interest."
+            if ends and extra_monthly_cents:
+                text += (f" The extra saves {base.months - p.months} months and "
+                         f"${_dollars(base.total_interest_cents - p.total_interest_cents):,.2f} in interest.")
+            return text
+
         def plan(p: Plan, base: Plan) -> dict:
             ends = p.months is not None and base.months is not None
             return {
-                "strategy": p.strategy, "months": p.months, "debt_free": month(p.debt_free),
+                "strategy": p.strategy, "summary": summary(p, base, ends), "months": p.months,
+                "debt_free": month(p.debt_free),
                 "total_interest": interest(p),
                 "order": [{"name": names[o.key], "paid_off": month(o.date), "interest": _dollars(o.interest_cents)}
                           for o in p.order],
@@ -339,7 +410,7 @@ class PrivacyGateway:
                       reverse=True)[:TXN_LIMIT_DIAGNOSE]
         n = len(facts.monthly_totals)
         largest = facts.largest
-        return {
+        data = {
             "category": facts.category, "reason": facts.reason, "kind": facts.kind,
             "month": _month_name(facts.month), "limit": _dollars(facts.limit_cents),
             "spent": _dollars(facts.spent_cents),
@@ -349,7 +420,8 @@ class PrivacyGateway:
             "largest": None if largest is None else {
                 "date": largest.date, "amount": _dollars(largest.amount_cents),
                 "merchant": scrub_merchant(largest.merchant), "share_of_spent": round(facts.largest_share, 2),
-                "times_typical": None if facts.largest_vs_typical is None else round(facts.largest_vs_typical, 1)},
+                "times_typical": None if facts.largest_vs_typical is None else round(facts.largest_vs_typical, 1),
+                "looks_one_time": _looks_one_time(facts)},
             "merchants": [{"merchant": scrub_merchant(m.merchant), "this_month": _dollars(m.period_cents),
                            "charges": m.charges, "months_seen_before": m.prior_months, "pattern": m.pattern,
                            "typical": _dollars(m.typical_cents)} for m in facts.merchants],
@@ -359,6 +431,10 @@ class PrivacyGateway:
             "transactions": [{"date": t.date, "amount": _dollars(t.amount_cents),
                               "merchant": scrub_merchant(t.merchant)} for t in rows],
         }
+        # absent, not empty, with the graph off: the prompt stays byte-identical
+        if facts.graph_facts is not None:
+            data["graph_facts"] = _graph_facts(facts.graph_facts)
+        return data
 
     # append-only record of exactly what left the system; pseudonym only, never the user id
     def _audit(self, purpose: str, params: dict, prompt: str) -> None:

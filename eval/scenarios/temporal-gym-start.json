@@ -1,0 +1,91 @@
+{
+  "id": "temporal-gym-start",
+  "author": "claude",
+  "today": "2026-11-06",
+  "tags": [
+    "temporal",
+    "needs_graph"
+  ],
+  "question": "When did my gym membership start?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2400.0
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 154,
+        "amount": 40.0,
+        "category": "PERSONAL_CARE",
+        "merchant": "FitClub Gym"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 124,
+        "amount": 40.0,
+        "category": "PERSONAL_CARE",
+        "merchant": "FitClub Gym"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 93,
+        "amount": 40.0,
+        "category": "PERSONAL_CARE",
+        "merchant": "FitClub Gym"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 62,
+        "amount": 40.0,
+        "category": "PERSONAL_CARE",
+        "merchant": "FitClub Gym"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 32,
+        "amount": 40.0,
+        "category": "PERSONAL_CARE",
+        "merchant": "FitClub Gym"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 1,
+        "amount": 40.0,
+        "category": "PERSONAL_CARE",
+        "merchant": "FitClub Gym"
+      }
+    ]
+  },
+  "golden_answer": "Your FitClub Gym membership started in June 2026, with the first $40 charge on June 5. This is general information, not financial advice.",
+  "expect": {
+    "facts": [
+      {
+        "text": "June"
+      }
+    ],
+    "forbid": [
+      "http"
+    ],
+    "tools": [],
+    "allowed_tools": [
+      "get_recurring",
+      "get_spending",
+      "get_history"
+    ],
+    "sources": [],
+    "temporal": {
+      "right": [
+        "June"
+      ],
+      "wrong": [
+        "May",
+        "July"
+      ]
+    }
+  }
+}

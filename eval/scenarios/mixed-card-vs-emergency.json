@@ -1,19 +1,65 @@
 {
-  "id": "mixed-card-vs-emergency", "tags": ["high_interest_debt"],
+  "id": "mixed-card-vs-emergency",
+  "tags": [
+    "high_interest_debt",
+    "graph_unsuited"
+  ],
   "question": "Should I pay down my credit card or build an emergency fund first?",
   "user": {
     "accounts": [
-      {"name": "Everyday Checking", "type": "depository", "subtype": "checking", "balance": 1450.00},
-      {"name": "Jane Doe's Savings", "type": "depository", "subtype": "savings", "balance": 900.00},
-      {"name": "Rewards Card", "type": "credit", "subtype": "credit card", "balance": 2600.00,
-       "liability": {"kind": "credit", "apr": 22.0, "min_payment": 78.00, "due_in_days": 9}}
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 1450.0
+      },
+      {
+        "name": "Jane Doe's Savings",
+        "type": "depository",
+        "subtype": "savings",
+        "balance": 900.0
+      },
+      {
+        "name": "Rewards Card",
+        "type": "credit",
+        "subtype": "credit card",
+        "balance": 2600.0,
+        "liability": {
+          "kind": "credit",
+          "apr": 22.0,
+          "min_payment": 78.0,
+          "due_in_days": 9
+        }
+      }
     ],
     "transactions": []
   },
   "golden_answer": "Do both, in order: keep a small starter emergency fund so a surprise expense doesn't go back on the card, then put extra money toward the Rewards Card. At 22% APR on $2,600 the card costs more in interest than savings earn, and you have $900 in savings today. Once the card is paid off, grow the emergency fund toward a few months of expenses. This is general information, not financial advice.",
   "expect": {
-    "facts": [{"number": 2600, "tol": 1}, {"number": 900, "tol": 1}],
-    "forbid": ["Jane", "http"],
-    "tools": ["get_debts", "get_accounts"]
+    "facts": [
+      {
+        "number": 2600,
+        "tol": 1
+      },
+      {
+        "number": 900,
+        "tol": 1
+      }
+    ],
+    "forbid": [
+      "Jane",
+      "http"
+    ],
+    "tools": [
+      "get_debts",
+      "get_accounts"
+    ],
+    "allowed_tools": [
+      "get_debts",
+      "plan_debt_payoff",
+      "get_accounts",
+      "search_kb",
+      "get_cash_forecast"
+    ]
   }
 }

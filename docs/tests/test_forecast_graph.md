@@ -83,3 +83,9 @@ These offline tests use explicit dates and integer cents. Database cases use a f
 **What it does:** Raises during diagnosis after forecasting and inspects the checkpoint file bytes for bill names and exception text.
 
 **Why it's there:** Covers a failure or calendar seam found in end-to-end review.
+
+## `plant_overspend` (helper)
+
+**What it does:** Adds a $400 entertainment purchase on the run date, used by `test_a_forecast_failure_does_not_stop_overspend_alerts`, `test_a_paused_checkpoint_holds_no_bill_name_or_balance` and `test_an_errored_run_never_writes_bill_payloads_to_the_checkpoint_file`.
+
+**Why it's there:** These tests used to rely on the `forecast-dip` user's monthly charges being flagged. Those were the false alarms TPC-45 removed, so the tests now plant a real overspend.

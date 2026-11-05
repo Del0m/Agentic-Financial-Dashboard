@@ -353,6 +353,7 @@ export type ChatTool = { name: string; args: Record<string, unknown>; ok: boolea
 
 export type ChatEvent =
   | { event: "sources"; data: { sources: ChatSource[] } }
+  | { event: "graph"; data: { used: boolean } }
   | { event: "tool_call"; data: { id: string; name: string; args: Record<string, unknown> } }
   | { event: "tool_result"; data: { id: string; name: string; ok: boolean } }
   | { event: "token"; data: { text: string } }
@@ -364,6 +365,7 @@ export type ChatTurn = {
   text: string;
   tools: ChatTool[];
   sources?: ChatSource[]; // assistant turns only
+  graph?: boolean; // assistant turns only: the answer used graph facts
 };
 
 // one chat turn: posts the message, then calls onEvent for each server-sent event as it arrives.

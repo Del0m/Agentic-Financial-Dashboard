@@ -1,7 +1,9 @@
 {
   "id": "debt-avalanche-vs-snowball",
   "tags": [
-    "high_interest_debt"
+    "high_interest_debt",
+    "graph_unsuited",
+    "debt_plan"
   ],
   "question": "With an extra $100 a month, should I use avalanche or snowball, and how long until I'm debt-free?",
   "user": {
@@ -56,6 +58,20 @@
     ],
     "tools": [
       "plan_debt_payoff"
-    ]
+    ],
+    "allowed_tools": [
+      "get_debts",
+      "plan_debt_payoff",
+      "get_accounts",
+      "search_kb"
+    ],
+    "tool_args": {
+      "plan_debt_payoff": {
+        "extra_monthly": [
+          100,
+          100.0
+        ]
+      }
+    }
   }
 }

@@ -111,3 +111,46 @@ def test_decide_messages_flag_escalation():
 def test_raise_unreachable():
     with pytest.raises(ConnectionError):
         invoke_structured(model(ConnectionError("down")), Diagnosis, diagnose_messages("{}"), raise_unreachable=True)
+
+
+# tpc-27: the resend can be switched off, and every try is counted
+def _bad_then_good(n_bad=1):
+    from langchain_core.messages import AIMessage as A
+    from tests.fakes import ScriptedChatModel
+    return ScriptedChatModel(replies=[A("not json")] * n_bad + [A('{"action": "alert", "message": "ok"}')])
+
+
+def test_resend_fires_and_is_counted():
+    from collections import Counter
+    from app.agents.budget_llm import Action, invoke_structured
+    stats = Counter()
+    assert invoke_structured(_bad_then_good(), Action, [], stats=stats).action == "alert"
+    assert stats == {"calls": 1, "retries": 1}
+
+
+def test_retries_off_makes_one_call(monkeypatch):
+    from collections import Counter
+    from app import config
+    from app.agents.budget_llm import Action, invoke_structured
+    monkeypatch.setattr(config, "RETRIES_ENABLED", False)
+    stats = Counter()
+    assert invoke_structured(_bad_then_good(), Action, [], stats=stats) is None
+    assert stats == {"calls": 1}
+
+
+# tpc-46: the model called a 35% purchase one_time, so code applies the rule and states the result
+@pytest.mark.parametrize("share, typical, pattern, expected", [
+    (0.35, None, "new", False), (0.51, None, "new", True), (0.5, None, "new", False), (0.51, None, "occasional", True),
+    (0.9, None, "started_recently", False), (0.9, 1.5, "regular", False), (0.3, 2.0, "regular", True), (0.3, 1.9, "regular", False),
+])
+def test_looks_one_time(share, typical, pattern, expected):
+    from datetime import date as Date
+    from app.budget_engine.diagnose import MerchantFact, OverspendFacts
+    from app.budget_engine.txns import Txn
+    from app.privacy.gateway import _looks_one_time
+    merchant = MerchantFact("Book Nook", 35, 1, 0, None, pattern)
+    facts = OverspendFacts(category="GENERAL_MERCHANDISE", reason="pace", kind="flexible", month=Date(2026, 12, 1), limit_cents=100, spent_cents=100,
+                           pace=2.0, days_elapsed=5, days_in_period=31, projected_cents=200,
+                           largest=Txn(Date(2026, 12, 5), 35, "GENERAL_MERCHANDISE", merchant="Book Nook"), largest_share=share,
+                           largest_vs_typical=typical, merchants=(merchant,), monthly_totals=(), outlier_months=())
+    assert _looks_one_time(facts) is expected

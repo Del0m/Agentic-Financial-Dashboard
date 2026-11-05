@@ -508,3 +508,58 @@ def test_abstain_accepts_saying_there_was_no_spending():
 def test_budget_lead_time_ignores_warnings_where_no_dip_was_planted():
     out = score_budget(budget_record(alerts=[alert(kind="low_balance", signal_days=1)]), budget_scenario())
     assert out["low_balance_days_ahead"] is None
+
+
+# tpc-27: tool choice and temporal correctness
+def _expect(**kw):
+    return Expect(facts=[], forbid=[], tools=kw.pop("tools", []), sources=[], **kw)
+
+
+def test_tool_choice_counts_missing_and_unlisted_tools():
+    from eval.metrics import tool_choice
+    e = _expect(tools=["get_debts"], allowed_tools=("get_debts", "search_kb"))
+    assert tool_choice(e, [{"name": "get_debts", "args": {}}])["names"] is True
+    assert tool_choice(e, [{"name": "get_debts", "args": {}}, {"name": "search_kb", "args": {}}])["names"] is True
+    assert tool_choice(e, [{"name": "search_kb", "args": {}}])["names"] is False
+    assert tool_choice(e, [{"name": "get_debts", "args": {}}, {"name": "get_accounts", "args": {}}])["names"] is False
+
+
+def test_tool_choice_irrelevance_and_unset_counts():
+    from eval.metrics import tool_choice
+    assert tool_choice(_expect(tools_none=True), [])["irrelevance"] is True
+    assert tool_choice(_expect(tools_none=True), [{"name": "x", "args": {}}])["irrelevance"] is False
+    assert tool_choice(_expect(), []) == {"names": None, "arguments": None, "irrelevance": None}
+
+
+def test_tool_choice_arguments():
+    from eval.metrics import tool_choice
+    e = _expect(tool_args={"get_spending": {"category": ("INCOME",)}})
+    assert tool_choice(e, [{"name": "get_spending", "args": {"category": "INCOME"}}])["arguments"] is True
+    assert tool_choice(e, [{"name": "get_spending", "args": {"category": "TRAVEL"}}])["arguments"] is False
+    assert tool_choice(e, [{"name": "get_debts", "args": {}}])["arguments"] is False
+
+
+def test_temporal_check_uses_whole_words():
+    from eval.fixtures import TemporalCheck
+    from eval.metrics import temporal_ok
+    e = _expect(temporal=TemporalCheck(("2024",), ("24,500", "May")))
+    assert temporal_ok("It was $23,000 in 2024.", e) is True
+    assert temporal_ok("It's $24,500 in 2024.", e) is False
+    assert temporal_ok("Maybe 2024.", e) is True
+    assert temporal_ok("It was $23,000.", e) is False
+    assert temporal_ok("anything", _expect()) is None
+
+
+def test_the_judge_sees_graph_facts_as_data_given():
+    from types import SimpleNamespace as NS
+    from eval.metrics import score_run
+    seen = []
+
+    class Judge:
+        def invoke(self, messages):
+            seen.append(messages[0].content)
+            return NS(content='{"coherent": 5, "consistent_with_data": 5, "safe": 5, "reason": "ok"}')
+    rec = record(answer="It began in June.")
+    rec.graph_facts = ["Charges at Gym: first in June 2026"]
+    score_run(rec, scenario(), embeddings=FakeEmbeddings([[1.0, 0.0], [1.0, 0.0]]), judge_model=Judge())
+    assert "first in June 2026" in seen[0]

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.agents.budget_graph import resume_budget_run, waiting_for
 from app.db.models import AdviceLog, AgentRun, Alert, PlaidItem
+from app.kg import project
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,8 @@ def decide_alert(session_factory, user_id: str, alert_id: int, decision: Decisio
             raise AlertAlreadyDecided(alert_id)
         for row in s.scalars(select(AdviceLog).where(AdviceLog.alert_id == alert_id)):
             row.outcome = decision
+        # the pending belief stays in the graph's history, and the decision replaces it (tpc-36)
+        project.safely(s, "decide_alert", lambda: project.project_advice(s, user_id))
         s.commit()
         s.refresh(alert)
     if checkpointer is not None:

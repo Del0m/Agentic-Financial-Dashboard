@@ -1,14 +1,63 @@
 {
-  "id": "recurring-subscriptions", "tags": ["unused_subscription"],
+  "id": "recurring-subscriptions",
+  "tags": [
+    "unused_subscription",
+    "graph_suited"
+  ],
   "question": "What subscriptions do I have, and how much do I pay monthly?",
   "user": {
-    "accounts": [{"name": "Everyday Checking", "type": "depository", "subtype": "checking", "balance": 2150}],
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2150
+      }
+    ],
     "transactions": [
-      {"account": "Everyday Checking", "days_ago": 65, "amount": 15.49, "category": "ENTERTAINMENT", "merchant": "Streamly"},
-      {"account": "Everyday Checking", "days_ago": 35, "amount": 15.49, "category": "ENTERTAINMENT", "merchant": "Streamly"},
-      {"account": "Everyday Checking", "days_ago": 5, "amount": 15.49, "category": "ENTERTAINMENT", "merchant": "Streamly"}
+      {
+        "account": "Everyday Checking",
+        "days_ago": 65,
+        "amount": 15.49,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 35,
+        "amount": 15.49,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 5,
+        "amount": 15.49,
+        "category": "ENTERTAINMENT",
+        "merchant": "Streamly"
+      }
     ]
   },
   "golden_answer": "Streamly is a recurring monthly charge of $15.49. This is general information, not financial advice.",
-  "expect": {"facts": [{"text": "Streamly"}, {"number": 15.49, "tol": 0.01}], "tools": ["get_recurring"], "forbid": ["http"]}
+  "expect": {
+    "facts": [
+      {
+        "text": "Streamly"
+      },
+      {
+        "number": 15.49,
+        "tol": 0.01
+      }
+    ],
+    "tools": [
+      "get_recurring"
+    ],
+    "forbid": [
+      "http"
+    ],
+    "allowed_tools": [
+      "get_recurring",
+      "get_spending"
+    ]
+  }
 }

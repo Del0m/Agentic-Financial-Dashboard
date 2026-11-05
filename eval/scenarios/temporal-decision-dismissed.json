@@ -1,0 +1,60 @@
+{
+  "id": "temporal-decision-dismissed",
+  "author": "claude",
+  "today": "2026-11-06",
+  "tags": [
+    "temporal",
+    "needs_graph"
+  ],
+  "question": "What did I decide about the suggestion to cut back on coffee?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2400.0
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 3,
+        "amount": 42.1,
+        "category": "FOOD_AND_DRINK",
+        "merchant": "Chipotle"
+      }
+    ],
+    "advice": [
+      {
+        "day": "2026-09-12",
+        "category": "FOOD_AND_DRINK",
+        "action": "suggest_cuts",
+        "message": "Coffee shops are pushing food and drink over its limit. Cutting back on coffee would help.",
+        "decision": "dismissed"
+      }
+    ]
+  },
+  "golden_answer": "You dismissed the suggestion to cut back on coffee in September. This is general information, not financial advice.",
+  "expect": {
+    "facts": [
+      {
+        "text": "dismiss"
+      }
+    ],
+    "forbid": [
+      "http"
+    ],
+    "tools": [],
+    "allowed_tools": [
+      "get_history"
+    ],
+    "sources": [],
+    "temporal": {
+      "right": [
+        "September"
+      ],
+      "wrong": []
+    }
+  }
+}

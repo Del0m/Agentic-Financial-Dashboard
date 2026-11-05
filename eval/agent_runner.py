@@ -10,6 +10,7 @@ from app.agents.goal_graph import run_goals
 from app.budget_service.goal_prefs import set_goal_prefs
 from app.budget_service.simulate import advance_days
 from app.db.models import AgentRun, Alert
+from app.kg.guidance import load_guidance
 from eval.budget_users import profile_by_id, seed_profile
 from eval.fixtures import BudgetScenario, GoalScenario, temp_db
 
@@ -24,6 +25,8 @@ class BudgetRecord:
     flags: dict[str, str] = field(default_factory=dict)     # category -> the first day it was flagged
     alerts: list[dict] = field(default_factory=list)        # in the order written, each with the day of its run
     llm_failures: int = 0
+    llm_calls: int = 0
+    llm_retries: int = 0
     latency_s: float = 0.0
     error: Optional[str] = None
     kind: str = "budget"
@@ -66,7 +69,12 @@ def run_budget_once(scenario: BudgetScenario, *, model, audit_path: Path, run: i
         with temp_db() as Session:
             with Session() as s:
                 user_id = seed_profile(s, profile_by_id(scenario.profile), until=scenario.start)
-            seen = set()
+                # alerts seeded as history aren't this run's decisions
+                seen = set(s.scalars(select(Alert.id).where(Alert.user_id == user_id)))
+                # shared guidance for the diagnosis's related facts. the daily run backfills the user's own history
+                if config.KG_MODE == "on" and (config.KB_DIR / "graph.json").exists():
+                    load_guidance(s, config.KB_DIR / "graph.json")
+                    s.commit()
 
             def on_day(day: dict) -> None:
                 for category in day["flags"]:
@@ -84,7 +92,10 @@ def run_budget_once(scenario: BudgetScenario, *, model, audit_path: Path, run: i
             with Session() as s:
                 summaries = s.scalars(select(AgentRun.summary_json).where(AgentRun.user_id == user_id,
                                                                           AgentRun.graph == "budget"))
-                rec.llm_failures = sum((summary or {}).get("llm_failures", 0) for summary in summaries)
+                summaries = [summary or {} for summary in summaries]
+                rec.llm_failures = sum(summary.get("llm_failures", 0) for summary in summaries)
+                rec.llm_calls = sum(summary.get("llm_calls", 0) for summary in summaries)
+                rec.llm_retries = sum(summary.get("llm_retries", 0) for summary in summaries)
     except Exception as exc:
         rec.error = f"{type(exc).__name__}: {exc}"
         rec.latency_s = time.perf_counter() - start if start is not None else 0.0

@@ -4,7 +4,8 @@ import logging
 import sqlite3
 import sys
 import threading
-from dataclasses import asdict
+from collections import Counter
+from dataclasses import asdict, replace
 from datetime import date, timedelta
 from typing import Callable, Optional, TypedDict
 
@@ -16,14 +17,17 @@ from langgraph.types import Command, interrupt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.agents.budget_llm import (_RANK, Action, Diagnosis, decide_messages, decide_signal, diagnose_messages,
-                                  invoke_structured)
+from app.agents.budget_llm import (_RANK, Action, GraphDiagnosis, decide_messages, decide_signal, diagnose_messages,
+                                  diagnosis_schema, invoke_structured)
 from app.agents.budget_checkpoints import BudgetCheckpoints
 from app import config
 from app.agents.llm import get_chat_model
-from app.budget_engine.diagnose import overspend_facts, proposed_limit_cents
+from app.budget_engine.diagnose import OverspendFacts, overspend_facts, proposed_limit_cents
 from app.budget_engine.fit import HISTORY_MONTHS
-from app.budget_engine.pace import BudgetLine as EngineLine, PaceResult, evaluate
+from app import config
+from app.kg import project
+from app.kg.facts import cut_was_dismissed, graph_facts, has_content
+from app.budget_engine.pace import BudgetLine as EngineLine, PaceResult, evaluate, history_start
 from app.budget_engine.recurring import monthly_cents
 from app.budget_engine.signals import (SIGNAL_CAP, PreviousDip, Signal, cancel_limit, choose, fallback_message,
                                        low_balance_key, move_amount, rank_signals, repeat_decision)
@@ -67,6 +71,9 @@ class BudgetState(TypedDict, total=False):
     decisions: dict               # alert id -> accepted | dismissed, from the user
     waiting_for: list[int]
     llm_failures: int
+    llm_calls: int
+    llm_retries: int
+    graph_error: bool
     signals: list[dict]
     signal_actions: dict[str, dict]
     signals_error: Optional[str]
@@ -113,6 +120,16 @@ def _past_advice(s: Session, user_id: str, period_start: date, category: str) ->
         .limit(5)).all()
     return [{"month": p.start_date.strftime("%B %Y"), "action": a.action, "outcome": adv.outcome}
             for adv, a, p in rows]
+
+
+# never stops a diagnosis: without the graph's facts, the model still has the rest
+def _graph_facts_for(session_factory, user_id: str, facts: OverspendFacts, today: date) -> Optional[dict]:
+    try:
+        with session_factory() as s:
+            return graph_facts(s, user_id, facts.category, [m.merchant for m in facts.merchants], facts.month, today)
+    except Exception as exc:
+        logger.warning("graph facts failed: %s", type(exc).__name__)
+        return None
 
 
 def _label(category: str) -> str:
@@ -169,12 +186,21 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
         with session_factory() as s:
             period, txns = period_txns(s, state)
             lines = [EngineLine(ln.category, ln.kind, ln.limit_cents, ln.group) for ln in period.lines]
-            results = evaluate(lines, txns, today_of(state))
+            history = load_txns(s, state["user_id"], history_start(period.start_date),
+                                period.start_date - timedelta(days=1))
+            results = evaluate(lines, txns, today_of(state), history)
             by_cat = {r.category: r for r in results}
             for ln in period.lines:
                 ln.spent_cents, ln.last_pace = by_cat[ln.category].spent_cents, by_cat[ln.category].pace
             s.commit()
         return {"results": [asdict(r) for r in results]}
+
+    # deterministic, and it never stops the run: the next run heals a failed projection (tpc-36)
+    def update_graph(state: BudgetState) -> dict:
+        with session_factory() as s:
+            ok = project.safely(s, "update_graph", lambda: project.project_run(s, state["user_id"], today_of(state)))
+            s.commit()
+        return {} if ok else {"graph_error": True}
 
     def detect_overspend(state: BudgetState) -> dict:
         return {"flags": [r for r in state["results"] if r["flagged"]]}
@@ -305,7 +331,7 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             return {"signal_actions": actions, "signals_error": type(exc).__name__}
 
     def diagnose(state: BudgetState) -> dict:
-        facts, contexts, diagnoses, failures = {}, {}, {}, state.get("llm_failures", 0)
+        facts, contexts, diagnoses, failures, stats = {}, {}, {}, state.get("llm_failures", 0), Counter()
         with session_factory() as s:
             period, txns = period_txns(s, state)
             history = load_txns(s, state["user_id"], add_months(period.start_date, -HISTORY_MONTHS),
@@ -318,23 +344,28 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
         for flag in state["flags"]:
             cat = flag["category"]
             f = overspend_facts(PaceResult(**flag), fits.get(cat), txns, history, period.start_date, lined=lined)
+            if config.KG_MODE == "on":
+                found = _graph_facts_for(session_factory, state["user_id"], f, today_of(state))
+                f = replace(f, graph_facts=found if has_content(found) else None)
             facts[cat] = {**asdict(f), "proposed_limit_cents": proposed_limit_cents(f)}
             contexts[cat] = gateway.build_context("diagnose", facts=f, transactions=txns,
                                                   this_month_alerts=memory[cat][0], past_advice=memory[cat][1])
-            d = invoke_structured(model, Diagnosis, diagnose_messages(contexts[cat]))
+            d = invoke_structured(model, diagnosis_schema(contexts[cat]), diagnose_messages(contexts[cat]), stats=stats)
             diagnoses[cat] = d.model_dump() if d else None
             failures += d is None
         return {"facts": facts, "contexts": contexts, "diagnoses": diagnoses, "llm_failures": failures,
+                "llm_calls": state.get("llm_calls", 0) + stats["calls"],
+                "llm_retries": state.get("llm_retries", 0) + stats["retries"],
                 "memory": {cat: alerts for cat, (alerts, _) in memory.items()}}
 
     def decide_action(state: BudgetState) -> dict:
-        actions, failures = {}, state["llm_failures"]
+        actions, failures, stats = {}, state["llm_failures"], Counter()
         for flag in state["flags"]:
             cat = flag["category"]
             d, f = state["diagnoses"][cat], state["facts"][cat]
             a = invoke_structured(model, Action, decide_messages(
-                state["contexts"][cat], Diagnosis(**d) if d else None, f["projected_cents"],
-                f["proposed_limit_cents"], _severity(flag["reason"]), state["memory"][cat]))
+                state["contexts"][cat], GraphDiagnosis(**d) if d else None, f["projected_cents"],
+                f["proposed_limit_cents"], _severity(flag["reason"]), state["memory"][cat]), stats=stats)
             fallback = a is None
             if fallback:
                 failures += 1
@@ -353,10 +384,16 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
                                                         for e in state["memory"][cat])
             if escalated:
                 a = Action(action="alert", message=_fallback_message(flag))
+            # the user's spending didn't change, only where it's counted, so a cut or a new limit would be wrong.
+            # and a cut they've dismissed twice isn't proposed a third time (tpc-37)
+            if ((d or {}).get("cause") == "reclassified" and a.action not in ("alert", "no_op")) or (
+                    a.action == "suggest_cuts" and cut_was_dismissed(f.get("graph_facts"))):
+                a = Action(action="alert", message=_fallback_message(flag))
             actions[cat] = {"action": a.action, "message": a.message, "fallback": fallback, "downgraded": downgraded,
                             "escalated": escalated,
                             "proposed_limit_cents": f["proposed_limit_cents"] if a.action == "adjust_next_budget" else None}
-        return {"actions": actions, "llm_failures": failures}
+        return {"actions": actions, "llm_failures": failures, "llm_calls": state.get("llm_calls", 0) + stats["calls"],
+                "llm_retries": state.get("llm_retries", 0) + stats["retries"]}
 
     def log_advice(state: BudgetState) -> dict:
         ids, adjust = [], []
@@ -395,6 +432,9 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
                 ids.append(alert.id)
             # save the summary before forgetting prompt facts; resume needs only ids and decisions
             s.get(AgentRun, state["run_id"]).summary_json = summarize({**state, "alert_ids": ids})
+            # now, not on the next run: a decision has to find the pending belief already there
+            project.safely(s, "log_advice", lambda: project.project_advice(
+                s, state["user_id"], {state["run_id"]: today_of(state)}))
             s.commit()
         cleared = {"signals": [], "signal_actions": {}}
         if checkpointer is not None:
@@ -434,6 +474,9 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
             "uncategorized": state.get("uncategorized", 0),
             "sync": state.get("sync"),
             "llm_failures": state.get("llm_failures", 0),
+            "llm_calls": state.get("llm_calls", 0),
+            "llm_retries": state.get("llm_retries", 0),
+            **({"graph_error": True} if state.get("graph_error") else {}),
             "decisions": {str(k): v for k, v in (state.get("decisions") or {}).items()},
             "as_of": state["today"],
             "streams": state.get("streams", {"count": 0, "new": [], "price_up": [], "income_change": []}),
@@ -467,7 +510,7 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
     graph = StateGraph(BudgetState)
     for name, fn in (("load_state", load_state), ("sync", sync), ("categorize", categorize),
                      ("update_totals", update_totals), ("detect_overspend", detect_overspend),
-                     ("detect_recurring", detect_recurring), ("decide_signals", decide_signals),
+                     ("detect_recurring", detect_recurring), ("update_graph", update_graph), ("decide_signals", decide_signals),
                      ("forecast_cash", forecast_cash),
                      ("diagnose", diagnose), ("decide_action", decide_action), ("log_advice", log_advice),
                      ("await_approval", await_approval), ("persist_state", persist_state)):
@@ -478,7 +521,8 @@ def build_budget_graph(session_factory, *, model: Optional[BaseChatModel], gatew
     graph.add_conditional_edges("load_state", after_load, ["categorize", "detect_recurring"])
     graph.add_edge("categorize", "update_totals")
     graph.add_edge("update_totals", "detect_recurring")
-    graph.add_edge("detect_recurring", "forecast_cash")
+    graph.add_edge("detect_recurring", "update_graph")
+    graph.add_edge("update_graph", "forecast_cash")
     graph.add_conditional_edges("forecast_cash", after_recurring, ["detect_overspend", "decide_signals"])
     graph.add_conditional_edges("detect_overspend", after_detect, ["diagnose", "decide_signals"])
     graph.add_edge("diagnose", "decide_action")

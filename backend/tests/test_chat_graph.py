@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from app import config
 from datetime import date
 
-from app.agents.chat_graph import MAX_TOOL_ROUNDS, SYSTEM_PROMPT, build_chat_graph
+from app.agents.chat_graph import DISCLAIMER, MAX_TOOL_ROUNDS, SYSTEM_PROMPT, build_chat_graph
 from tests.fakes import ScriptedChatModel, ollama_has, tool_call
 
 
@@ -99,7 +99,7 @@ def test_no_tool_call_returns_answer():
 
     graph = run(model)
 
-    assert final(graph).content == "hi there"
+    assert final(graph).content == f"hi there\n\n{DISCLAIMER}"
     assert isinstance(model.seen[0][0], SystemMessage) and model.seen[0][0].content == SYSTEM_PROMPT
     assert not any(isinstance(m, SystemMessage) for m in graph.get_state(CONFIG).values["messages"])
 
@@ -112,7 +112,7 @@ def test_tool_call_round_trips():
     sent = model.seen[1][-1]
     assert isinstance(sent, ToolMessage)
     assert (sent.tool_call_id, sent.content) == ("c1", "24")
-    assert final(graph).content == "It's 24."
+    assert final(graph).content == f"It's 24.\n\n{DISCLAIMER}"
 
 
 # small models invent tool names; that reaches the model as an error, not a crash
@@ -173,7 +173,7 @@ def test_round_cap_then_answer_without_tools():
     assert len(model.seen) == 7
     assert all(t is not None for t in model.tools_seen[:6])
     assert model.tools_seen[6] is None
-    assert final(graph).content == "best answer I have"
+    assert final(graph).content == f"best answer I have\n\n{DISCLAIMER}"
 
 
 def test_tool_rounds_reset_each_turn():
@@ -196,7 +196,7 @@ def test_memory_across_turns():
     graph.invoke({"messages": [HumanMessage("second question")], "tool_rounds": 0}, CONFIG)
 
     contents = [m.content for m in model.seen[-1]]
-    assert "first question" in contents and "first answer" in contents
+    assert "first question" in contents and f"first answer\n\n{DISCLAIMER}" in contents
 
 
 def test_pseudonym_kept_in_state():
@@ -327,3 +327,68 @@ def test_live_tool_call_round_trip():
                  CONFIG)
 
     assert "24" in final(graph).content
+
+
+# tpc-48: the model asked for the calendar month when the question said the last 30 days
+def test_date_line_spells_out_the_last_30_days():
+    from app.agents.chat_graph import _date_line
+    assert "The last 30 days means 2026-10-07 to 2026-11-06." in _date_line(lambda: date(2026, 11, 6))
+
+
+# tpc-47: with debt guidance in the prompt, the model answered from it and skipped the lookup
+def test_prompt_says_personal_questions_need_the_lookup_despite_guidance():
+    assert "needs the lookup even when the guidance below covers the topic" in SYSTEM_PROMPT
+    assert "name the debt with the highest APR" in SYSTEM_PROMPT and "the user has no debts" in SYSTEM_PROMPT
+
+
+# code adds the closing line when the model drops it, once, and never to an empty answer
+@pytest.mark.parametrize("reply, expected", [
+    ("Pay the card.", f"Pay the card.\n\n{DISCLAIMER}"),
+    (f"Pay the card.\n\n{DISCLAIMER}", f"Pay the card.\n\n{DISCLAIMER}"),
+    ("Pay the card. This is NOT financial advice.", "Pay the card. This is NOT financial advice."),
+    ("", ""),
+])
+def test_final_answer_always_carries_the_disclaimer(reply, expected):
+    state = build_chat_graph([], model=ScriptedChatModel(replies=[AIMessage(reply)])).invoke(
+        {"messages": [HumanMessage("hi")], "tool_rounds": 0})
+    assert state["messages"][-1].content == expected
+    assert len(state["messages"]) == 2      # replaced, not added as a second answer
+
+
+# tpc-27: a condition with no vector guidance can't reach it through a tool or be told it's there
+@pytest.mark.parametrize("mode, guidance, search", [
+    ("vector", True, True), ("hybrid", True, True), ("hybrid-shuffled", True, True),
+    ("graph", False, False), ("none", False, False),
+])
+def test_prompt_follows_the_retrieval_mode(monkeypatch, mode, guidance, search):
+    from app.agents.chat_graph import system_prompt
+    monkeypatch.setattr(config, "KG_CHAT", mode)
+    prompt = system_prompt()
+    assert ("guidance below" in prompt) is guidance
+    assert ("search_kb" in prompt) is search
+
+
+def test_vector_prompt_is_todays_prompt_byte_for_byte(monkeypatch):
+    from app.agents.chat_graph import system_prompt
+    monkeypatch.setattr(config, "KG_CHAT", "vector")
+    assert system_prompt() == SYSTEM_PROMPT
+
+
+@pytest.mark.parametrize("mode, retrieved", [("vector", True), ("hybrid", True), ("none", False), ("graph", False)])
+def test_retrieval_only_runs_in_vector_modes(monkeypatch, mode, retrieved):
+    monkeypatch.setattr(config, "KG_CHAT", mode)
+    calls = []
+    graph = build_chat_graph([], retrieve=lambda q: calls.append(q) or [], model=ScriptedChatModel(replies=[AIMessage("x")]))
+    graph.invoke({"messages": [HumanMessage("hi")], "tool_rounds": 0})
+    assert bool(calls) is retrieved
+
+
+def test_an_empty_reply_with_tools_gets_one_more_try_without_them():
+    @tool
+    def t() -> str:
+        "A tool."
+        return "x"
+    model = ScriptedChatModel(replies=[AIMessage(""), AIMessage("Answer.")])
+    state = build_chat_graph([t], model=model).invoke({"messages": [HumanMessage("hi")], "tool_rounds": 0})
+    assert state["messages"][-1].content.startswith("Answer.")
+    assert model.tools_seen == [["t"], None]

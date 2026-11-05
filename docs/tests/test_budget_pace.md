@@ -168,3 +168,27 @@ Run them from `backend/`:
 **What it does:** A $210 loan line and a $200 debt goal, with only the usual $210 paid to the loan. The loan line reports $210 spent.
 
 **Why it's there:** The goal went to a card, whose payments aren't in `LOAN_PAYMENTS`, so nothing is subtracted from the loan.
+
+## `test_usual_monthly_charge_isnt_flagged`
+
+**What it does:** A $15.99 charge on Aug 5 is flagged with no history, and isn't flagged when the same charge landed on the 5th of the last three months. Its pace is still reported.
+
+**Why it's there:** TPC-45. This was a false alarm, and it could lead to a proposal changing next month's budget.
+
+## `test_new_charge_with_no_history_in_its_category_is_still_flagged`, `test_spending_well_above_the_usual_is_still_flagged`, `test_over_limit_flags_whatever_the_history`
+
+**What they do:** A category with no history, spending far above the usual amount, and spending over the limit all still flag.
+
+**Why they're there:** Fixing false alarms mustn't hide real overspending.
+
+## `test_weekly_spending_gets_one_normal_purchase_for_timing`, `test_monthly_charge_gets_no_timing_allowance`
+
+**What they do:** Spending with at least four purchases a month gets one normal purchase on top of its usual amount. A monthly charge doesn't.
+
+**Why they're there:** A weekly shop can land twice in the first 8 days of one month and once in another. A monthly charge lands on its day, and an allowance would hide a new one.
+
+## `test_usual_looks_at_the_same_day_of_each_month`, `test_one_new_expensive_month_doesnt_become_normal`, `test_usual_ignores_months_older_than_its_window`, `test_usual_handles_a_shorter_month`
+
+**What they do:** Only spending up to the same day of each month counts, and a median means one expensive month doesn't change what's usual. Months older than three don't count, and March 31 compares with the end of February.
+
+**Why they're there:** These set exactly what "usual by this day" means. The wine club scenario depends on the median.

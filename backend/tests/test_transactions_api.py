@@ -161,3 +161,33 @@ def test_a_goal_line_is_not_a_correction_target(api, db):
     assert (r.status_code, r.json()["detail"]) == (422, "Pick one of your budget lines.")
     with db() as s:
         assert s.get(Transaction, tid).user_category is None
+
+
+@pytest.mark.parametrize("simulated", [False, True])
+def test_rule_edit_date_survives_later_projection_retry(api, db, monkeypatch, simulated):
+    from app.db.models import KGEdge, KGNode, User
+    from app.kg import project
+    from datetime import datetime, timezone
+    uid = seed(db)
+    tid = txn_id(db, "Corner Shop")
+    created, edited, retried = date(2026, 9, 1), date(2026, 10, 15), date(2026, 10, 17)
+    with db() as s:
+        s.add(CategoryRule(user_id=uid, merchant_name="corner shop", category="FREE",
+                           created_at=datetime(2026, 9, 1, tzinfo=timezone.utc)))
+        s.flush()
+        project.project_rules(s, uid, created)
+        project.project_run(s, uid, edited)
+        if simulated:
+            s.get(User, uid).prefs_json = {"sim": {"profile": "overspend-one-time", "date": edited.isoformat()}}
+        s.commit()
+    monkeypatch.setattr(project, "utcnow", lambda: datetime(2026, 10, 15, tzinfo=timezone.utc))
+    with monkeypatch.context() as patch:
+        patch.setattr(project, "safely", lambda *args: False)
+        assert api.patch(f"/transactions/{tid}", json={"category": GM, "remember": True}).status_code == 200
+    with db() as s:
+        rule = s.query(CategoryRule).filter_by(user_id=uid, merchant_name="corner shop").one()
+        assert rule.created_at.date() == created and rule.effective_from == edited
+        project.project_rules(s, uid, retried)
+        edges = s.query(KGEdge).filter_by(user_id=uid, rel="CATEGORIZED_AS", expired_at=None).order_by(KGEdge.valid_from).all()
+        assert [(s.get(KGNode, e.dst_id).key, e.valid_from, e.valid_to) for e in edges] == [
+            ("FREE", created, edited), (GM, edited, None)]

@@ -93,3 +93,9 @@ Uses the TPC-23 synthetic profile and in-memory database; scripted replies requi
 **What it does:** With a $583 accepted goal the cap is $194.40. A scripted $194.41 proposal is rejected as `over_cap` on both calls, the run is an `error`, and nothing is stored.
 
 **Why it's there:** Validation checks the cap net of accepted goals, so a retry can't spend their money either (TPC-25).
+
+## `test_retries_off_stops_after_one_goal_call`
+
+**What it does:** With `RETRIES_ENABLED` off, a malformed first reply ends the run after one model call, with no correction.
+
+**Why it's there:** TPC-27's retry ablation has to turn this mechanism off for real.

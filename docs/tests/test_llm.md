@@ -49,3 +49,9 @@ These tests cover `app/agents/llm.py`, the only place the app creates an LLM or 
 **What it does:** Sets `LLM_TEMPERATURE`, `LLM_NUM_CTX` and `LLM_TIMEOUT_SECONDS` to empty strings, reloads `app.config`, and checks that each falls back to a valid default. It then reloads config again with the real environment.
 
 **Why it's there:** `.env.example` leaves optional settings blank, and `float("")` raised at import, so a blank value stopped the app, alembic and every test from starting. The numbers now use `os.getenv(...) or default`, like `PROMPT_AUDIT_PATH` already did.
+
+## `test_seed_reaches_the_model_and_defaults_to_none`
+
+**What it does:** `get_chat_model` passes a seed to Ollama, and sets none by default.
+
+**Why it's there:** The variation pass uses seeds, and the app's behaviour must not change.

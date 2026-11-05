@@ -50,8 +50,22 @@ The exit code is 0 whenever the eval completes, even with low scores. Low scores
 |---|---|
 | `<id>.run<N>.json` | `record`: answer, tool calls, tool results, sources, latency, error. `scores`: facts (found, missing, forbidden hits), tools, sources, similarity, judge. Written as soon as the run finishes |
 | `summary.json` | For each scenario and overall: pass rates, mean similarity and the share of runs at target, judge means, tool and source accuracy, mean and p95 latency, errors, and the min/max across runs |
-| `config.json` | Models, run count, git commit, scenario ids, start and finish times |
+| `config.json` | Models, run count, git commit, scenario ids, whole-run and per-kind scenario hashes, start and finish times |
 | `audit.jsonl` | Every prompt the privacy gateway built during the eval |
+
+### Comparing conditions
+
+```bash
+venv/bin/python eval/compare.py <with-technology folder> <without-technology folder> --metric chat --out <output-prefix>
+```
+
+Use `chat` for chat fact pass, `budget` for budget cause and action pass, or `retries` for budget/goal pass and retry fire rates.
+The folders must record the same commit. New runs record `scenario_hashes_by_kind`, so an all-kinds baseline can be compared
+with a `--kind chat`, `--kind budget` or `--kind goal` condition. Each compared kind must have identical scenario hashes and
+the same scenario IDs in its run files; unrelated kinds are excluded. Retry fire rates use only the compared scenarios.
+
+Older folders without per-kind hashes still require identical whole-run `scenario_hash` values. They cannot support a
+baseline-versus-subset comparison when those hashes differ; rerun with the updated harness rather than editing saved metadata.
 
 ## Adding a scenario
 

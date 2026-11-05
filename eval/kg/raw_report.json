@@ -1,0 +1,1089 @@
+{
+  "dropped": [
+    {
+      "subject": "FDIC deposit insurance",
+      "relation": "HAS_LIMIT",
+      "object": "Deposit insurance limit",
+      "tax_year": null,
+      "dollars": 250000.0,
+      "condition": null,
+      "text": null,
+      "why": "no tax year",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 1
+    },
+    {
+      "subject": "Negotiable order of withdrawal (NOW) account",
+      "relation": "IS_A",
+      "object": "Retirement account",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Money market deposit account (MMDA)",
+      "relation": "IS_A",
+      "object": "Retirement account",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Time deposit",
+      "relation": "IS_A",
+      "object": "Retirement account",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Cashier’s check",
+      "relation": "IS_A",
+      "object": "Retirement account",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Money order",
+      "relation": "IS_A",
+      "object": "Retirement account",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Official item",
+      "relation": "IS_A",
+      "object": "Retirement account",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 3
+    },
+    {
+      "subject": "FDIC deposit insurance",
+      "relation": "HAS_LIMIT",
+      "object": "Deposit insurance limit",
+      "tax_year": null,
+      "dollars": 250000.0,
+      "condition": null,
+      "text": null,
+      "why": "no tax year",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Certain Retirement Accounts",
+      "relation": "IS_A",
+      "object": "Individual retirement account",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "fdic-deposit-insurance",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Asset allocation",
+      "relation": "HAS_RULE",
+      "object": "consider diversification",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Diversification",
+      "relation": "HAS_RULE",
+      "object": "spreading money among different investments to reduce risk",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Diversification",
+      "relation": "HAS_RULE",
+      "object": "allocating your investments among different kinds of assets",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Diversification",
+      "relation": "HAS_RULE",
+      "object": "spreading your investments within each asset class",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "ETF",
+      "relation": "ALTERNATIVE_TO",
+      "object": "stocks",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "ETF",
+      "relation": "ALTERNATIVE_TO",
+      "object": "bonds",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "concept isn't in the list",
+      "source": "investor-asset-allocation",
+      "chunk_index": 3
+    },
+    {
+      "subject": "SIMPLE 401(k)",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": "separate, smaller limits",
+      "text": null,
+      "why": "no tax year",
+      "source": "irs-401k-contribution-limits",
+      "chunk_index": 7
+    },
+    {
+      "subject": "Individual retirement account",
+      "relation": "HAS_RULE",
+      "object": "Qualified reservist repayments",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": "The IRA contribution limit does not apply to qualified reservist repayments",
+      "why": "concept isn't in the list",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Traditional IRA",
+      "relation": "HAS_RULE",
+      "object": "Income limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "a rule with no text",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 1
+    },
+    {
+      "subject": "Traditional IRA",
+      "relation": "HAS_RULE",
+      "object": "Income limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "a rule with no text",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Traditional IRA",
+      "relation": "HAS_RULE",
+      "object": "Annual contribution limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "a rule with no text",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_RULE",
+      "object": "Income limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "a rule with no text",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_RULE",
+      "object": "Annual contribution limit",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "a rule with no text",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Traditional IRA",
+      "relation": "HAS_RULE",
+      "object": "Catch-up contribution",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "a rule with no text",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Roth IRA",
+      "relation": "HAS_RULE",
+      "object": "Catch-up contribution",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "a rule with no text",
+      "source": "irs-ira-contribution-limits",
+      "chunk_index": 3
+    },
+    {
+      "subject": "Designated Roth 401(k)",
+      "relation": "HAS_LIMIT",
+      "object": "Income limit",
+      "tax_year": 2024,
+      "dollars": 161000.0,
+      "condition": "single",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-roth-comparison-chart",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Designated Roth 401(k)",
+      "relation": "HAS_LIMIT",
+      "object": "Income limit",
+      "tax_year": 2023,
+      "dollars": 153000.0,
+      "condition": "single",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-roth-comparison-chart",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Designated Roth 401(k)",
+      "relation": "HAS_LIMIT",
+      "object": "Income limit",
+      "tax_year": 2022,
+      "dollars": 144000.0,
+      "condition": "single",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-roth-comparison-chart",
+      "chunk_index": 0
+    },
+    {
+      "subject": "Individual retirement account",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": 2021,
+      "dollars": 6000.0,
+      "condition": "for individuals under age 50",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Individual retirement account",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": 2022,
+      "dollars": 6000.0,
+      "condition": "for individuals under age 50",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Individual retirement account",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": 2023,
+      "dollars": 6500.0,
+      "condition": "for individuals under age 50",
+      "text": null,
+      "why": "amount isn't in the chunk",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Individual retirement account",
+      "relation": "HAS_LIMIT",
+      "object": "Annual contribution limit",
+      "tax_year": 2024,
+      "dollars": 7000.0,
+      "condition": "for individuals under age 50",
+      "text": null,
+      "why": "year and amount are too far apart",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 5
+    },
+    {
+      "subject": "Traditional IRA",
+      "relation": "HAS_RULE",
+      "object": "Withdrawals",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "a rule with no text",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 10
+    },
+    {
+      "subject": "Traditional IRA",
+      "relation": "HAS_RULE",
+      "object": "Required minimum distribution",
+      "tax_year": null,
+      "dollars": null,
+      "condition": null,
+      "text": null,
+      "why": "a rule with no text",
+      "source": "irs-traditional-and-roth-iras",
+      "chunk_index": 10
+    }
+  ],
+  "unknown_names": {
+    "Cashier’s check": 1,
+    "Certain Retirement Accounts": 1,
+    "ETF": 2,
+    "Money market deposit account (MMDA)": 1,
+    "Money order": 1,
+    "Negotiable order of withdrawal (NOW) account": 1,
+    "Official item": 1,
+    "Qualified reservist repayments": 1,
+    "Time deposit": 1,
+    "allocating your investments among different kinds of assets": 1,
+    "consider diversification": 1,
+    "spreading money among different investments to reduce risk": 1,
+    "spreading your investments within each asset class": 1
+  },
+  "conflicts": [
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "catch-up-contribution",
+        "value": {
+          "cents": 800000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 4
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "catch-up-contribution",
+        "value": {
+          "cents": 1125000,
+          "condition": "employees aged 60, 61, 62 or 63"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 4
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "simple-401k",
+        "rel": "HAS_LIMIT",
+        "dst": "catch-up-contribution",
+        "value": {
+          "cents": 400000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 4
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "other": {
+        "src": "simple-401k",
+        "rel": "HAS_LIMIT",
+        "dst": "catch-up-contribution",
+        "value": {
+          "cents": 525000,
+          "condition": "employees aged 60, 61, 62 or 63"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 4
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 2450000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 1
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 7200000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 7
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 2450000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 1
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 8000000,
+          "condition": "including catch-up contributions"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 7
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 2450000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 1
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 8325000,
+          "condition": "for those age 60 to 63"
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 7
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 1950000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 5
+        },
+        "valid_from": "2020-01-01",
+        "valid_to": "2021-01-01"
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 5700000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 8
+        },
+        "valid_from": "2020-01-01",
+        "valid_to": "2021-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 2450000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 1
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 36000000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-401k-contribution-limits",
+          "chunk_index": 9
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 750000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "other": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 860000,
+          "condition": "if you're age 50 or older"
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 700000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2025-01-01",
+        "valid_to": "2026-01-01"
+      },
+      "other": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 800000,
+          "condition": "if you're age 50 or older"
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2025-01-01",
+        "valid_to": "2026-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 700000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2024-01-01",
+        "valid_to": "2025-01-01"
+      },
+      "other": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 800000,
+          "condition": "if you're age 50 or older"
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2024-01-01",
+        "valid_to": "2025-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 650000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2023-01-01",
+        "valid_to": "2024-01-01"
+      },
+      "other": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 750000,
+          "condition": "if you're age 50 or older"
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2023-01-01",
+        "valid_to": "2024-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 350000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 6
+        },
+        "valid_from": "2020-01-01",
+        "valid_to": "2021-01-01"
+      },
+      "other": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 600000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 6
+        },
+        "valid_from": "2020-01-01",
+        "valid_to": "2021-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 350000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 6
+        },
+        "valid_from": "2020-01-01",
+        "valid_to": "2021-01-01"
+      },
+      "other": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 700000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 6
+        },
+        "valid_from": "2020-01-01",
+        "valid_to": "2021-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "roth-401k",
+        "rel": "HAS_LIMIT",
+        "dst": "income-limit",
+        "value": {
+          "cents": 20800000,
+          "condition": "married"
+        },
+        "evidence": {
+          "source": "irs-roth-comparison-chart",
+          "chunk_index": 0
+        },
+        "valid_from": "2021-01-01",
+        "valid_to": "2022-01-01"
+      },
+      "other": {
+        "src": "roth-401k",
+        "rel": "HAS_LIMIT",
+        "dst": "income-limit",
+        "value": {
+          "cents": 14000000,
+          "condition": "single"
+        },
+        "evidence": {
+          "source": "irs-roth-comparison-chart",
+          "chunk_index": 0
+        },
+        "valid_from": "2021-01-01",
+        "valid_to": "2022-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 2300000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-roth-comparison-chart",
+          "chunk_index": 1
+        },
+        "valid_from": "2024-01-01",
+        "valid_to": "2025-01-01"
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 3050000,
+          "condition": "if you're eligible for catch-up contributions"
+        },
+        "evidence": {
+          "source": "irs-roth-comparison-chart",
+          "chunk_index": 1
+        },
+        "valid_from": "2024-01-01",
+        "valid_to": "2025-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 2250000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-roth-comparison-chart",
+          "chunk_index": 1
+        },
+        "valid_from": "2023-01-01",
+        "valid_to": "2024-01-01"
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 3000000,
+          "condition": "if you're eligible for catch-up contributions"
+        },
+        "evidence": {
+          "source": "irs-roth-comparison-chart",
+          "chunk_index": 1
+        },
+        "valid_from": "2023-01-01",
+        "valid_to": "2024-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 2050000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-roth-comparison-chart",
+          "chunk_index": 1
+        },
+        "valid_from": "2022-01-01",
+        "valid_to": "2023-01-01"
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 2700000,
+          "condition": "if you're eligible for catch-up contributions"
+        },
+        "evidence": {
+          "source": "irs-roth-comparison-chart",
+          "chunk_index": 1
+        },
+        "valid_from": "2022-01-01",
+        "valid_to": "2023-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 1950000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-roth-comparison-chart",
+          "chunk_index": 1
+        },
+        "valid_from": "2021-01-01",
+        "valid_to": "2022-01-01"
+      },
+      "other": {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 2600000,
+          "condition": "if you're eligible for catch-up contributions"
+        },
+        "evidence": {
+          "source": "irs-roth-comparison-chart",
+          "chunk_index": 1
+        },
+        "valid_from": "2021-01-01",
+        "valid_to": "2022-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 650000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2023-01-01",
+        "valid_to": "2024-01-01"
+      },
+      "other": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 750000,
+          "condition": "for individuals age 50 or older"
+        },
+        "evidence": {
+          "source": "irs-traditional-and-roth-iras",
+          "chunk_index": 5
+        },
+        "valid_from": "2023-01-01",
+        "valid_to": "2024-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 700000,
+          "condition": null
+        },
+        "evidence": {
+          "source": "irs-ira-contribution-limits",
+          "chunk_index": 0
+        },
+        "valid_from": "2024-01-01",
+        "valid_to": "2025-01-01"
+      },
+      "other": {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "value": {
+          "cents": 800000,
+          "condition": "for individuals age 50 or older"
+        },
+        "evidence": {
+          "source": "irs-traditional-and-roth-iras",
+          "chunk_index": 5
+        },
+        "valid_from": "2024-01-01",
+        "valid_to": "2025-01-01"
+      }
+    },
+    {
+      "kept": {
+        "src": "traditional-ira",
+        "rel": "HAS_RULE",
+        "dst": "withdrawals",
+        "value": {
+          "text": "Any deductible contributions and earnings you withdraw or that are distributed from your traditional IRA are taxable."
+        },
+        "evidence": {
+          "source": "irs-traditional-and-roth-iras",
+          "chunk_index": 8
+        },
+        "valid_from": "2000-01-01",
+        "valid_to": null
+      },
+      "other": {
+        "src": "traditional-ira",
+        "rel": "HAS_RULE",
+        "dst": "withdrawals",
+        "value": {
+          "text": "if you are under age 59 ½ you may have to pay an additional 10% tax for early withdrawals unless you qualify for an exception."
+        },
+        "evidence": {
+          "source": "irs-traditional-and-roth-iras",
+          "chunk_index": 8
+        },
+        "valid_from": "2000-01-01",
+        "valid_to": null
+      }
+    }
+  ],
+  "failed_chunks": [],
+  "kept": 127
+}

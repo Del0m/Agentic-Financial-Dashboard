@@ -13,7 +13,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from pydantic import BaseModel, Field, StringConstraints
 from .. import config
-from ..agents.chat_graph import build_chat_graph
+from ..agents.chat_graph import DISCLAIMER, build_chat_graph
 from ..agents.tools import make_tools
 from ..db.models import User
 from ..db.session import SessionLocal
@@ -99,7 +99,7 @@ def _turn_events(user: User, req: ChatRequest):
         state = build_chat_graph([], checkpointer=checkpointer).get_state(cfg).values
         gateway, kb = PrivacyGateway(session, user.id, pseudonym=state.get("pseudonym")), make_kb()
         graph = build_chat_graph(make_tools(gateway, kb), retrieve=kb.search, checkpointer=checkpointer,
-                                 today=gateway.today)
+                                 today=gateway.today, graph_retrieve=gateway.graph_retrieve)
         turn = {"messages": [HumanMessage(req.message)], "tool_rounds": 0, "pseudonym": gateway.pseudonym}
         stream = graph.stream(turn, cfg, stream_mode=["messages", "updates"])
         for mode, payload in stream:
@@ -111,6 +111,9 @@ def _turn_events(user: User, req: ChatRequest):
             elif "retrieve" in payload:
                 if payload["retrieve"]["sources"]:
                     yield format_event("sources", {"sources": _sources(payload["retrieve"]["sources"])})
+            elif "graph_retrieve" in payload:
+                if (payload["graph_retrieve"].get("graph_facts") or {}).get("facts"):
+                    yield format_event("graph", {"used": True})
             elif "agent" in payload:
                 calls = payload["agent"]["messages"][-1].tool_calls
                 if calls:
@@ -122,6 +125,9 @@ def _turn_events(user: User, req: ChatRequest):
                 for m in payload["tools"]["messages"]:
                     yield format_event("tool_result", {"id": m.tool_call_id, "name": m.name,
                                                        "ok": not str(m.content).startswith("error:")})
+            # the closing line the graph added; an answer that didn't stream is sent whole below, with it included
+            elif payload.get("finish") and streamed:
+                yield format_event("token", {"text": f"\n\n{DISCLAIMER}"})
         if not streamed:
             last = graph.get_state(cfg).values["messages"][-1]
             # a model that doesn't stream still answers; one with nothing to say gets told so
@@ -203,15 +209,15 @@ def post_chat(req: ChatRequest, user: User = Depends(get_current_user)):
 @router.get("/chat/{thread_id}")
 def get_history(thread_id: str = Path(pattern=THREAD_ID), user: User = Depends(get_current_user)) -> list[dict]:
     values = build_chat_graph([], checkpointer=get_checkpointer()).get_state(_config(user, thread_id)).values
-    by_turn = values.get("sources_by_turn", {})
-    turns, current, by_id, sources = [], None, {}, []
+    by_turn, graph_by_turn = values.get("sources_by_turn", {}), values.get("graph_by_turn", {})
+    turns, current, by_id, sources, used_graph = [], None, {}, [], False
     for m in values.get("messages", []):
         if isinstance(m, HumanMessage):
-            current, sources = None, _sources(by_turn.get(m.id, []))
+            current, sources, used_graph = None, _sources(by_turn.get(m.id, [])), bool(graph_by_turn.get(m.id))
             turns.append({"role": "user", "text": m.content, "tools": []})
         elif isinstance(m, AIMessage):
             if current is None:
-                current = {"role": "assistant", "text": "", "tools": [], "sources": sources}
+                current = {"role": "assistant", "text": "", "tools": [], "sources": sources, "graph": used_graph}
                 turns.append(current)
             for tc in m.tool_calls:
                 by_id[tc["id"]] = {"name": tc["name"], "args": tc["args"], "ok": False}

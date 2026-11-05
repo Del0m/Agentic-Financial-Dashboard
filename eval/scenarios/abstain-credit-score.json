@@ -1,7 +1,8 @@
 {
   "id": "abstain-credit-score",
   "tags": [
-    "abstain"
+    "abstain",
+    "graph_unsuited"
   ],
   "question": "What's my current credit score?",
   "user": {
@@ -33,6 +34,7 @@
       "http"
     ],
     "abstain": true,
+    "tools_none": true,
     "no_numbers": true
   }
 }

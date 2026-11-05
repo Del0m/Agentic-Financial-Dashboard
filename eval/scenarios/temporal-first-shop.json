@@ -1,0 +1,68 @@
+{
+  "id": "temporal-first-shop",
+  "author": "claude",
+  "today": "2026-11-06",
+  "tags": [
+    "temporal",
+    "needs_graph"
+  ],
+  "question": "When did I first shop at Book Nook?",
+  "user": {
+    "accounts": [
+      {
+        "name": "Everyday Checking",
+        "type": "depository",
+        "subtype": "checking",
+        "balance": 2400.0
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Everyday Checking",
+        "days_ago": 239,
+        "amount": 25.0,
+        "category": "GENERAL_MERCHANDISE",
+        "merchant": "Book Nook"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 178,
+        "amount": 25.0,
+        "category": "GENERAL_MERCHANDISE",
+        "merchant": "Book Nook"
+      },
+      {
+        "account": "Everyday Checking",
+        "days_ago": 55,
+        "amount": 25.0,
+        "category": "GENERAL_MERCHANDISE",
+        "merchant": "Book Nook"
+      }
+    ]
+  },
+  "golden_answer": "Your first purchase at Book Nook was in March 2026, on March 12. This is general information, not financial advice.",
+  "expect": {
+    "facts": [
+      {
+        "text": "March"
+      }
+    ],
+    "forbid": [
+      "http"
+    ],
+    "tools": [],
+    "allowed_tools": [
+      "get_spending",
+      "get_history"
+    ],
+    "sources": [],
+    "temporal": {
+      "right": [
+        "March"
+      ],
+      "wrong": [
+        "September"
+      ]
+    }
+  }
+}

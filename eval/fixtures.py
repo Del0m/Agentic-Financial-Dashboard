@@ -1,7 +1,7 @@
 import json
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Union, get_args
 
@@ -9,23 +9,30 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.agents.budget_llm import Action, Diagnosis
+from app.agents.budget_llm import Action, GraphDiagnosis
 from app.agents.tools import PFC_CATEGORIES, VALID_CATEGORIES
 from app.budget_engine.goals import GOAL_KINDS
 from app.budget_engine.signals import RANK
 from app.db.base import Base
-from app.db.models import Liability
+from app import config
+from app.budget_engine.txns import month_end, month_start
+from app.kg.guidance import load_guidance
+from app.kg.project import backfill
+from app.db.models import AdviceLog, Alert, BudgetLine, BudgetPeriod, Liability, User
 from eval.budget_users import profile_by_id
 from tests.factories import add_account, add_txn, add_user
 
 # sqlite doesn't enforce the enum, so a typo like "credit card" would be stored as-is
 LIABILITY_KINDS = tuple(Liability.__table__.c.kind.type.enums)
 KINDS = ("chat", "budget", "goal")
-CAUSES = get_args(Diagnosis.model_fields["cause"].annotation)
+CAUSES = get_args(GraphDiagnosis.model_fields["cause"].annotation)
 OVERSPEND_ACTIONS = get_args(Action.model_fields["action"].annotation)
 SIGNAL_KINDS = tuple(RANK)
 # the goal graph's finished endings; "error" and "busy" are never a golden answer
 GOAL_STATUSES = ("ok", "no_surplus", "nothing_offered", "no_affordable_goals")
+# get_history arrives with tpc-39; scenarios name it now because they're written before the graph exists
+TOOL_NAMES = ("get_accounts", "get_debts", "get_spending", "get_recurring", "get_cash_forecast", "plan_debt_payoff",
+              "search_kb", "get_history")
 
 # scenario files -> validated dataclasses -> rows in a throwaway db (spec: tpc-16 scenario format, tpc-26 kinds).
 # every problem names the file and field, so a typo fails loudly instead of scoring a silent 0
@@ -46,6 +53,13 @@ class Fact:
         return self.text if self.text is not None else f"{self.number:g}±{self.tol:g}"
 
 
+# the right year or date range appears, and a wrong one doesn't (tpc-27, architecture 6b.5)
+@dataclass(frozen=True)
+class TemporalCheck:
+    right: tuple[str, ...]
+    wrong: tuple[str, ...] = ()
+
+
 @dataclass(frozen=True)
 class Expect:
     facts: list[Fact]
@@ -53,6 +67,10 @@ class Expect:
     tools: list[str]
     sources: list[str]
     abstain: bool = False       # passes only by saying the data isn't there, with no dollar amount (tpc-26)
+    allowed_tools: Optional[tuple[str, ...]] = None     # tools beyond these are a tool-choice fail; None = not checked
+    tools_none: bool = False    # no tool fits, so any call is a tool-choice fail
+    temporal: Optional[TemporalCheck] = None
+    tool_args: Optional[dict[str, dict[str, tuple]]] = None     # tool -> argument -> accepted values; None = may be left out
     no_numbers: bool = False    # abstain only: the missing fact is a bare number, like a credit score
 
 
@@ -66,6 +84,8 @@ class Scenario:
     path: Path
     tags: tuple[str, ...] = ()
     kind: str = "chat"
+    today: Optional[date] = None    # a scenario about dates pins its own, so its golden answer can't drift
+    author: Optional[str] = None    # who wrote it, disclosed in the paper (tpc-27)
 
 
 @dataclass(frozen=True)
@@ -203,6 +223,22 @@ def _check_user(path: Path, user: dict) -> None:
         if _require(path, t, "days_ago", int, where) < 0:
             _fail(path, where + "days_ago", "must be 0 or more")
         _require(path, t, "amount", (int, float), where)
+    # history the graph projects: past budget limits and what the user decided about past advice (tpc-27)
+    for i, b in enumerate(user.get("budget", [])):
+        where = f"user.budget[{i}]."
+        if _date(path, b, "start", where).day != 1:
+            _fail(path, where + "start", "must be the first of a month")
+        if _require(path, b, "category", str, where) not in VALID_CATEGORIES:
+            _fail(path, where + "category", f"{b['category']!r} is not a budget category")
+        _require(path, b, "limit", (int, float), where)
+    for i, a in enumerate(user.get("advice", [])):
+        where = f"user.advice[{i}]."
+        _date(path, a, "day", where)
+        _require(path, a, "category", str, where)
+        _require(path, a, "message", str, where)
+        _choices(path, where + "action", [_require(path, a, "action", str, where)], OVERSPEND_ACTIONS)
+        if _require(path, a, "decision", str, where) not in ("accepted", "dismissed"):
+            _fail(path, where + "decision", "must be accepted or dismissed")
 
 
 def _date(path: Path, d: dict, key: str, where: str = "") -> date:
@@ -246,10 +282,41 @@ def _load_chat(path: Path, d: dict, sid: str, golden: str, tags: tuple[str, ...]
     facts = [] if abstain else _require(path, exp, "facts", list, "expect.")
     if not abstain and not facts:
         _fail(path, "expect.facts", "must not be empty")
+    tools = _strings(path, exp, "tools")
+    tools_none = exp.get("tools_none", False)
+    if not isinstance(tools_none, bool):
+        _fail(path, "expect.tools_none", "must be true or false")
+    # both at once can't be scored: one demands a call, the other fails on any
+    if tools_none and (tools or "allowed_tools" in exp):
+        _fail(path, "expect.tools_none", "can't be set with tools or allowed_tools")
+    allowed = None
+    if "allowed_tools" in exp:
+        allowed = _choices(path, "expect.allowed_tools", _strings(path, exp, "allowed_tools"), TOOL_NAMES)
+        if not set(tools) <= set(allowed):
+            _fail(path, "expect.allowed_tools", "must include every tool in expect.tools")
+    temporal = None
+    if "temporal" in exp:
+        raw = _require(path, exp, "temporal", dict, "expect.")
+        right = tuple(_strings(path, raw, "right"))
+        if not right:
+            _fail(path, "expect.temporal.right", "must not be empty")
+        temporal = TemporalCheck(right, tuple(_strings(path, raw, "wrong")))
+    tool_args = None
+    if "tool_args" in exp:
+        tool_args = {}
+        for name, args in _require(path, exp, "tool_args", dict, "expect.").items():
+            if name not in TOOL_NAMES:
+                _fail(path, f"expect.tool_args.{name}", "is not a tool")
+            if not isinstance(args, dict) or not all(isinstance(v, list) and v for v in args.values()):
+                _fail(path, f"expect.tool_args.{name}", "must map each argument to a non-empty list of accepted values")
+            tool_args[name] = {arg: tuple(values) for arg, values in args.items()}
     expect = Expect(facts=[_fact(path, i, f) for i, f in enumerate(facts)], forbid=_strings(path, exp, "forbid"),
-                    tools=_strings(path, exp, "tools"), sources=_strings(path, exp, "sources"), abstain=abstain,
-                    no_numbers=no_numbers)
-    return Scenario(id=sid, question=question, user=user, golden_answer=golden, expect=expect, path=path, tags=tags)
+                    tools=tools, sources=_strings(path, exp, "sources"), abstain=abstain,
+                    no_numbers=no_numbers, allowed_tools=allowed, tools_none=tools_none, temporal=temporal,
+                    tool_args=tool_args)
+    return Scenario(id=sid, question=question, user=user, golden_answer=golden, expect=expect, path=path, tags=tags,
+                    today=_date(path, d, "today") if "today" in d else None,
+                    author=_require(path, d, "author", str) if "author" in d else None)
 
 
 def _optional_dict(path: Path, exp: dict, key: str) -> dict:
@@ -365,9 +432,49 @@ def _cents(dollars: float) -> int:
     return round(dollars * 100)
 
 
+def _seed_history(session: Session, user_id: str, user: dict, today: date) -> None:
+    periods: dict[date, BudgetPeriod] = {}
+
+    def period_of(start: date) -> BudgetPeriod:
+        if start not in periods:
+            end = month_end(start)
+            periods[start] = BudgetPeriod(user_id=user_id, start_date=start, end_date=end,
+                                          status="closed" if end < today else "open")
+            session.add(periods[start])
+        return periods[start]
+
+    for b in user.get("budget", []):
+        period_of(date.fromisoformat(b["start"])).lines.append(BudgetLine(
+            category=b["category"], name=b["category"], group="wants", kind="flexible", limit_cents=_cents(b["limit"]),
+            source="init"))
+    session.flush()
+    for a in user.get("advice", []):
+        day = date.fromisoformat(a["day"])
+        when = datetime(day.year, day.month, day.day, tzinfo=timezone.utc)
+        alert = Alert(user_id=user_id, period_id=period_of(month_start(day)).id, kind="overspend", category=a["category"],
+                      severity="medium", action=a["action"], message=a["message"], status=a["decision"], created_at=when)
+        session.add(alert)
+        session.flush()
+        session.add(AdviceLog(user_id=user_id, alert_id=alert.id, category=a["category"], advice_text=a["message"],
+                              created_at=when, outcome=a["decision"]))
+
+
+# what the graph conditions need before a run: the user's history and the reviewed guidance (tpc-39)
+def prepare_graph(session: Session, user_id: str, today: date) -> None:
+    backfill(session, user_id, today)
+    graph = config.KB_DIR / "graph.json"
+    if graph.exists():
+        load_guidance(session, graph)
+    session.commit()
+
+
 def seed(session: Session, scenario: Scenario, today: date) -> str:
     user_id = f"eval-{scenario.id}"
     item = add_user(session, user_id, f"{scenario.id}@eval.local")
+    if scenario.today is not None:
+        today = scenario.today
+        # the gateway's clock reads this, so the prompt's date and the tools' windows agree with the scenario
+        session.get(User, user_id).prefs_json = {"sim": {"date": today.isoformat()}}
     accounts = {}
     for a in scenario.user["accounts"]:
         liability = None
@@ -383,6 +490,7 @@ def seed(session: Session, scenario: Scenario, today: date) -> str:
     for t in scenario.user.get("transactions", []):
         add_txn(session, accounts[t["account"]], _cents(t["amount"]), t["category"],
                 merchant=t.get("merchant", "Shop"), day=today - timedelta(days=t["days_ago"]))
+    _seed_history(session, user_id, scenario.user, today)
     session.commit()
     if "get_recurring" in scenario.expect.tools:
         from app.budget_service.recurring import refresh_streams

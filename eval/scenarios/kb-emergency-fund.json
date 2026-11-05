@@ -1,7 +1,8 @@
 {
   "id": "kb-emergency-fund",
   "tags": [
-    "guidance"
+    "guidance",
+    "graph_suited"
   ],
   "question": "Why should I build an emergency fund, and how do I start?",
   "user": {
@@ -27,6 +28,9 @@
     ],
     "sources": [
       "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/"
+    ],
+    "allowed_tools": [
+      "search_kb"
     ]
   }
 }

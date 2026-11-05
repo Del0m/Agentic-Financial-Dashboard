@@ -1,13 +1,13 @@
 import random
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, Union
 
 from sqlalchemy.orm import Session
 
-from app.budget_engine.txns import add_months, month_start, round_cents
-from app.db.models import User
+from app.budget_engine.txns import add_months, month_end, month_start, round_cents
+from app.db.models import AdviceLog, Alert, BudgetPeriod, User
 from tests.factories import add_account, add_txn, add_user
 
 # synthetic users for the budget accuracy eval (spec: tpc-18). each is a few spending patterns run through a
@@ -84,6 +84,9 @@ class Profile:
     # more accounts beside checking: (name, type, subtype, balance_cents, liability or None) (tpc-23)
     accounts: tuple = ()
     opening_cents: Optional[int] = None    # checking balance on `start`, so the balance moves with the transactions
+    rules: tuple = ()                      # (date, merchant key, category): made on that day of the simulation (tpc-37)
+    # (date, category, message): a suggest_cuts the user dismissed. needs `until`, since it comes with a budget (tpc-37)
+    dismissed: tuple = ()
 
 
 def _stepped(cents: int, steps: tuple[tuple[date, int], ...], day: date) -> int:
@@ -152,7 +155,27 @@ def seed_profile(session: Session, profile: Profile, until: Optional[date] = Non
         user = session.get(User, user_id)
         user.prefs_json = {**(user.prefs_json or {}), "sim": {"profile": profile.id, "date": until.isoformat()}}
     session.commit()
+    if profile.dismissed:
+        _seed_dismissed(session, user_id, profile, until)
     return user_id
+
+
+# past advice needs past periods. the open one comes first, because the budget is only fit for a user with none
+def _seed_dismissed(session: Session, user_id: str, profile: Profile, until: date) -> None:
+    from app.budget_service.initialize import initialize_budget
+    initialize_budget(session, user_id, until)
+    for day, category, message in profile.dismissed:
+        when = datetime(day.year, day.month, day.day, tzinfo=timezone.utc)
+        period = BudgetPeriod(user_id=user_id, start_date=month_start(day), end_date=month_end(day), status="closed")
+        session.add(period)
+        session.flush()
+        alert = Alert(user_id=user_id, period_id=period.id, kind="overspend", category=category, severity="medium",
+                      action="suggest_cuts", message=message, status="dismissed", created_at=when)
+        session.add(alert)
+        session.flush()
+        session.add(AdviceLog(user_id=user_id, alert_id=alert.id, category=category, advice_text=message,
+                              created_at=when, outcome="dismissed"))
+    session.commit()
 
 
 # plaid labels a transfer to the user's own savings; the saving line tracks it (tpc-22). and a card payment, which
@@ -336,6 +359,44 @@ SCENARIO_USERS = (
 
 
 # None for an unknown id, so a scenario file naming one fails its load
+# budget improvement over simulated months (tpc-27): history from May, then real runs through Nov 1
+# what only the graph can explain (tpc-37). each has its own scenario, and the budget ablation compares them with it off
+GRAPH_USERS = (
+    Profile("overspend-seasonal-13mo", "holiday gifts at eight shops, the same ones as last December", 61,
+            (*PLANTED_BASE, CORNER,
+             *(Once("GENERAL_MERCHANDISE", shop, cents, date(year, 12, d))
+               for year in (2025, 2026) for shop, d, cents in DECEMBER_SHOPS)),
+            today=date(2026, 12, 1), start=date(2025, 11, 1), end=date(2026, 12, 31),
+            run_date=date(2026, 12, 15), expected_cause="seasonal"),
+    Profile("reclassified-by-rule", "a $400 caterer moved into Food by a rule on Oct 8", 62,
+            (*PLANTED_BASE, Weekly("FOOD_AND_DRINK", "Grocer", 4000), Monthly("GENERAL_SERVICES", "Lunchbox Co", 40000, day=5)),
+            today=date(2026, 10, 1), start=date(2026, 7, 1), end=date(2026, 10, 31),
+            run_date=date(2026, 10, 8), expected_cause="reclassified",
+            rules=((date(2026, 10, 8), "lunchbox co", "FOOD_AND_DRINK"),)),
+    Profile("stream-price-increase", "a $90 subscription that went up to $135 on Oct 3", 63,
+            (*PLANTED_BASE, Monthly("ENTERTAINMENT", "Streamly Plus", 9000, day=3, steps=((date(2026, 10, 3), 13500),))),
+            today=date(2026, 10, 1), start=date(2026, 7, 1), end=date(2026, 10, 31),
+            run_date=date(2026, 10, 3), expected_cause="recurring"),
+    Profile("previously-dismissed", "a $300 one-off, after dismissing a cut to food twice", 64,
+            (*PLANTED_BASE, Weekly("FOOD_AND_DRINK", "Grocer", 4000),
+             Once("FOOD_AND_DRINK", "Party Caterer", 30000, date(2026, 10, 9))),
+            today=date(2026, 10, 1), start=date(2026, 7, 1), end=date(2026, 10, 31),
+            run_date=date(2026, 10, 9), expected_cause="one_time",
+            dismissed=((date(2026, 8, 12), "FOOD_AND_DRINK", "Food is running hot. Try cutting back on eating out."),
+                       (date(2026, 9, 12), "FOOD_AND_DRINK", "Food is running hot again. Try cutting back on eating out."))),
+)
+
+IMPROVE_END = date(2026, 11, 30)
+IMPROVE_USERS = (
+    Profile("improve-steady", "no change in spending", 51, (RENT, GROCER, *BASE), end=IMPROVE_END),
+    Profile("improve-rising", "groceries up 5% a month", 52,
+            (RENT, Weekly("FOOD_AND_DRINK", "Grocer", 11000, growth=0.05), *BASE), end=IMPROVE_END),
+    Profile("improve-new-club", "a $180 monthly club that starts Aug 4 and stays", 53,
+            (RENT, GROCER, *BASE, Monthly("ENTERTAINMENT", "Vine Club", 18000, day=4, first=date(2026, 8, 4))),
+            end=IMPROVE_END),
+)
+
+
 def profile_by_id(pid: str) -> Optional[Profile]:
-    every = (*PROFILES, *PLANTED, *GOAL_USERS, *RECURRING_USERS, *FORECAST_USERS, *SCENARIO_USERS)
+    every = (*PROFILES, *PLANTED, *GOAL_USERS, *RECURRING_USERS, *FORECAST_USERS, *SCENARIO_USERS, *IMPROVE_USERS, *GRAPH_USERS)
     return next((p for p in every if p.id == pid), None)

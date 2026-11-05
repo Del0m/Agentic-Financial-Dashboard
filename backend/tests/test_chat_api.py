@@ -12,6 +12,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from sqlalchemy import select
 
+from app.agents.chat_graph import DISCLAIMER
 from app import config
 from app.agents import chat_graph
 from app.api import chat
@@ -24,6 +25,7 @@ from tests.fakes import FakeKB, ScriptedChatModel, ollama_has, tool_call
 
 QUESTION = "Which debt should I pay first?"
 ANSWER = "Pay the credit card first."
+ANSWERED = f"{ANSWER}\n\n{DISCLAIMER}"      # the graph adds the closing line the model left out
 SOURCE = {"title": FakeKB.RESULT["title"], "section": FakeKB.RESULT["section"], "url": FakeKB.RESULT["source_url"]}
 
 
@@ -95,7 +97,7 @@ def test_turn_streams_tools_then_tokens_then_done(api, model):
     assert events[0][1] == {"sources": [SOURCE]}
     assert events[1][1] == {"id": "c1", "name": "get_debts", "args": {}}
     assert events[2][1] == {"id": "c1", "name": "get_debts", "ok": True}
-    assert "".join(d["text"] for e, d in events if e == "token") == ANSWER
+    assert "".join(d["text"] for e, d in events if e == "token") == ANSWERED
 
 
 # the browser shows which tools ran, never what they returned
@@ -149,7 +151,7 @@ def test_other_error_is_generic(api, model):
 
 
 def test_empty_answer_message(api, model):
-    model.replies.append(AIMessage(content=""))
+    model.replies += [AIMessage(content=""), AIMessage(content="")]     # still empty on the try with no tools
 
     events = read_events(ask(api).text)
 
@@ -163,7 +165,7 @@ def test_token_with_blank_lines_is_one_event(api, model):
 
     events = read_events(ask(api).text)
 
-    assert "".join(d["text"] for e, d in events if e == "token") == "a\n\nb"
+    assert "".join(d["text"] for e, d in events if e == "token") == f"a\n\nb\n\n{DISCLAIMER}"
     assert types(events)[-1] == "done"
 
 
@@ -173,8 +175,8 @@ def test_history_grouped_after_turn(api, model):
 
     assert api.get("/chat/t1").json() == [
         {"role": "user", "text": QUESTION, "tools": []},
-        {"role": "assistant", "text": ANSWER, "tools": [{"name": "get_debts", "args": {}, "ok": True}],
-         "sources": [SOURCE]},
+        {"role": "assistant", "text": ANSWERED, "tools": [{"name": "get_debts", "args": {}, "ok": True}],
+         "sources": [SOURCE], "graph": False},
     ]
 
 
@@ -197,7 +199,7 @@ def test_text_before_tool_call_not_in_history(api, model):
     events = read_events(ask(api).text)
 
     assert types(events).index("token") < types(events).index("tool_call")   # the client drops it
-    assert api.get("/chat/t1").json()[1]["text"] == ANSWER
+    assert api.get("/chat/t1").json()[1]["text"] == ANSWERED
 
 
 def test_unknown_thread_history_empty(api):
@@ -295,7 +297,7 @@ def test_lock_not_held_when_body_never_starts(api, model, users):
 def test_empty_answer_after_tool_call_text(api, model):
     call = tool_call("get_debts")
     call.content = "Let me check your debts"
-    model.replies += [call, AIMessage(content="")]
+    model.replies += [call, AIMessage(content=""), AIMessage(content="")]
 
     events = read_events(ask(api).text)
 
@@ -377,3 +379,23 @@ def test_live_chat_answers_which_debt_first(client, db, users, monkeypatch, tmp_
     assert any("how-reduce-your-debt" in u for u in urls), urls
     cited = [u.rstrip(".,") for u in re.findall(r"https?://[^\s)\]>\"']+", text)]
     assert all(u in urls for u in cited), cited
+
+
+def test_graph_chip_event_and_history(api, model, monkeypatch):
+    from app import config
+    from app.privacy.gateway import PrivacyGateway
+    monkeypatch.setattr(config, "KG_CHAT", "hybrid")
+    monkeypatch.setattr(PrivacyGateway, "graph_retrieve", lambda self, q, relation=None: {"as_of": "2026-11-06", "facts": ["a: b"]})
+    model.replies.append(AIMessage("Answer."))
+    events = read_events(ask(api).text)
+    assert ("graph", {"used": True}) in [(e, d) for e, d in events]
+    assert api.get("/chat/t1").json()[1]["graph"] is True
+
+
+def test_no_graph_event_without_facts(api, model, monkeypatch):
+    from app import config
+    from app.privacy.gateway import PrivacyGateway
+    monkeypatch.setattr(config, "KG_CHAT", "hybrid")
+    monkeypatch.setattr(PrivacyGateway, "graph_retrieve", lambda self, q, relation=None: {"as_of": "2026-11-06", "facts": []})
+    model.replies.append(AIMessage("Answer."))
+    assert "graph" not in types(read_events(ask(api).text))

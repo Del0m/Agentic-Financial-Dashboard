@@ -1,0 +1,303 @@
+import json
+from pathlib import Path
+
+import pytest
+
+from eval import compare as cmp
+from eval import budget_improvement as improvement
+from eval import run_benchmark as bench
+from eval import sample_answers as sample
+
+
+def write_folder(folder: Path, results: dict, commit="abc", kind="chat", scenario_hash="h", scenario_hashes_by_kind=None):
+    folder.mkdir(parents=True)
+    cfg = {"commit": commit, "scenario_hash": scenario_hash, "finished_at": "t"}
+    if scenario_hashes_by_kind is not None:
+        cfg["scenario_hashes_by_kind"] = scenario_hashes_by_kind
+    (folder / "config.json").write_text(json.dumps(cfg))
+    for sid, passes in results.items():
+        scenario_kind = kind[sid] if isinstance(kind, dict) else kind
+        for n, passed in enumerate(passes, 1):
+            scores = {"facts": {"passed": passed}, "judge_passed": passed} if scenario_kind == "chat" else {"checks": {}, "passed": passed}
+            record = {"scenario_id": sid, "kind": scenario_kind, "answer": "text"}
+            (folder / f"{sid}.run{n}.json").write_text(json.dumps({"record": record, "scores": scores}))
+
+
+TAGS = {"a": ("temporal",), "b": ("temporal",), "c": ("graph_unsuited",), "d": ("graph_unsuited",)}
+
+
+def test_compare_counts_wins_losses_and_ties_per_group(tmp_path):
+    write_folder(tmp_path / "w", {"a": [True] * 3, "b": [True] * 3, "c": [False] * 3, "d": [True] * 3})
+    write_folder(tmp_path / "wo", {"a": [False] * 3, "b": [False] * 3, "c": [True] * 3, "d": [True] * 3})
+    result = cmp.compare(tmp_path / "w", tmp_path / "wo", "chat", TAGS)
+    assert result["groups"]["temporal"] == {"scenarios": 2, "wins": 2, "losses": 0, "ties": 0, "passed_with": 2,
+                                            "passed_without": 0, "verdict": "helps"}
+    assert result["groups"]["graph_unsuited"]["verdict"] == "does not help"
+    assert result["groups"]["all"]["wins"] == 2 and result["groups"]["all"]["losses"] == 1
+
+
+@pytest.mark.parametrize("wins, losses, expected", [(2, 0, "helps"), (3, 1, "helps"), (1, 0, "does not help"),
+                                                    (0, 0, "does not help"), (0, 1, "does not help"), (0, 2, "hurts")])
+def test_verdict_rule_matches_the_preregistration(wins, losses, expected):
+    assert cmp.verdict(wins, losses) == expected
+
+
+def test_scenario_passes_on_two_of_three():
+    passed = lambda item: item
+    assert cmp.scenario_passes([True, True, False], passed) is True
+    assert cmp.scenario_passes([True, False, False], passed) is False
+    assert cmp.scenario_passes([True], passed) is True
+
+
+@pytest.mark.parametrize("field", ["commit", "scenario_hash"])
+def test_compare_refuses_folders_that_differ(tmp_path, field):
+    write_folder(tmp_path / "w", {"a": [True]})
+    write_folder(tmp_path / "wo", {"a": [True]}, **{field: "other"})
+    with pytest.raises(cmp.NotComparable, match=field):
+        cmp.compare(tmp_path / "w", tmp_path / "wo", "chat", TAGS)
+
+
+def write_subset_pair(tmp_path, kind):
+    baseline, subset = tmp_path / "baseline", tmp_path / "subset"
+    write_folder(baseline, {k: [True] * 3 for k in ("chat", "budget", "goal")},
+                 kind={k: k for k in ("chat", "budget", "goal")}, scenario_hash="all",
+                 scenario_hashes_by_kind={k: f"hash-{k}" for k in ("chat", "budget", "goal")})
+    write_folder(subset, {kind: [False] * 3}, kind=kind, scenario_hash="subset",
+                 scenario_hashes_by_kind={kind: f"hash-{kind}"})
+    return baseline, subset
+
+
+@pytest.mark.parametrize("kind,metric", [("chat", "chat"), ("budget", "budget"),
+                                         ("budget", "retries"), ("goal", "retries")])
+def test_compare_full_baseline_with_matching_kind_subset(tmp_path, kind, metric):
+    baseline, subset = write_subset_pair(tmp_path, kind)
+    result = cmp.compare(baseline, subset, metric, {})
+    assert result["groups"]["all"]["scenarios"] == 1 and result["groups"]["all"]["wins"] == 1
+    assert [row["scenario"] for row in result["scenarios"]] == [kind]
+    assert cmp.compare(subset, baseline, metric, {})["groups"]["all"]["losses"] == 1
+
+
+@pytest.mark.parametrize("change,match", [("commit", "commit"), ("hash", "chat scenario_hash"),
+                                        ("missing_hash", "missing chat"), ("legacy", "subset comparisons")])
+def test_subset_comparison_requires_matching_provenance(tmp_path, change, match):
+    baseline, subset = write_subset_pair(tmp_path, "chat")
+    path = subset / "config.json"
+    cfg = json.loads(path.read_text())
+    if change == "commit":
+        cfg["commit"] = "other"
+    elif change == "hash":
+        cfg["scenario_hashes_by_kind"]["chat"] = "changed"
+    elif change == "missing_hash":
+        cfg["scenario_hashes_by_kind"] = {}
+    else:
+        del cfg["scenario_hashes_by_kind"]
+    path.write_text(json.dumps(cfg))
+    with pytest.raises(cmp.NotComparable, match=match):
+        cmp.compare(baseline, subset, "chat", {})
+
+
+def test_compare_refuses_to_silently_drop_a_missing_scenario(tmp_path):
+    write_folder(tmp_path / "w", {"a": [True], "b": [True]})
+    write_folder(tmp_path / "wo", {"a": [True]})
+    with pytest.raises(cmp.NotComparable, match="chat scenario sets differ"):
+        cmp.compare(tmp_path / "w", tmp_path / "wo", "chat", TAGS)
+
+
+@pytest.mark.parametrize("kind,excluded", [("budget", "goal_correction"), ("goal", "resend")])
+def test_retry_rates_exclude_kinds_outside_the_comparison(tmp_path, kind, excluded):
+    baseline, subset = write_subset_pair(tmp_path, kind)
+    for agent_kind in ("budget", "goal"):
+        path = baseline / f"{agent_kind}.run1.json"
+        item = json.loads(path.read_text())
+        item["record"].update(llm_calls=10, llm_retries=1, attempts=2)
+        path.write_text(json.dumps(item))
+    result = cmp.compare(baseline, subset, "retries", {})
+    included = "resend" if kind == "budget" else "goal_correction"
+    assert result["fire_rates"][included] > 0
+    assert result["fire_rates"][excluded] is None
+
+
+def test_retry_fire_rate_marks_a_mechanism_that_rarely_ran(tmp_path):
+    write_folder(tmp_path / "w", {"b1": [True]}, kind="budget")
+    write_folder(tmp_path / "wo", {"b1": [True]}, kind="budget")
+    path = tmp_path / "w" / "b1.run1.json"
+    item = json.loads(path.read_text())
+    item["record"].update(llm_calls=100, llm_retries=1)
+    path.write_text(json.dumps(item))
+    result = cmp.compare(tmp_path / "w", tmp_path / "wo", "retries", TAGS)
+    assert result["fire_rates"]["resend"] == 0.01 and result["uninformative"]["resend"] is True
+    assert result["uninformative"]["goal_correction"] is True       # never ran at all
+
+
+def test_budget_metric_reads_cause_and_action():
+    item = {"scores": {"checks": {"cause": True, "action": False, "flags": True}, "passed": False}}
+    assert cmp.budget_passed(item) is False
+    item["scores"]["checks"]["action"] = True
+    assert cmp.budget_passed(item) is True
+
+
+def test_every_condition_changes_one_factor_from_the_baseline():
+    rows = bench.conditions(graph_built=True)
+    assert sum(1 for _, c in rows if c.label == "baseline") == 3
+    labels = {c.label for _, c in rows}
+    assert {"chat-none", "chat-vector", "chat-graph", "chat-hybrid-shuffled", "budget-kg-off"} <= labels
+    assert all(model == bench.ABLATION_MODEL for model, c in rows if c.label != "baseline")
+
+
+def test_conditions_needing_the_graph_wait_for_it():
+    labels = {c.label for _, c in bench.conditions(graph_built=False)}
+    assert "chat-graph" not in labels and "chat-hybrid-shuffled" not in labels and "budget-kg-off" not in labels
+    assert "chat-none" in labels and "budget-retries-off" in labels
+
+
+def test_finished_condition_needs_the_same_commit(tmp_path):
+    folder = tmp_path / "2026-11-06" / "qwen2.5_14b-chat-none"
+    write_folder(folder, {"a": [True]})
+    (folder / "summary.json").write_text("{}")
+    expected = {"model": "qwen2.5:14b", "label": "chat-none", "scenarios": ["a"], "runs": 1}
+    path = folder / "config.json"
+    path.write_text(json.dumps({**json.loads(path.read_text()), **expected}))
+    assert bench.is_finished("qwen2.5:14b", "chat-none", "abc", expected=expected, root=tmp_path) is True
+    assert bench.is_finished("qwen2.5:14b", "chat-none", "other", expected=expected, root=tmp_path) is False
+    assert bench.is_finished("mistral", "chat-none", "abc", expected=expected, root=tmp_path) is False
+
+
+def completed_condition(root, command, commit="abc", suffix=""):
+    cfg = bench.expected_config(command)
+    folder = root / "2026-11-06" / f"{bench._safe(cfg['model'])}-{cfg['label']}{suffix}"
+    write_folder(folder, {sid: [True] * cfg["runs"] for sid in cfg["scenarios"]}, commit=commit)
+    (folder / "config.json").write_text(json.dumps({**cfg, "commit": commit, "finished_at": "t"}))
+    (folder / "summary.json").write_text("{}")
+    return folder
+
+
+def test_pilot_then_full_executes_full_conditions(monkeypatch, tmp_path):
+    condition = bench.Condition("baseline", ())
+    monkeypatch.setattr(bench, "RESULTS_DIR", tmp_path)
+    monkeypatch.setattr(bench, "conditions", lambda _: [("mistral", condition)])
+    monkeypatch.setattr(bench, "dirty_files", lambda: [])
+    monkeypatch.setattr(bench, "_commit", lambda: "abc")
+    commands = []
+
+    def run(command):
+        if command[1] == "eval/run_eval.py":
+            commands.append(command)
+            completed_condition(tmp_path, command)
+        return 0
+
+    monkeypatch.setattr(bench, "run", run)
+    assert bench.main(["--pilot"]) == 0
+    assert bench.main([]) == 0
+    pilot, full = map(bench.expected_config, commands)
+    assert pilot["label"] == "pilot-baseline" and full["label"] == "baseline"
+    assert pilot["runs"] == 1 and full["runs"] == 3
+    assert len(pilot["scenarios"]) < len(full["scenarios"])
+    assert bench.main([]) == 0
+    assert len(commands) == 2
+
+
+@pytest.mark.parametrize("suffix", ["-2", "-10", "-21"])
+def test_completed_numeric_rerun_is_reused_after_old_original(tmp_path, suffix):
+    command = bench.eval_command("mistral", bench.Condition("baseline", ()), ("--kg", "on", "--retrieval", "hybrid"))
+    completed_condition(tmp_path, command, commit="old")
+    completed_condition(tmp_path, command, suffix=suffix)
+    assert bench.is_finished("mistral", "baseline", "abc", expected=bench.expected_config(command), root=tmp_path)
+
+
+@pytest.mark.parametrize("change", ["pilot", "runs", "scenarios", "scenario_hash", "retrieval", "kg_mode", "retries",
+                                    "temperature", "seed", "today", "model", "label", "unfinished", "missing", "malformed"])
+def test_rerun_requires_matching_metadata_and_complete_files(tmp_path, change):
+    command = bench.eval_command("mistral", bench.Condition("baseline", ()), ("--kg", "on", "--retrieval", "hybrid"))
+    expected = bench.expected_config(command)
+    folder = completed_condition(tmp_path, command, suffix="-2")
+    path = folder / "config.json"
+    cfg = json.loads(path.read_text())
+    if change == "pilot":  # old pilots used the full condition's label
+        cfg.update(bench.expected_config(command + ["--limit", "4", "--runs", "1"]))
+    elif change == "unfinished":
+        cfg.pop("finished_at")
+    elif change == "missing":
+        (folder / f"{expected['scenarios'][0]}.run3.json").unlink()
+    elif change != "malformed":
+        cfg[change] = "wrong"
+    path.write_text("{" if change == "malformed" else json.dumps(cfg))
+    assert not bench.is_finished("mistral", "baseline", "abc", expected=expected, root=tmp_path)
+
+
+def test_benchmark_refuses_uncommitted_changes(monkeypatch, capsys):
+    monkeypatch.setattr(bench, "dirty_files", lambda: [" M eval/run_eval.py"])
+    monkeypatch.setattr(bench, "run", lambda c: pytest.fail("ran something"))
+    assert bench.main([]) == 2
+    assert "uncommitted" in capsys.readouterr().out
+
+
+def test_allow_dirty_is_only_for_the_pilot():
+    with pytest.raises(SystemExit):
+        bench.main(["--allow-dirty"])
+
+
+def test_sample_hides_the_condition_and_covers_each_folder(tmp_path):
+    for name in ("x", "y"):
+        write_folder(tmp_path / name, {f"{name}{i}": [True] for i in range(20)})
+    chosen = sample.pick([tmp_path / "x", tmp_path / "y"], size=30)
+    assert len(chosen) == 30 and {c["folder"] for c in chosen} == {"x", "y"}
+    assert chosen == sample.pick([tmp_path / "x", tmp_path / "y"], size=30)    # a fixed seed gives the same sample
+    out = tmp_path / "hand"
+    sample.write_sample(chosen, out, {})
+    rows = json.loads((out / "sample.json").read_text())
+    assert set(rows[0]) == {"n", "question", "answer", "passes"}
+
+
+def test_sample_score_reports_agreement_with_the_judge(tmp_path):
+    write_folder(tmp_path / "x", {"a": [True], "b": [False]})
+    out = tmp_path / "hand"
+    sample.write_sample(sample.pick([tmp_path / "x"], size=2), out, {})
+    rows = json.loads((out / "sample.json").read_text())
+    key = {r["n"]: r for r in json.loads((out / "key.json").read_text())}
+    rows[0]["passes"] = key[rows[0]["n"]]["judge_passed"]
+    (out / "sample.json").write_text(json.dumps(rows))
+    assert sample.score(out)["agreed"] == 1 and sample.score(out)["unrated"] == 1
+
+
+# budget improvement
+def test_no_ai_baseline_makes_no_proposals_and_closes_three_periods(tmp_path):
+    from langchain_core.language_models.fake_chat_models import FakeListChatModel
+    from eval.budget_users import IMPROVE_USERS
+    result = improvement.run_user(IMPROVE_USERS[2], model=FakeListChatModel(responses=["no"]), decisions=None,
+                                  audit_path=tmp_path / "a.jsonl")
+    assert result["proposals"] == 0 and len(result["periods"]) == 3
+    assert all(p["mape"] is not None for p in result["periods"])
+
+
+def _proposing_model():
+    from tests.fakes import SchemaReplyModel
+    return SchemaReplyModel(cause="recurring", first_action="adjust_next_budget")
+
+
+def test_collect_then_replay_applies_decisions_and_counts_unseen(tmp_path):
+    from eval.budget_users import IMPROVE_USERS
+    user = IMPROVE_USERS[2]
+    collected = improvement.run_user(user, model=_proposing_model(), decisions=None, audit_path=tmp_path / "a.jsonl")
+    keys = [row["key"] for row in collected["proposal_rows"]]
+    assert keys and all(row["proposed_limit_cents"] for row in collected["proposal_rows"])
+    assert "model" not in collected["proposal_rows"][0]
+
+    first = {keys[0]: {"decision": "accept"}}
+    replayed = improvement.run_user(user, model=_proposing_model(), decisions=first, audit_path=tmp_path / "b.jsonl")
+    assert replayed["accepted"] == 1 and replayed["rejected"] == 0
+    assert replayed["unseen"] == replayed["proposals"] - 1      # the rest had no decision, so they count as rejected
+
+
+def test_merge_drops_model_names_and_duplicates(tmp_path):
+    row = {"key": "k", "category": "c", "cause": "recurring", "message": "m", "proposed_limit_cents": 1, "periods": []}
+    (tmp_path / "collected-a.json").write_text(json.dumps([row]))
+    (tmp_path / "collected-b.json").write_text(json.dumps([{**row, "message": "other"}]))
+    assert improvement.merge_proposals(tmp_path) == {"proposals": 1}
+    assert json.loads((tmp_path / "proposals.json").read_text())[0]["message"] == "m"
+
+
+def test_bad_decision_value_is_refused(tmp_path):
+    path = tmp_path / "decisions.json"
+    path.write_text(json.dumps({"decisions": {"k": {"decision": "maybe"}}}))
+    with pytest.raises(ValueError, match="accept or reject"):
+        improvement.load_decisions(path)

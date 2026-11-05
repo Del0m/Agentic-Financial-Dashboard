@@ -1,7 +1,8 @@
 {
   "id": "cash-no-income",
   "tags": [
-    "cash_flow"
+    "cash_flow",
+    "graph_unsuited"
   ],
   "question": "Will I run short of cash this month?",
   "user": {
@@ -53,6 +54,12 @@
     ],
     "tools": [
       "get_cash_forecast"
+    ],
+    "allowed_tools": [
+      "get_cash_forecast",
+      "get_accounts",
+      "get_spending",
+      "get_recurring"
     ]
   }
 }

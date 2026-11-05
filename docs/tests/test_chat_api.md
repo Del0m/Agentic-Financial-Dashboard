@@ -174,3 +174,9 @@ Run them from `backend/`:
 It's skipped unless Ollama has `OLLAMA_MODEL` and `OLLAMA_EMBED_MODEL` and the knowledge base is ingested.
 
 **Why it's there:** This is the demo the milestone exists for. The last check fails the test if the model makes up a citation, which both local models did before the app took over retrieval. Score on 2026-10-26 with `qwen2.5:14b`: **3/3**. Under the original design it was 0/3: no `search_kb` call, and invented sources.
+
+## `test_graph_chip_event_and_history`, `test_no_graph_event_without_facts`
+
+**What they do:** The stream sends a `graph` event, and history records it, only when graph facts were used.
+
+**Why they're there:** The chat UI's `graph` chip depends on this (TPC-39).

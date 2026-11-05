@@ -24,6 +24,13 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
 # 0 keeps eval runs repeatable; chat can pass its own temperature
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE") or "0")
+# what the benchmark turns off (tpc-27). read at call time, so the eval can set them per condition
+# chat retrieval: none | vector (today's behaviour) | graph | hybrid | hybrid-shuffled
+KG_CHAT = os.getenv("KG_CHAT", "hybrid")
+# graph facts in the budget agent's diagnosis: off | on
+KG_MODE = os.getenv("KG_MODE", "on")
+# the structured-output resend and the goal agent's correct-and-ask-again
+RETRIES_ENABLED = os.getenv("RETRIES_ENABLED", "1").strip().lower() not in ("0", "false", "no")
 
 # every prompt the privacy gateway builds is appended here (git-ignored)
 # `or`, not a getenv default: .env.example leaves it blank, and Path("") would be the cwd

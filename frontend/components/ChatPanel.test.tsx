@@ -77,6 +77,21 @@ describe("ChatPanel", () => {
     expect(screen.getByText("search_kb ✗")).toBeDefined();
   });
 
+  test("shows a graph chip only when graph facts were used", async () => {
+    replyWith([{ event: "graph", data: { used: true } }, { event: "token", data: { text: "Answer" } }, { event: "done", data: {} }]);
+    render(<ChatPanel />);
+    await send();
+    expect(await screen.findByText("graph")).toBeTruthy();
+  });
+
+  test("shows no graph chip without graph facts", async () => {
+    replyWith([{ event: "token", data: { text: "Answer" } }, { event: "done", data: {} }]);
+    render(<ChatPanel />);
+    await send();
+    await screen.findByText("Answer");
+    expect(screen.queryByText("graph")).toBeNull();
+  });
+
   test("lists sources as links", async () => {
     replyWith([
       { event: "sources", data: { sources: [{ title: "How to reduce your debt", section: "Snowball method", url: "https://www.consumerfinance.gov/x/" }] } },

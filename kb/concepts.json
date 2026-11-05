@@ -1,0 +1,306 @@
+[
+  {
+    "key": "roth-ira",
+    "label": "Roth IRA",
+    "aliases": [
+      "Roth IRAs"
+    ]
+  },
+  {
+    "key": "traditional-ira",
+    "label": "Traditional IRA",
+    "aliases": [
+      "traditional IRAs"
+    ]
+  },
+  {
+    "key": "ira",
+    "label": "Individual retirement account",
+    "aliases": [
+      "IRA",
+      "IRAs"
+    ]
+  },
+  {
+    "key": "401k",
+    "label": "401(k)",
+    "aliases": [
+      "401(k) plan",
+      "401(k)s",
+      "pre-tax 401(k)"
+    ]
+  },
+  {
+    "key": "roth-401k",
+    "label": "Designated Roth 401(k)",
+    "aliases": [
+      "Roth 401(k)"
+    ]
+  },
+  {
+    "key": "simple-401k",
+    "label": "SIMPLE 401(k)",
+    "aliases": [
+      "SIMPLE plan"
+    ]
+  },
+  {
+    "key": "retirement-account",
+    "label": "Retirement account",
+    "aliases": [
+      "retirement plan",
+      "retirement accounts"
+    ]
+  },
+  {
+    "key": "contribution-limit",
+    "label": "Annual contribution limit",
+    "aliases": [
+      "contribution limit",
+      "elective deferral limit",
+      "maximum elective contribution"
+    ]
+  },
+  {
+    "key": "catch-up-contribution",
+    "label": "Catch-up contribution",
+    "aliases": [
+      "catch-up contributions"
+    ]
+  },
+  {
+    "key": "income-limit",
+    "label": "Income limit",
+    "aliases": [
+      "income limits",
+      "modified AGI limit"
+    ]
+  },
+  {
+    "key": "required-distribution",
+    "label": "Required minimum distribution",
+    "aliases": [
+      "required distributions",
+      "RMD"
+    ]
+  },
+  {
+    "key": "withdrawals",
+    "label": "Withdrawals",
+    "aliases": [
+      "withdrawal",
+      "distributions"
+    ]
+  },
+  {
+    "key": "rollover",
+    "label": "Rollover",
+    "aliases": [
+      "rollovers"
+    ]
+  },
+  {
+    "key": "after-tax-contribution",
+    "label": "After-tax contribution",
+    "aliases": [
+      "after-tax dollars"
+    ]
+  },
+  {
+    "key": "pre-tax-contribution",
+    "label": "Pre-tax contribution",
+    "aliases": [
+      "pre-tax"
+    ]
+  },
+  {
+    "key": "employer-match",
+    "label": "Employer match",
+    "aliases": [
+      "matching contributions"
+    ]
+  },
+  {
+    "key": "hsa",
+    "label": "Health savings account",
+    "aliases": [
+      "HSA"
+    ]
+  },
+  {
+    "key": "emergency-fund",
+    "label": "Emergency fund",
+    "aliases": [
+      "emergency savings",
+      "rainy day fund"
+    ]
+  },
+  {
+    "key": "budget",
+    "label": "Budget",
+    "aliases": [
+      "budgeting"
+    ]
+  },
+  {
+    "key": "50-30-20-rule",
+    "label": "50/30/20 rule",
+    "aliases": [
+      "50-30-20 rule",
+      "50/30/20"
+    ]
+  },
+  {
+    "key": "debt-avalanche",
+    "label": "Debt avalanche",
+    "aliases": [
+      "avalanche method",
+      "highest interest rate method"
+    ]
+  },
+  {
+    "key": "debt-snowball",
+    "label": "Debt snowball",
+    "aliases": [
+      "snowball method"
+    ]
+  },
+  {
+    "key": "minimum-payment",
+    "label": "Minimum payment",
+    "aliases": [
+      "minimum payments"
+    ]
+  },
+  {
+    "key": "credit-card",
+    "label": "Credit card",
+    "aliases": [
+      "credit cards"
+    ]
+  },
+  {
+    "key": "apr",
+    "label": "Annual percentage rate",
+    "aliases": [
+      "APR"
+    ]
+  },
+  {
+    "key": "grace-period",
+    "label": "Grace period",
+    "aliases": []
+  },
+  {
+    "key": "balance-transfer",
+    "label": "Balance transfer",
+    "aliases": []
+  },
+  {
+    "key": "credit-score",
+    "label": "Credit score",
+    "aliases": [
+      "credit scores"
+    ]
+  },
+  {
+    "key": "credit-report",
+    "label": "Credit report",
+    "aliases": [
+      "credit reports"
+    ]
+  },
+  {
+    "key": "student-loan",
+    "label": "Student loan",
+    "aliases": [
+      "student loans"
+    ]
+  },
+  {
+    "key": "federal-student-loan",
+    "label": "Federal student loan",
+    "aliases": [
+      "federal student loans"
+    ]
+  },
+  {
+    "key": "income-driven-repayment",
+    "label": "Income-driven repayment",
+    "aliases": [
+      "income-driven repayment plan"
+    ]
+  },
+  {
+    "key": "fdic-insurance",
+    "label": "FDIC deposit insurance",
+    "aliases": [
+      "FDIC insurance",
+      "deposit insurance"
+    ]
+  },
+  {
+    "key": "deposit-insurance-limit",
+    "label": "Deposit insurance limit",
+    "aliases": [
+      "standard maximum deposit insurance amount"
+    ]
+  },
+  {
+    "key": "savings-account",
+    "label": "Savings account",
+    "aliases": [
+      "savings accounts"
+    ]
+  },
+  {
+    "key": "checking-account",
+    "label": "Checking account",
+    "aliases": [
+      "checking accounts"
+    ]
+  },
+  {
+    "key": "compound-interest",
+    "label": "Compound interest",
+    "aliases": [
+      "compounding"
+    ]
+  },
+  {
+    "key": "asset-allocation",
+    "label": "Asset allocation",
+    "aliases": []
+  },
+  {
+    "key": "diversification",
+    "label": "Diversification",
+    "aliases": []
+  },
+  {
+    "key": "stocks",
+    "label": "Stocks",
+    "aliases": [
+      "stock"
+    ]
+  },
+  {
+    "key": "bonds",
+    "label": "Bonds",
+    "aliases": [
+      "bond"
+    ]
+  },
+  {
+    "key": "mutual-fund",
+    "label": "Mutual fund",
+    "aliases": [
+      "mutual funds"
+    ]
+  },
+  {
+    "key": "risk-tolerance",
+    "label": "Risk tolerance",
+    "aliases": []
+  }
+]

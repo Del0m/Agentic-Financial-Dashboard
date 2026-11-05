@@ -1,0 +1,514 @@
+{
+  "reviewer": "claude",
+  "precision": {
+    "sampled": 30,
+    "correct": 20,
+    "precision": 0.6666666666666666,
+    "all_facts": 48,
+    "all_wrong": 14,
+    "labels": [
+      {
+        "fact": [
+          "roth-ira",
+          "HAS_LIMIT",
+          "catch-up-contribution",
+          "2024-01-01"
+        ],
+        "value": {
+          "cents": 100000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "roth-ira",
+          "HAS_LIMIT",
+          "catch-up-contribution",
+          "2022-01-01"
+        ],
+        "value": {
+          "cents": 100000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "roth-ira",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2022-01-01"
+        ],
+        "value": {
+          "cents": 600000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "roth-ira",
+          "HAS_RULE",
+          "income-limit",
+          "2000-01-01"
+        ],
+        "value": {
+          "text": "Roth IRA contributions might be limited if your income exceeds a certain level."
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "mutual-fund",
+          "ALTERNATIVE_TO",
+          "bonds",
+          "2000-01-01"
+        ],
+        "value": null,
+        "correct": false
+      },
+      {
+        "fact": [
+          "roth-401k",
+          "HAS_LIMIT",
+          "catch-up-contribution",
+          "2022-01-01"
+        ],
+        "value": {
+          "cents": 650000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "ira",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2023-01-01"
+        ],
+        "value": {
+          "cents": 650000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "ira",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2025-01-01"
+        ],
+        "value": {
+          "cents": 700000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "ira",
+          "ALTERNATIVE_TO",
+          "savings-account",
+          "2000-01-01"
+        ],
+        "value": null,
+        "correct": false
+      },
+      {
+        "fact": [
+          "roth-401k",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2024-01-01"
+        ],
+        "value": {
+          "cents": 2300000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "traditional-ira",
+          "HAS_RULE",
+          "withdrawals",
+          "2000-01-01"
+        ],
+        "value": {
+          "text": "Any deductible contributions and earnings you withdraw or that are distributed from your traditional IRA are taxable."
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "ira",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2022-01-01"
+        ],
+        "value": {
+          "cents": 700000,
+          "condition": "for individuals age 50 or older"
+        },
+        "correct": false
+      },
+      {
+        "fact": [
+          "roth-ira",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2021-01-01"
+        ],
+        "value": {
+          "cents": 600000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "roth-401k",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2021-01-01"
+        ],
+        "value": {
+          "cents": 1950000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "401k",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2022-01-01"
+        ],
+        "value": {
+          "cents": 2050000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "roth-ira",
+          "HAS_LIMIT",
+          "catch-up-contribution",
+          "2021-01-01"
+        ],
+        "value": {
+          "cents": 100000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "roth-401k",
+          "HAS_LIMIT",
+          "catch-up-contribution",
+          "2023-01-01"
+        ],
+        "value": {
+          "cents": 650000,
+          "condition": null
+        },
+        "correct": false
+      },
+      {
+        "fact": [
+          "roth-401k",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2023-01-01"
+        ],
+        "value": {
+          "cents": 2250000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "roth-401k",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2022-01-01"
+        ],
+        "value": {
+          "cents": 2050000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "roth-401k",
+          "HAS_LIMIT",
+          "income-limit",
+          "2021-01-01"
+        ],
+        "value": {
+          "cents": 20800000,
+          "condition": "married"
+        },
+        "correct": false
+      },
+      {
+        "fact": [
+          "401k",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2020-01-01"
+        ],
+        "value": {
+          "cents": 1950000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "savings-account",
+          "IS_A",
+          "retirement-account",
+          "2000-01-01"
+        ],
+        "value": null,
+        "correct": false
+      },
+      {
+        "fact": [
+          "roth-401k",
+          "HAS_LIMIT",
+          "income-limit",
+          "2023-01-01"
+        ],
+        "value": {
+          "cents": 22800000,
+          "condition": "married"
+        },
+        "correct": false
+      },
+      {
+        "fact": [
+          "roth-401k",
+          "HAS_LIMIT",
+          "income-limit",
+          "2024-01-01"
+        ],
+        "value": {
+          "cents": 24000000,
+          "condition": "married"
+        },
+        "correct": false
+      },
+      {
+        "fact": [
+          "roth-401k",
+          "HAS_LIMIT",
+          "catch-up-contribution",
+          "2021-01-01"
+        ],
+        "value": {
+          "cents": 650000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "ira",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2021-01-01"
+        ],
+        "value": {
+          "cents": 700000,
+          "condition": "for individuals age 50 or older"
+        },
+        "correct": false
+      },
+      {
+        "fact": [
+          "401k",
+          "HAS_LIMIT",
+          "catch-up-contribution",
+          "2026-01-01"
+        ],
+        "value": {
+          "cents": 800000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "ira",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2020-01-01"
+        ],
+        "value": {
+          "cents": 350000,
+          "condition": null
+        },
+        "correct": false
+      },
+      {
+        "fact": [
+          "simple-401k",
+          "HAS_LIMIT",
+          "contribution-limit",
+          "2026-01-01"
+        ],
+        "value": {
+          "cents": 1700000,
+          "condition": null
+        },
+        "correct": true
+      },
+      {
+        "fact": [
+          "simple-401k",
+          "HAS_LIMIT",
+          "catch-up-contribution",
+          "2026-01-01"
+        ],
+        "value": {
+          "cents": 400000,
+          "condition": null
+        },
+        "correct": true
+      }
+    ]
+  },
+  "recall": {
+    "checklist": 15,
+    "found": 10,
+    "recall": 0.6666666666666666,
+    "facts": [
+      {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "year": 2026,
+        "cents": 750000,
+        "found": true
+      },
+      {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "year": 2025,
+        "cents": 700000,
+        "found": true
+      },
+      {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "year": 2024,
+        "cents": 700000,
+        "found": true
+      },
+      {
+        "src": "ira",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "year": 2023,
+        "cents": 650000,
+        "found": true
+      },
+      {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "year": 2026,
+        "cents": 2450000,
+        "found": true
+      },
+      {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "year": 2024,
+        "cents": 2300000,
+        "found": true
+      },
+      {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "year": 2023,
+        "cents": 2250000,
+        "found": true
+      },
+      {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "year": 2022,
+        "cents": 2050000,
+        "found": true
+      },
+      {
+        "src": "401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "year": 2021,
+        "cents": 1950000,
+        "found": true
+      },
+      {
+        "src": "simple-401k",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "year": 2026,
+        "cents": 1700000,
+        "found": true
+      },
+      {
+        "src": "catch-up-contribution",
+        "rel": "HAS_LIMIT",
+        "dst": "contribution-limit",
+        "year": 2026,
+        "cents": 800000,
+        "found": false
+      },
+      {
+        "src": "fdic-insurance",
+        "rel": "HAS_RULE",
+        "dst": "deposit-insurance-limit",
+        "text_contains": "250,000",
+        "found": false
+      },
+      {
+        "src": "roth-ira",
+        "rel": "IS_A",
+        "dst": "ira",
+        "found": false
+      },
+      {
+        "src": "roth-ira",
+        "rel": "HAS_RULE",
+        "dst": "after-tax-contribution",
+        "found": false
+      },
+      {
+        "src": "debt-avalanche",
+        "rel": "ALTERNATIVE_TO",
+        "dst": "debt-snowball",
+        "either_way": true,
+        "found": false
+      }
+    ]
+  },
+  "recall_after_review": 14,
+  "first_run_recall": 7
+}

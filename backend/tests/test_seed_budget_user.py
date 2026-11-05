@@ -94,3 +94,37 @@ def test_replace_deletes_goals(db):
         s.commit()
     assert main(["--profile", PID, "--replace"], session_factory=db) == 0
     assert count(db, Goal, user_id=uid) == 0
+
+
+def test_replace_graph_backed_user_with_foreign_keys(db, tmp_path, monkeypatch):
+    from sqlalchemy import text
+    from app import config
+    from app.db.models import KGEdge, KGNode
+    from app.kg.store import assert_edge, upsert_node
+    from tests.fakes import SchemaReplyModel
+
+    with db() as s:
+        s.execute(text("PRAGMA foreign_keys=ON"))
+        assert s.scalar(text("PRAGMA foreign_keys")) == 1
+    monkeypatch.setattr(config, "KG_MODE", "on")
+    main(["--profile", PID], session_factory=db)
+    run_budget(db, UID, date(2026, 10, 20), model=SchemaReplyModel(), audit_path=tmp_path / "a.jsonl")
+    assert count(db, KGEdge, user_id=UID) > 0
+    with db() as s:
+        concept = upsert_node(s, user_id=None, kind="concept", key="emergency-fund")
+        rule = upsert_node(s, user_id=None, kind="concept", key="savings-rule")
+        shared = assert_edge(s, user_id=None, src_id=concept.id, dst_id=rule.id, rel="HAS_RULE",
+                             value={"text": "Save for emergencies"}, valid_from=date(2026, 1, 1))
+        # An owned bridge points into shared guidance too.
+        account = s.query(KGNode).filter_by(user_id=UID, kind="account").first()
+        assert_edge(s, user_id=UID, src_id=account.id, dst_id=concept.id, rel="IS_A", value=None,
+                    valid_from=date(2026, 1, 1))
+        shared_id, concept_id = shared.id, concept.id
+        s.commit()
+    assert main(["--profile", PID, "--replace"], session_factory=db) == 0
+    assert count(db, KGEdge, user_id=UID) == count(db, KGNode, user_id=UID) == 0
+    assert count(db, Transaction, user_id=UID) == N
+    with db() as s:
+        assert s.get(KGEdge, shared_id).value_json == {"text": "Save for emergencies"}
+        assert s.get(KGNode, concept_id).user_id is None
+        assert s.execute(text("PRAGMA foreign_key_check")).all() == []

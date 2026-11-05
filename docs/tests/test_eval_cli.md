@@ -86,6 +86,13 @@ The `agents` fixture adds one budget and one goal file to `offline`, and stubs t
 
 **Why it's there:** A typo mustn't quietly run nothing.
 
+## `test_kind_hash_matches_full_baseline_and_tracks_scenario_changes`
+
+**What it does:** Runs an offline full baseline and budget-only condition. Their whole-run hashes differ, but their budget
+hashes match. Changing a budget scenario changes only the budget hash in a subsequent full run.
+
+**Why it's there:** The comparison script needs to verify the relevant scenarios when the baseline contains additional kinds.
+
 ## `test_kind_budget_builds_nothing_only_chat_needs`
 
 **What it does:** `--kind budget` never builds the knowledge base or embeddings, only the agent model, and never runs a chat scenario. The summary has `overall.runs == 0` and no `goal` section, `config.json` lists only that scenario, and the table prints the false-alarm rate.
@@ -115,3 +122,21 @@ The `agents` fixture adds one budget and one goal file to `offline`, and stubs t
 **What it does:** A tagged chat scenario appears under `by_tag`.
 
 **Why it's there:** Per-category rates are what the writeup reports.
+
+## `test_skip_tag_leaves_out_tagged_scenarios`
+
+**What it does:** `--skip-tag` can be repeated, and defaults to nothing.
+
+**Why it's there:** TPC-27. Temporal scenarios exist before the graph does, so a baseline before the graph needs to leave them out.
+
+## `test_new_flags_parse`, `test_defaults_keep_todays_run`, `test_label_goes_in_the_results_folder`
+
+**What they do:** The benchmark flags parse, a run with none of them behaves as it did before, and a label goes in the folder's name.
+
+**Why they're there:** TPC-27 runs one condition per folder, and a condition must not look like a repeat run.
+
+## `test_limit_spreads_across_the_list`
+
+**What it does:** `--limit` picks evenly across the sorted scenarios.
+
+**Why it's there:** The first pilot took the first four, which were all abstain questions, so it couldn't show whether a model calls tools.

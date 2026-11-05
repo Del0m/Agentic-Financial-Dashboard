@@ -1,7 +1,8 @@
 {
   "id": "debt-none",
   "tags": [
-    "high_interest_debt"
+    "high_interest_debt",
+    "graph_unsuited"
   ],
   "question": "Which of my debts should I pay off first?",
   "user": {
@@ -31,6 +32,12 @@
     "abstain": true,
     "tools": [
       "get_debts"
+    ],
+    "allowed_tools": [
+      "get_debts",
+      "plan_debt_payoff",
+      "get_accounts",
+      "search_kb"
     ]
   }
 }

@@ -251,6 +251,17 @@ def test_plan_debt_payoff_matches_gateway(tools, seeded, tmp_path):
     assert out["excluded"] == [{"name": "Plaid Student Loan", "reason": "no minimum payment on file"}]
 
 
+def test_plan_debt_payoff_summary_states_the_figures(tools):
+    plan = data(tools["plan_debt_payoff"].invoke({"extra_monthly": 200}))["plans"][0]
+    assert plan["summary"].startswith(f"{plan['months']} months to debt-free, ${plan['total_interest']:,.2f} total interest.")
+    saved = plan["difference"]
+    assert f"saves {saved['months_sooner']} months and ${saved['interest_saved']:,.2f}" in plan["summary"]
+
+
+def test_plan_debt_payoff_summary_leaves_out_savings_with_no_extra(tools):
+    assert "saves" not in data(tools["plan_debt_payoff"].invoke({"extra_monthly": 0}))["plans"][0]["summary"]
+
+
 def test_plan_debt_payoff_blank_strategy_means_both(tools):
     assert len(data(tools["plan_debt_payoff"].invoke({"extra_monthly": 0, "strategy": " "}))["plans"]) == 2
 
@@ -308,3 +319,18 @@ def test_live_debt_free_with_extra(db, tmp_path):
     matched = [s for s in ("avalanche", "snowball") if expected[s].months in numbers
                and any(abs(n - expected[s].total_interest_cents / 100) <= 1 for n in numbers)]
     assert matched, answer
+
+
+@pytest.mark.parametrize("mode, has_search", [("vector", True), ("hybrid", True), ("none", False), ("graph", False)])
+def test_search_kb_follows_the_retrieval_mode(db, tmp_path, monkeypatch, mode, has_search):
+    from app import config
+    from app.agents.tools import make_tools
+    from app.privacy.gateway import PrivacyGateway
+    from tests.factories import add_user
+    from tests.fakes import FakeKB
+    monkeypatch.setattr(config, "KG_CHAT", mode)
+    with db() as s:
+        add_user(s, "u9", "u9@x")
+        s.commit()
+        names = {t.name for t in make_tools(PrivacyGateway(s, "u9", audit_path=tmp_path / "a.jsonl"), FakeKB())}
+    assert ("search_kb" in names) is has_search

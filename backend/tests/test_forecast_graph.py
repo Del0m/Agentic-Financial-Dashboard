@@ -12,6 +12,7 @@ from app.agents.budget_graph import run_budget
 from app.budget_service.forecast_service import snapshot
 from app.db.models import Account, AgentRun, Alert, Transaction
 from eval.budget_users import FORECAST_USERS, seed_profile
+from tests.factories import add_txn
 from tests.fakes import SchemaReplyModel
 
 pytestmark = pytest.mark.cash_forecast
@@ -21,6 +22,13 @@ DAY = date(2026,10,10)
 def seed(db,day=DAY):
     with db() as s:
         return seed_profile(s,FORECAST_USERS[0],until=day)
+
+
+# the profile's own charges land when they always do, so they don't flag (tpc-45): these tests need a real overspend
+def plant_overspend(db,uid):
+    with db() as s:
+        add_txn(s,s.query(Account).filter_by(user_id=uid).one(),40000,'ENTERTAINMENT',merchant='Big Night',day=DAY)
+        s.commit()
 
 
 def run(db,tmp_path,uid,day=DAY,model=None,**kw):
@@ -97,7 +105,7 @@ def test_a_user_with_no_paycheck_stream_only_gets_an_alert(db,tmp_path):
 
 
 def test_a_forecast_failure_does_not_stop_overspend_alerts(db,tmp_path,monkeypatch):
-    uid=seed(db)
+    uid=seed(db);plant_overspend(db,uid)
     def fail(*a):raise RuntimeError('private details')
     monkeypatch.setattr(budget_graph,'snapshot',fail)
     r=run(db,tmp_path,uid)
@@ -114,7 +122,7 @@ def test_summary_forecast_holds_cents_and_dates_only(db,tmp_path):
 
 
 def test_a_paused_checkpoint_holds_no_bill_name_or_balance(db,tmp_path):
-    uid=seed(db)
+    uid=seed(db);plant_overspend(db,uid)
     with db() as s:
         s.query(Account).filter_by(user_id=uid).one().current_balance_cents=424242
         s.query(Account).filter_by(user_id=uid).one().available_balance_cents=424242
@@ -144,7 +152,7 @@ def test_a_normal_day_adds_no_model_call(db,tmp_path,monkeypatch):
 
 
 def test_an_errored_run_never_writes_bill_payloads_to_the_checkpoint_file(db,tmp_path,monkeypatch):
-    uid=seed(db)
+    uid=seed(db);plant_overspend(db,uid)
     with db() as s:
         for t in s.query(Transaction).filter_by(user_id=uid,merchant_name='Landlord'):
             t.merchant_name='ZZ-PRIVATE-RENT'

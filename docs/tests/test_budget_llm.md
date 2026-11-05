@@ -108,3 +108,15 @@ Run them from `backend/`:
 **What it does:** With `raise_unreachable=True`, a `ConnectionError` is raised instead of giving `None`.
 
 **Why it's there:** The budget graph has a fallback alert to write when the model is down. The goal graph doesn't, and it has to tell the user that the server is down rather than report bad model output (TPC-23 final review).
+
+## `test_resend_fires_and_is_counted`, `test_retries_off_makes_one_call`
+
+**What they do:** A bad reply gets one resend, and calls and resends are counted. With `RETRIES_ENABLED` off, there's one call and a bad reply gives `None`.
+
+**Why they're there:** The retry ablation needs the switch, and the fire rate shows whether the mechanism ran at all.
+
+## `test_looks_one_time`
+
+**What it does:** Code applies the `one_time` rule: most of the spending at a new or occasional merchant, or at least twice what that merchant usually comes to.
+
+**Why it's there:** TPC-46. Given the rule to compare, the model called a 35% purchase `one_time`. A first version left out the merchant's pattern, and that made `budget-recurring-wine-club` and `budget-graph-price-increase` wrong live, so those patterns are cases here.
