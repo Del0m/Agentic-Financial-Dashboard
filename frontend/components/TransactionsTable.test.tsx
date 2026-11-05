@@ -71,6 +71,6 @@ describe("TransactionsTable", () => {
     const lines = [...LINES, { category: "GOAL_DEBT_PAYOFF", name: "Debt payoff", group: "goal" }];
     render(<TransactionsTable transactions={[txn()]} lines={lines} onCorrect={vi.fn()} onRemembered={vi.fn()} />);
     const options = screen.getAllByRole("option").map((o) => o.textContent);
-    expect(options).toEqual(["Groceries", "Shopping", "Free"]);
+    expect(options).toEqual(["Groceries", "Shopping", "Everything else"]);
   });
 });

@@ -14,8 +14,8 @@ import PlaidLinkButton from "@/components/PlaidLinkButton";
 import RecurringList from "@/components/RecurringList";
 import TransactionsTable from "@/components/TransactionsTable";
 import {
-  correctTransaction, errorMessage, getAlerts, getBudget, getDashboard, getForecast, getGoals, getRecurring, getTransactions, setForecastBuffer, syncItem, type Budget,
-  type Dashboard, type ExchangeResult, type Forecast, type Goal, type RecurringResponse, type Txn,
+  correctTransaction, errorMessage, getAlerts, getBudget, getDashboard, getForecast, getGoals, getRecurring, getSim, getTransactions, setForecastBuffer, syncItem, type Budget,
+  type Dashboard, type ExchangeResult, type Forecast, type Goal, type RecurringResponse, type SimState, type Txn,
 } from "@/lib/api";
 import { categoryLabel, formatCents, formatDate, formatMonth } from "@/lib/format";
 
@@ -57,6 +57,19 @@ export default function DashboardPage() {
   const [recurringError, setRecurringError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [forecastError, setForecastError] = useState<string | null>(null);
+  // a simulated (demo) user can't link a bank, so its Link button would only fail. null until known, so the button
+  // doesn't request a link token first. without the admin routes (404) the user is a real one
+  const [sim, setSim] = useState<SimState | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getSim()
+      .then((s) => !cancelled && setSim(s))
+      .catch(() => !cancelled && setSim({ simulated: false, profile: null, date: null }));
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,7 +195,12 @@ export default function DashboardPage() {
           <Link href="/chat" className="text-sm underline underline-offset-2">
             Chat
           </Link>
-          {linked && <PlaidLinkButton label="Link another account" onLinked={onLinked} onError={onLinkError} />}
+          {sim?.simulated && sim.date && (
+            <span className="rounded-full border border-black/10 px-2.5 py-1 text-xs text-neutral-600 dark:border-white/15 dark:text-neutral-300">
+              Demo · {formatDate(sim.date)}
+            </span>
+          )}
+          {linked && sim?.simulated === false && <PlaidLinkButton label="Link another account" onLinked={onLinked} onError={onLinkError} />}
         </div>
       </header>
 
@@ -270,6 +288,10 @@ export default function DashboardPage() {
               <p className="text-sm text-neutral-500">No budget yet. Run a budget check from Alerts.</p>
             ) : (
               <div className="space-y-3">
+                <p className="text-xs text-neutral-500">
+                  Day {budget.days_elapsed} of {budget.days_in_period}. The mark on each bar shows how much of the month
+                  has passed, so a bar past its mark is spending ahead of schedule.
+                </p>
                 {budget.lines.map((line) => (
                   <BudgetPaceBar key={line.category} line={line} daysElapsed={budget.days_elapsed}
                     daysInPeriod={budget.days_in_period} />

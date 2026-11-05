@@ -33,7 +33,7 @@ export default function ForecastChart({ data, onSaveBuffer }: { data: Forecast; 
     {data.status === "no_checking" ? <p className="text-sm text-neutral-500">Link a checking account to see your forecast.</p>
       : data.status === "no_history" ? <p className="text-sm text-neutral-500">We need about a month of transactions to forecast.</p>
       : lowest && <>
-        <p>Your typical range is between {formatCents(lowest.low_cents)} and {formatCents(lowest.high_cents)} on {label(lowest.date)}.</p>
+        <p>Your lowest point is likely {label(lowest.date)}, with a balance between {formatCents(lowest.low_cents)} and {formatCents(lowest.high_cents)}.</p>
         <div role="img" aria-label={aria} className="min-w-0">
           <ResponsiveContainer width="100%" height={240}>
             <ComposedChart data={rows} accessibilityLayer margin={{ left: 0, right: 12, top: 20, bottom: 0 }}>

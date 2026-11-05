@@ -25,9 +25,9 @@ The first start builds the images and downloads a 9 GB model. The app opens befo
 
 The demo user has a new $90 gym membership that its $42 personal care budget doesn't cover.
 
-1. Open **Alerts** and click **Advance 7 days**. It takes about 30 seconds on an Apple Silicon Mac. The date moves to October 8 and one alert appears, proposing a $135 personal care budget. The dashboard's Budget card shows the line over its limit.
-2. Click **Accept** on the alert.
-3. Click **To month end**, then **Advance 1 day**. Advancing takes about 2 minutes. On November 1 the month closes, and the dashboard's Budget card shows personal care at $135.
+1. Open **Alerts** and click **Advance 7 days**. Each simulated day runs the budget agent, so this takes about 2 to 3 minutes on an Apple Silicon Mac. The date moves to October 8. A **Personal care** alert proposes a $135 budget for next month. You'll also see a few **Low balance** warnings from the cash forecast, because the demo checking account holds only $100 against $1,500 rent. The dashboard's Budget card shows personal care in red, $48 over its limit.
+2. Click **Accept** on the Personal care alert. Dismiss the low-balance warnings, or leave them.
+3. Click **To month end**, then **Advance 1 day**. Expect about 20 seconds per simulated day, so roughly 8 minutes in all. On November 1 the month closes, and the dashboard's Budget card shows personal care at $135.
 4. Open **Chat** and try these:
    - "What did I spend on personal care last month?" ($130: $40 at Barber and $90 at FitClub Gym)
    - "What did I spend on rent last month?" ($1,500)
