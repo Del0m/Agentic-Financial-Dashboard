@@ -19,7 +19,7 @@ You need [Docker](https://www.docker.com/products/docker-desktop/) and [Ollama](
 
 The first start builds the images and downloads a 9 GB model. The app opens before the download finishes, but chat and the budget agent's advice need it. It's ready when the logs say `all set: chat and the budget agent are ready`. To stop, press Ctrl+C. To start again, run the same command; your progress is kept.
 
-**Setup runs by itself.** [`setup_env.py`](backend/scripts/setup_env.py) creates `.env` and generates its encryption key, [`setup_demo.py`](backend/scripts/setup_demo.py) seeds the demo user, and [`setup_models.py`](backend/scripts/setup_models.py) pulls the models and builds the knowledge base. If Ollama wasn't running the first time, start it and run `docker compose run --rm models`.
+**Setup runs by itself.** [`setup_env.py`](backend/scripts/setup_env.py) creates `.env` and generates its encryption key, [`setup_demo.py`](backend/scripts/setup_demo.py) seeds the demo user, [`setup_graph.py`](backend/scripts/setup_graph.py) fills the temporal graph, and [`setup_models.py`](backend/scripts/setup_models.py) pulls the models and builds the knowledge base. If Ollama wasn't running the first time, start it and run `docker compose run --rm models`.
 
 ### Demo walkthrough
 
@@ -113,7 +113,7 @@ The details behind the quickstart, for developing in the containers. The backend
 
    Open http://localhost:3000. The API is still on http://localhost:8000 (`/docs`).
 
-The repo is mounted into both containers, so they use the same `.env`, `dev.db`, checkpoints and `kb/chroma` as running locally, and edits reload like `--reload` and `npm run dev`. The one-off `init` service runs on every `up`, before the backend: it creates `.env` if needed, runs `alembic upgrade head`, and seeds the demo user if it's missing. The one-off `models` service pulls whatever's missing and builds the knowledge base if it's empty. Nothing waits for it. The frontend reaches the backend at `http://backend:8000` over the Compose network, and the backend reaches Ollama at `host.docker.internal:11434`.
+The repo is mounted into both containers, so they use the same `.env`, `dev.db`, checkpoints and `kb/chroma` as running locally, and edits reload like `--reload` and `npm run dev`. The one-off `init` service runs on every `up`, before the backend: it creates `.env` if needed, runs `alembic upgrade head`, seeds the demo user if it's missing, and fills the temporal graph with [`setup_graph.py`](backend/scripts/setup_graph.py). The one-off `models` service pulls whatever's missing and builds the knowledge base if it's empty. Nothing waits for it. The frontend reaches the backend at `http://backend:8000` over the Compose network, and the backend reaches Ollama at `host.docker.internal:11434`.
 
 Compose sets `DEV_USER_EMAIL` to the demo user and `ENABLE_ADMIN` to `1` unless `.env` says otherwise. To see accounts you linked yourself, set `DEV_USER_EMAIL=dev@localhost` in `.env`.
 

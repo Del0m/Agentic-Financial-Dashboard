@@ -15,10 +15,10 @@ x-backend: &backend
     - .:/app
 
 services:
-  # one-off, on every up: .env, migrations and the demo user. each step leaves existing work alone
+  # one-off, on every up: .env, migrations, the demo user and the temporal graph. each step leaves existing work alone
   init:
     <<: *backend
-    command: sh -c "python scripts/setup_env.py && alembic upgrade head && python scripts/setup_demo.py"
+    command: sh -c "python scripts/setup_env.py && alembic upgrade head && python scripts/setup_demo.py && python scripts/setup_graph.py"
 
   # one-off: the models and the knowledge base. nothing waits for it, since the chat model is a 9 gb download
   models:
