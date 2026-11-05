@@ -27,6 +27,9 @@
         ]
       }
     },
+    "crossed_on": {
+      "FOOD_AND_DRINK": "2026-10-09"
+    },
     "message_facts": [
       {
         "text": "Party Caterer"

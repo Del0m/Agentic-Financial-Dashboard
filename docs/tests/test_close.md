@@ -310,9 +310,9 @@ These use `november` and `add_goal`. The netting tests put the goal's line strai
 
 ## `test_answer_during_close_stands`
 
-**What it does:** The user accepts after `gather_month` read the rows. The goal stays `accepted`, the summary's `expired_goal_ids` is empty, and the run stays `awaiting_user`. December has no line, and January does.
+**What it does:** The user accepts after `gather_month` read the rows. The goal stays `accepted`, the summary's `expired_goal_ids` is empty, and the run stays `awaiting_user`. December has the goal's line.
 
-**Why it's there:** `expire_goal_proposals` rechecks the status in the same write. The spec accepts that such a line arrives a month late, and this shows it does arrive.
+**Why it's there:** `expire_goal_proposals` rechecks the status in the same write, and `persist_month` works out the goal lines again from the rows it just locked.
 
 ## `test_lost_race_leaves_goals_alone`
 
@@ -337,3 +337,9 @@ These use `november` and `add_goal`. The netting tests put the goal's line strai
 **What it does:** Given an accepted and a proposed goal, it returns only the proposed id. A rollback undoes it and a commit keeps it. The paused run becomes `expired`, and the accepted goal's `ok` run doesn't change. An empty list returns `[]`.
 
 **Why it's there:** Both callers put the expiry in their own commit, so it mustn't commit itself, and it mustn't overwrite an answer.
+
+## `test_goal_accepted_during_close_gets_its_line`, `test_goal_dismissed_during_close_reserves_nothing`
+
+**What they do:** A goal is accepted or dismissed after `gather_month` read the goals and before `persist_month` writes. The new month's lines follow the decision, and they still add up to the period total.
+
+**Why they're there:** The decision and the close commit separately, and TPC-25 requires an accepted goal in next month's budget.

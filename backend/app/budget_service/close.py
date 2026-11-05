@@ -70,6 +70,19 @@ def expire_proposals(session: Session, alert_ids: list[int]) -> list[int]:
     return alert_ids
 
 
+# next month's goal lines and the goals that ended before it, from the rows as this session reads them
+def _goal_commitments(session: Session, period: BudgetPeriod, new_start: date) -> tuple[list[dict], list[int]]:
+    names = {ln.category: ln.name for ln in period.lines}
+    goals = []
+    committed = committed_goals(session, period.user_id)
+    for goal in committed:
+        if budgeted_in(goal, new_start):
+            category = GOAL_CATEGORIES[goal.kind]
+            goals.append({"category": category, "name": names.get(category, default_name(category)),
+                          "monthly_cents": goal.monthly_cents, "goal_id": goal.id})
+    return goals, [g.id for g in committed if finished_before(g, new_start)]
+
+
 def gather_month(session: Session, period_id: int) -> dict:
     period = session.get(BudgetPeriod, period_id)
     start, end = period.start_date, period.end_date
@@ -130,21 +143,14 @@ def gather_month(session: Session, period_id: int) -> dict:
     history = load_txns(session, period.user_id, add_months(new_start, -HISTORY_MONTHS - 1), end)
     fit = fit_budget(history, new_start, history_start=history_start(session, period.user_id, end))
     style, targets = user_style(session, period.user_id)
-    names = {ln.category: ln.name for ln in period.lines}
-    goals = []
-    committed = committed_goals(session, period.user_id)
-    for goal in committed:
-        if budgeted_in(goal, new_start):
-            category = GOAL_CATEGORIES[goal.kind]
-            goals.append({"category": category, "name": names.get(category, default_name(category)),
-                          "monthly_cents": goal.monthly_cents, "goal_id": goal.id})
+    goals, finished_goal_ids = _goal_commitments(session, period, new_start)
     return {
         "month": start, "new_start": new_start, "user_id": period.user_id,
         "lines": [{"category": ln.category, "name": ln.name, "group": ln.group, "kind": ln.kind,
                    "limit_cents": ln.limit_cents, "actual_cents": actual(ln)} for ln in period.lines],
         "saved_cents": saved, "free_actual_cents": free_actual, "unbudgeted": sorted(c for c in unlined if c != FREE),
         "accepted": accepted, "goals": goals, "cancel_outcomes": cancel_outcomes,
-        "finished_goal_ids": [g.id for g in committed if finished_before(g, new_start)],
+        "finished_goal_ids": finished_goal_ids,
         "expired_goal_ids": stale_proposals(session, period.user_id, new_start),
         "income_cents": fit.income_cents, "fallback_total_cents": fit.spending_total_cents,
         "style": style, "targets": targets,
@@ -208,14 +214,19 @@ def persist_month(session_factory, period_id: int, gathered: dict, adapted: dict
         old = s.get(BudgetPeriod, period_id)
         if old.status != "open":
             return None
+        # written first: this takes the write lock, so no goal decision can land between the check below and the commit
+        old.status = "closed"
+        s.flush()
         expired = expire_proposals(s, expired)
         expired_goals = expire_goal_proposals(s, gathered["expired_goal_ids"])
-        # rechecked like the proposals, in the same write: a goal the user stopped while close was running stays
-        # stopped, and gets no alert
-        finished = s.execute(update(Goal).where(Goal.id.in_(gathered["finished_goal_ids"]), Goal.status == "accepted")
-                             .values(status="completed").returning(Goal.id, Goal.kind, Goal.monthly_cents)).all()
-        old.status = "closed"
         new_start = gathered["new_start"]
+        # a goal decided while close was running changes next month's lines, so they're worked out again from the rows
+        goals, finished_goal_ids = _goal_commitments(s, old, new_start)
+        if goals != gathered["goals"]:
+            adapted = adapt_month({**gathered, "goals": goals})
+        # a goal the user stopped while close was running stays stopped, and gets no alert
+        finished = s.execute(update(Goal).where(Goal.id.in_(finished_goal_ids), Goal.status == "accepted")
+                             .values(status="completed").returning(Goal.id, Goal.kind, Goal.monthly_cents)).all()
         period = BudgetPeriod(user_id=old.user_id, start_date=new_start, end_date=month_end(new_start),
                               status="open", fit_json=None, income_cents=gathered["income_cents"],
                               total_cents=adapted["total_cents"])

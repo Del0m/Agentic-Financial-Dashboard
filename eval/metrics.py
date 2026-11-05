@@ -62,6 +62,8 @@ def check_abstain(answer: str, expect: Expect) -> FactResult:
     missing = [] if any(p in lower for p in ABSTAIN_PHRASES) else ["says the data isn't available"]
     if _DOLLARS.search(answer):
         missing.append("states no dollar amount")
+    if expect.no_numbers and extract_numbers(answer):
+        missing.append("states no number")
     forbidden = [w for w in expect.forbid if w.lower() in lower]
     return FactResult(found=0 if missing else 1, total=1, missing=missing, forbidden_hits=forbidden,
                       passed=not missing and not forbidden)
@@ -332,12 +334,14 @@ def score_budget(record: dict, scenario: BudgetScenario) -> dict:
         checks["lead_time"] = bool(leads) and max(leads) >= exp.min_days_ahead
     if record["error"]:
         checks = {name: False for name in checks}
-    # days from a category's first flag to its first alert. architecture 10.2's time-to-flag target is one run at most
-    lags = [(date.fromisoformat(first[c]["day"]) - date.fromisoformat(flags[c])).days
-            for c in wanted if c in first and c in flags]
+    # architecture 10.2's time-to-flag: days from the planted crossing to the first alert, target one run at most. the
+    # crossing comes from the scenario, so a late flag can't hide behind a late alert. no alert is a miss, not a zero
+    lags = [(date.fromisoformat(first[c]["day"]) - crossed).days for c, crossed in exp.crossed_on.items() if c in first]
+    missed = sorted(c for c in exp.crossed_on if c not in first)
     return {"checks": checks, "passed": all(checks.values()),
             "false_alarm": scenario.is_control and bool(not record["error"] and (flags or overspend)),
-            "extra_flags": [] if exp.flags is None else sorted(set(flags) - set(wanted)), "flag_to_alert_days": lags,
+            "extra_flags": [] if exp.flags is None else sorted(set(flags) - set(wanted)), "time_to_flag_days": lags,
+            "missed_alerts": missed,
             "low_balance_days_ahead": max(leads) if leads else None, "llm_failures": record["llm_failures"],
             "repeat_alerts": len(overspend) - len({a["category"] for a in overspend}),
             "llm_calls": record.get("llm_calls", 0), "llm_retries": record.get("llm_retries", 0)}
@@ -389,13 +393,15 @@ GOAL_CHECKS = ("status", "banned_kinds", "required_kinds", "first_kind", "under_
 
 def summarize_budget(items: list[dict], scenarios: dict[str, BudgetScenario]) -> dict:
     controls = [i for i in items if scenarios[i["record"]["scenario_id"]].is_control]
-    lags = [lag for i in items for lag in i["scores"]["flag_to_alert_days"]]
+    lags = [lag for i in items for lag in i["scores"]["time_to_flag_days"]]
     leads = [i["scores"]["low_balance_days_ahead"] for i in items if i["scores"]["low_balance_days_ahead"] is not None]
     tags = {sid: s.tags for sid, s in scenarios.items()}
     return {**_agent_stats(items, BUDGET_CHECKS),
             "control_runs": len(controls),
             "false_alarm_rate": _rate(i["scores"]["false_alarm"] for i in controls) if controls else None,
-            "flag_to_alert_days_mean": _mean_or_none(lags), "low_balance_days_ahead_mean": _mean_or_none(leads),
+            "time_to_flag_days_mean": _mean_or_none(lags),
+            "missed_alerts": sum(len(i["scores"]["missed_alerts"]) for i in items),
+            "low_balance_days_ahead_mean": _mean_or_none(leads),
             "llm_failures": sum(i["scores"]["llm_failures"] for i in items),
             "by_tag": {tag: {"runs": len(group), "pass_rate": _rate(i["scores"]["passed"] for i in group)}
                        for tag, group in _tag_groups(items, tags).items()},

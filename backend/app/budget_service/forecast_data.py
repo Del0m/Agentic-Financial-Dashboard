@@ -22,6 +22,7 @@ def start_balance(accounts: list[Account]) -> Optional[int]:
     return sum(v or 0 for v in values) if values and all(v is not None for v in values) else None
 
 
+# one entry per day of history, up to 90: a day before the first transaction isn't a day with no spending
 def everyday_series(session: Session, user_id: str, today: date, accounts: list[Account]) -> list[int]:
     since = today - timedelta(days=89)
     keys = {(s.direction, s.merchant_key) for s in [*current_streams(session, user_id, today), *stored_streams(session, user_id)]}
@@ -34,7 +35,8 @@ def everyday_series(session: Session, user_id: str, today: date, accounts: list[
         txn = Txn(row.date, row.amount_cents, category, row.pf_category_detailed, row.merchant_name, source != "plaid")
         if ("out", merchant_key(row.merchant_name)) not in keys and spending([txn]):
             totals[(row.date - since).days] += row.amount_cents
-    return totals
+    observed = min(history_days(session, user_id, today), 90)
+    return totals[-observed:] if observed else []
 
 
 def load_card_obligations(session: Session, user_id: str) -> list[CardIn]:

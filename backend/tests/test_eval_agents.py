@@ -215,6 +215,17 @@ def test_budget_code_decisions_match_the_golden_answer(s, audit):
         assert not wrong, (wrong, rec["flags"])
 
 
+# time-to-flag counts from crossed_on, so every planted overspend needs one, and it has to be the day code first flags
+def test_planted_overspends_name_their_crossing_day():
+    assert [s.id for s in BUDGET if set(s.expect.flags or ()) - set(s.expect.crossed_on)] == []
+
+
+@pytest.mark.parametrize("s", [s for s in BUDGET if s.expect.crossed_on], ids=lambda s: s.id)
+def test_crossing_day_is_when_code_first_flags(s, audit):
+    rec = run_budget_once(s, model=SchemaReplyModel(), audit_path=audit).to_dict()
+    assert {c: rec["flags"][c] for c in s.expect.crossed_on} == {c: d.isoformat() for c, d in s.expect.crossed_on.items()}
+
+
 # a signal's fallback message is written by code, so its facts hold with no model at all
 @pytest.mark.parametrize("sid", ["signal-price-increase", "signal-low-balance-before-payday"])
 def test_signal_fallback_messages_carry_their_facts(sid, audit):

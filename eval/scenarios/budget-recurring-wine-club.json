@@ -26,6 +26,9 @@
     "flag_by": {
       "FOOD_AND_DRINK": "2026-10-05"
     },
+    "crossed_on": {
+      "FOOD_AND_DRINK": "2026-10-05"
+    },
     "message_facts": [
       {
         "text": "Vine Club"

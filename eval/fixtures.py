@@ -1,6 +1,6 @@
 import json
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Union, get_args
@@ -71,6 +71,7 @@ class Expect:
     tools_none: bool = False    # no tool fits, so any call is a tool-choice fail
     temporal: Optional[TemporalCheck] = None
     tool_args: Optional[dict[str, dict[str, tuple]]] = None     # tool -> argument -> accepted values; None = may be left out
+    no_numbers: bool = False    # abstain only: the missing fact is a bare number, like a credit score
 
 
 @dataclass(frozen=True)
@@ -104,6 +105,7 @@ class BudgetExpect:
     alert_kinds: tuple[str, ...]
     message_facts: list[Fact]
     min_days_ahead: Optional[int] = None
+    crossed_on: dict[str, date] = field(default_factory=dict)       # the day the planted spending crosses the threshold
 
 
 # seeded through `start` with no run, then one real daily run per day through `end`
@@ -269,6 +271,11 @@ def _load_chat(path: Path, d: dict, sid: str, golden: str, tags: tuple[str, ...]
     abstain = exp.get("abstain", False)
     if not isinstance(abstain, bool):
         _fail(path, "expect.abstain", "must be true or false")
+    no_numbers = exp.get("no_numbers", False)
+    if not isinstance(no_numbers, bool):
+        _fail(path, "expect.no_numbers", "must be true or false")
+    if no_numbers and not abstain:
+        _fail(path, "expect.no_numbers", "only applies to an abstain scenario")
     # an abstain scenario has no fact to find: the answer should have none
     if abstain and exp.get("facts"):
         _fail(path, "expect.facts", "must be left out of an abstain scenario")
@@ -305,7 +312,8 @@ def _load_chat(path: Path, d: dict, sid: str, golden: str, tags: tuple[str, ...]
             tool_args[name] = {arg: tuple(values) for arg, values in args.items()}
     expect = Expect(facts=[_fact(path, i, f) for i, f in enumerate(facts)], forbid=_strings(path, exp, "forbid"),
                     tools=tools, sources=_strings(path, exp, "sources"), abstain=abstain,
-                    allowed_tools=allowed, tools_none=tools_none, temporal=temporal, tool_args=tool_args)
+                    no_numbers=no_numbers, allowed_tools=allowed, tools_none=tools_none, temporal=temporal,
+                    tool_args=tool_args)
     return Scenario(id=sid, question=question, user=user, golden_answer=golden, expect=expect, path=path, tags=tags,
                     today=_date(path, d, "today") if "today" in d else None,
                     author=_require(path, d, "author", str) if "author" in d else None)
@@ -344,9 +352,12 @@ def _load_budget(path: Path, d: dict, sid: str, golden: str, tags: tuple[str, ..
     flags = _require(path, exp, "flags", list, "expect.") if "flags" in exp else None
     causes = _optional_dict(path, exp, "causes")
     flag_by = {cat: _date(path, exp["flag_by"], cat, "expect.flag_by.") for cat in _optional_dict(path, exp, "flag_by")}
+    crossed_on = {cat: _date(path, exp["crossed_on"], cat, "expect.crossed_on.")
+                  for cat in _optional_dict(path, exp, "crossed_on")}
     actions = _action_rules(path, exp)
-    for field, cats in (("flags", flags or ()), ("causes", causes), ("actions", actions), ("flag_by", flag_by)):
-        _categories(path, f"expect.{field}", cats)
+    for name, cats in (("flags", flags or ()), ("causes", causes), ("actions", actions), ("flag_by", flag_by),
+                       ("crossed_on", crossed_on)):
+        _categories(path, f"expect.{name}", cats)
     _choices(path, "expect.causes", list(causes.values()), CAUSES)
     alert_kinds = _choices(path, "expect.alert_kinds", _strings(path, exp, "alert_kinds"), SIGNAL_KINDS)
     days = exp.get("min_days_ahead")
@@ -356,7 +367,7 @@ def _load_budget(path: Path, d: dict, sid: str, golden: str, tags: tuple[str, ..
     facts = [_fact(path, i, f) for i, f in enumerate(raw_facts)]
     return BudgetScenario(id=sid, profile=profile, start=start, end=end, golden_answer=golden, path=path, tags=tags,
                           expect=BudgetExpect(None if flags is None else tuple(flags), causes, actions, flag_by,
-                                              alert_kinds, facts, days))
+                                              alert_kinds, facts, days, crossed_on))
 
 
 def _load_goal(path: Path, d: dict, sid: str, golden: str, tags: tuple[str, ...]) -> GoalScenario:

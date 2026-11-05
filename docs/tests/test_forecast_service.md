@@ -83,3 +83,9 @@ These offline tests use explicit dates and integer cents. Database cases use a f
 **What it does:** The dip user has a checking balance that moves, using the explicit fixtures and assertions in the test.
 
 **Why it's there:** Guards this forecast behavior independently of live data and model wording.
+
+## `test_everyday_series_covers_only_the_days_with_history`, `test_everyday_series_is_empty_with_no_history`
+
+**What they do:** 65 days of history give 65 entries, not 90 with 25 zeros, and no history gives an empty series.
+
+**Why they're there:** The forecast can feed goal surplus from 65 days of history, and padding zeros would dilute the daily spending rate.

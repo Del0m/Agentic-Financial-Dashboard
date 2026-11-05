@@ -262,6 +262,17 @@ def test_abstain_allows_a_bare_year():
     assert check_facts("I don't have your balance from 2019.", ABSTAIN).passed
 
 
+def test_abstain_no_numbers_rejects_an_invented_score():
+    expect = Expect(facts=[], forbid=[], tools=[], sources=[], abstain=True, no_numbers=True)
+    result = check_facts("I don't have a full credit report, but your current credit score is 780.", expect)
+    assert not result.passed and result.missing == ["states no number"]
+    assert check_facts("I don't have your credit score.", expect).passed
+
+
+def test_abstain_without_no_numbers_allows_the_year_asked_about():
+    assert check_facts("The 2030 limit isn't available yet.", ABSTAIN).passed
+
+
 def test_abstain_still_honours_forbid():
     result = check_facts("I don't have that, see http://x", ABSTAIN)
     assert not result.passed and result.forbidden_hits == ["http"] and not result.missing
@@ -373,9 +384,15 @@ def test_budget_error_fails_every_check():
     assert out["checks"] == {"flags": False} and not out["passed"] and not out["false_alarm"]
 
 
-def test_budget_flag_to_alert_days():
-    out = score_budget(budget_record(alerts=[alert(day="2026-10-03")]), budget_scenario())
-    assert out["flag_to_alert_days"] == [1]
+def test_time_to_flag_counts_from_the_planted_crossing():
+    s = budget_scenario(crossed_on={GM: date(2026, 10, 2)})
+    late = score_budget(budget_record(flags={GM: "2026-10-06"}, alerts=[alert(day="2026-10-06")]), s)
+    assert late["time_to_flag_days"] == [4] and late["missed_alerts"] == []
+
+
+def test_time_to_flag_reports_a_missing_alert():
+    out = score_budget(budget_record(), budget_scenario(crossed_on={GM: date(2026, 10, 2)}))
+    assert out["time_to_flag_days"] == [] and out["missed_alerts"] == [GM]
 
 
 def goal_scenario(status="ok", required=(), banned=(), first=None, sid="g1"):
@@ -454,7 +471,7 @@ def scored_budget(record, scenario):
 
 def test_summarize_budget():
     control = budget_scenario(flags=(), id="c1", tags=("control",))
-    planted = budget_scenario(id="b1", tags=("one_time",), causes={GM: "one_time"})
+    planted = budget_scenario(id="b1", tags=("one_time",), causes={GM: "one_time"}, crossed_on={GM: date(2026, 10, 2)})
     items = [scored_budget(budget_record(flags={}, sid="c1"), control),
              scored_budget(budget_record(sid="c1"), control),
              scored_budget(budget_record(alerts=[alert()], sid="b1", failures=1), planted),
@@ -463,7 +480,7 @@ def test_summarize_budget():
     assert (out["runs"], out["errors"], out["pass_rate"], out["pass_all_runs_rate"]) == (4, 0, 0.5, 0.0)
     assert (out["control_runs"], out["false_alarm_rate"]) == (2, 0.5)
     assert out["checks"]["cause"] == 0.5 and out["checks"]["flags"] == 0.75 and out["checks"]["lead_time"] is None
-    assert out["flag_to_alert_days_mean"] == 0.5 and out["llm_failures"] == 1
+    assert out["time_to_flag_days_mean"] == 0.5 and out["missed_alerts"] == 0 and out["llm_failures"] == 1
     assert out["by_tag"]["control"] == {"runs": 2, "pass_rate": 0.5}
     assert out["scenarios"]["b1"]["pass_rate"] == 0.5
 
@@ -471,7 +488,7 @@ def test_summarize_budget():
 def test_summarize_budget_without_controls():
     planted = budget_scenario()
     out = summarize_budget([scored_budget(budget_record(), planted)], {"b1": planted})
-    assert out["false_alarm_rate"] is None and out["flag_to_alert_days_mean"] is None
+    assert out["false_alarm_rate"] is None and out["time_to_flag_days_mean"] is None
 
 
 def test_summarize_goal():

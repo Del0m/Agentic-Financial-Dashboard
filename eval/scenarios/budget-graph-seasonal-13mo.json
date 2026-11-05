@@ -27,6 +27,9 @@
           "adjust_next_budget"
         ]
       }
+    },
+    "crossed_on": {
+      "GENERAL_MERCHANDISE": "2026-12-05"
     }
   }
 }

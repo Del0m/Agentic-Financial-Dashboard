@@ -34,6 +34,7 @@
       "http"
     ],
     "abstain": true,
-    "tools_none": true
+    "tools_none": true,
+    "no_numbers": true
   }
 }

@@ -26,6 +26,9 @@
     "flag_by": {
       "PERSONAL_CARE": "2026-10-03"
     },
+    "crossed_on": {
+      "PERSONAL_CARE": "2026-10-03"
+    },
     "message_facts": [
       {
         "text": "FitClub Gym"

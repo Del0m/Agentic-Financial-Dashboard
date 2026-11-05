@@ -151,3 +151,9 @@ Run them from `backend/`:
 **What it does:** `create_link_token` and `sandbox_public_token` both send `days_requested` of 180.
 
 **Why it's there:** The docs said 180 but the code sent 90, and the detector's window is 180 days. It only applies to newly linked Items.
+
+## `test_price_increase_fires_at_exactly_5_percent_and_1_dollar`
+
+**What it does:** After three $20 charges and a refresh, a $21 charge produces one `price_increase` with a previous price of $20.
+
+**Why it's there:** This is the smallest rise TPC-33 alerts on.

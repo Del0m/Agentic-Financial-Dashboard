@@ -253,3 +253,9 @@ Run them from `backend/`:
 **What it does:** $10 is $10, $21.67, $20 and $43.33 a month for monthly, biweekly, semi-monthly and weekly.
 
 **Why it's there:** The surplus compares streams on one monthly scale.
+
+## `test_price_rise_of_exactly_5_percent_keeps_its_previous_price`, `test_price_rise_under_5_percent_has_no_previous_price`
+
+**What they do:** A rise from $20.00 to $21.00 keeps $20.00 as the previous price, and a rise to $20.99 doesn't.
+
+**Why they're there:** Architecture 6a.1 alerts at 5% of the old price, inclusive, so the engine can't drop that case before the service checks it.

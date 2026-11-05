@@ -177,7 +177,6 @@ grep -a -c "Platinum" "$BUDGET_CHECKPOINT_PATH"*
 - **A debt goal's line ends on its projected date** (the month of its target date), even if the debt isn't paid off by then. Nothing tracks whether you paid, so the app raises a "Goal ended" alert when the line ends and leaves it to you to check the debt is actually gone.
 - **This profile's history ends on 2026-10-31**, so advancing adds no transactions. Flexible lines shrink month by month as the budget smooths toward $0 of spending, and after December the income estimate falls too (January's total is about $2,905). None of that is the goal feature. Stop at 2026-12-01 for the clean comparison.
 - **"Couldn't start Link"** appears on the dashboard for a simulated user. It's existing behaviour: a synthetic user has no bank to link.
-- **A goal accepted or stopped during a budget close** can take effect one month late (rare, and it corrects itself the month after).
 - **A run that finds nothing to propose can't say it withdrew the earlier proposal.**
 - **Accept and Stop stay clickable while Generate runs.** The server answers 409 if it matters.
 - **If a run fails after saving its goals**, the page can say "failed" while the new proposal is already on the page. Reload and it's there.
