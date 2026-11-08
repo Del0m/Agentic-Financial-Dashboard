@@ -189,6 +189,70 @@ export function getRun(runId: number): Promise<RunStatus> {
   return request<RunStatus>(`/budget/runs/${runId}`);
 }
 
+// what the budget agent did with one flagged line: code's measurement, the memory it was given, the model's
+// diagnosis and choice, and what code's checks did with that choice
+export type TraceFlag = {
+  category: string;
+  reason: "pace" | "over_limit";
+  group?: string | null;
+  spent_cents?: number;
+  limit_cents?: number;
+  pace?: number | null;
+  days_elapsed?: number;
+  days_in_period?: number;
+  projected_cents?: number;
+  largest_cents?: number | null;
+  largest_share?: number;
+  earlier_alerts?: { severity: string; action: string; status: string }[];
+  past_advice?: { month: string; action: string; outcome: string | null }[];
+  graph_facts?: boolean;
+  cause?: string | null;
+  evidence?: string | null;
+  model_action: string | null;
+  action: string | null;
+  override: "fallback" | "downgraded" | "escalated" | "reclassified" | "cut_dismissed" | null;
+  proposed_limit_cents: number | null;
+  alert_id: number | null;
+};
+
+export type TraceSignal = {
+  kind: string;
+  category: string | null;
+  shortfall_cents: number | null;
+  days_ahead: number | null;
+  typical_cents: number | null;
+  frequency: string | null;
+  model_action: string | null;
+  action: string | null;
+  fallback: boolean | null;
+  alert_id: number | null;
+};
+
+export type ActivityRun = {
+  run_id: number;
+  status: RunStatus["status"];
+  started_at: string | null;
+  finished_at: string | null;
+  as_of: string | null;
+  steps: string[];
+  summary: {
+    trace?: { lines_checked: number; flags: TraceFlag[]; signals: TraceSignal[] };
+    flags?: { category: string; reason: string }[];
+    alert_ids?: number[];
+    llm_calls?: number;
+    llm_failures?: number;
+    streams?: { count: number; new: number[]; price_up: number[]; income_change: number[] };
+    forecast?: { ok?: boolean; low_balance?: { date: string; shortfall_cents: number } | null } | null;
+    sync?: { skipped?: boolean; items?: number; errors?: string[] } | null;
+    error?: string;
+  };
+};
+
+// the newest budget runs, newest first, with each one's decision trace and (live) the steps it has started
+export function getActivity(limit = 5): Promise<ActivityRun[]> {
+  return request<ActivityRun[]>(`/budget/activity?limit=${limit}`);
+}
+
 // the payoff planner (tpc-32): every number comes from the backend's simulation
 export type PlanPayoff = { account_id: number; name: string; month: number; date: string; interest_cents: number };
 

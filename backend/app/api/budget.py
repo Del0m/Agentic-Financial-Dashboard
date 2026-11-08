@@ -12,6 +12,7 @@ from sqlalchemy import select
 from ..agents.budget_graph import waiting_for
 from ..budget_engine.pace import BudgetLine as EngineLine, evaluate, history_start
 from ..budget_engine.txns import add_months, month_start
+from ..budget_service import progress
 from ..budget_service.daily import run_daily_locked, sim_today, user_lock
 from ..budget_service.initialize import load_txns
 from ..budget_service.settings import set_user_style, user_style
@@ -228,3 +229,26 @@ def get_run(run_id: int, user: User = Depends(get_current_user)):
         if not waiting:
             status, error = "error", "The paused run's checkpoint is missing."
     return RunOut(run_id=run_id, status=status, alert_ids=alert_ids, waiting_for=waiting, error=error)
+
+
+class ActivityOut(BaseModel):
+    run_id: int
+    status: str
+    started_at: Optional[str]
+    finished_at: Optional[str]
+    as_of: Optional[str]
+    steps: list[str]            # the graph steps this run has started, in order; live only for runs in this process
+    summary: dict               # the run's summary: flags, causes, actions, forecast and the decision trace
+
+
+# the newest budget runs, with what each step decided, so the Alerts page can show the agent at work
+@router.get("/budget/activity", response_model=list[ActivityOut])
+def activity(limit: int = 5, user: User = Depends(get_current_user)):
+    with budget_hooks.session_factory() as s:
+        runs = list(s.scalars(select(AgentRun).where(AgentRun.user_id == user.id, AgentRun.graph == "budget")
+                              .order_by(AgentRun.id.desc()).limit(max(1, min(limit, 20)))))
+        return [ActivityOut(run_id=r.id, status=r.status,
+                            started_at=r.started_at.isoformat() if r.started_at else None,
+                            finished_at=r.finished_at.isoformat() if r.finished_at else None,
+                            as_of=(r.summary_json or {}).get("as_of"), steps=progress.steps(r.id),
+                            summary=r.summary_json or {}) for r in runs]

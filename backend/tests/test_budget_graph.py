@@ -57,7 +57,8 @@ def test_full_run_one_time(db, tmp_path):
     [agent_run] = rows(db, AgentRun, user_id=uid)
     assert (agent_run.graph, agent_run.status) == ("budget", "ok") and agent_run.finished_at is not None
     assert set(agent_run.summary_json) == {"period_id", "flags", "causes", "actions", "alert_ids", "unbudgeted",
-                                           "uncategorized", "sync", "llm_failures", "llm_calls", "llm_retries", "decisions", "as_of", "streams", "signals_error", "forecast"}
+                                           "uncategorized", "sync", "llm_failures", "llm_calls", "llm_retries", "decisions", "as_of", "streams", "signals_error", "forecast",
+                                           "trace"}
     gm_line = next(ln for ln in rows(db, BudgetLine) if ln.category == GM)
     assert gm_line.spent_cents > 60000 and gm_line.last_pace is not None
 
@@ -85,6 +86,59 @@ def test_second_run_no_op_no_alert(db, tmp_path):
     run(db, uid, model=fake(DIAG, ALERT), tmp_path=tmp_path)
     run(db, uid, model=fake(DIAG, reply(action="no_op", message="Already told you.")), tmp_path=tmp_path)
     assert len(rows(db, Alert)) == 1
+
+
+def trace_of(db, run_id):
+    with db() as s:
+        return s.get(AgentRun, run_id).summary_json["trace"]
+
+
+def test_trace_records_measurement_diagnosis_and_alert(db, tmp_path):
+    uid = seed(db, "overspend-one-time")
+    state = run(db, uid, model=fake(DIAG, ALERT), tmp_path=tmp_path)
+    [alert] = rows(db, Alert)
+    trace = trace_of(db, state["run_id"])
+    [flag] = trace["flags"]
+    assert (flag["category"], flag["cause"]) == (GM, "one_time")
+    assert flag["evidence"] == "One $600 purchase at ElectroMart explains most of it."
+    assert (flag["model_action"], flag["action"], flag["override"], flag["alert_id"]) == ("alert", "alert", None, alert.id)
+    assert flag["spent_cents"] > flag["limit_cents"] and flag["earlier_alerts"] == []
+    assert trace["lines_checked"] >= 1
+    assert "ElectroMart" not in json.dumps({k: v for k, v in flag.items() if k != "evidence"})
+
+
+def test_trace_records_memory_and_the_quiet_choice(db, tmp_path):
+    uid = seed(db, "overspend-one-time")
+    run(db, uid, model=fake(DIAG, ALERT), tmp_path=tmp_path)
+    state = run(db, uid, model=fake(DIAG, reply(action="no_op", message="Already told you.")), tmp_path=tmp_path)
+    [flag] = trace_of(db, state["run_id"])["flags"]
+    assert flag["earlier_alerts"] == [{"severity": "high", "action": "alert", "status": "pending_user"}]
+    assert (flag["model_action"], flag["action"], flag["override"], flag["alert_id"]) == ("no_op", "no_op", None, None)
+
+
+def test_trace_records_a_choice_the_code_overruled(db, tmp_path):
+    uid = seed(db, "overspend-one-time")
+    state = run(db, uid, model=fake(reply(cause="seasonal", evidence="Holiday gifts."),
+                                    reply(action="adjust_next_budget", message="New limit $1600.00.")),
+                tmp_path=tmp_path)
+    [flag] = trace_of(db, state["run_id"])["flags"]
+    assert (flag["model_action"], flag["action"], flag["override"]) == ("adjust_next_budget", "alert", "downgraded")
+
+
+def test_trace_records_a_model_that_did_not_answer(db, tmp_path):
+    uid = seed(db, "overspend-one-time")
+    state = run(db, uid, model=fake(*[AIMessage(content="bad")] * 4), tmp_path=tmp_path)
+    [flag] = trace_of(db, state["run_id"])["flags"]
+    assert (flag["cause"], flag["model_action"], flag["action"], flag["override"]) == (None, None, "alert", "fallback")
+
+
+def test_every_step_reports_its_start(db, tmp_path):
+    from app.budget_service import progress
+    uid = seed(db, "overspend-one-time")
+    state = run(db, uid, model=fake(DIAG, ALERT), tmp_path=tmp_path)
+    steps = progress.steps(state["run_id"])
+    assert steps[:2] == ["sync", "load_state"] and steps[-1] == "persist_state"
+    assert steps.index("diagnose") < steps.index("decide_action") < steps.index("log_advice")
 
 
 def test_memory_other_category_ignored(db, tmp_path):

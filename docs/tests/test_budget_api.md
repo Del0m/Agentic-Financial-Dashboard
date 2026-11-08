@@ -275,3 +275,15 @@ Run them from `backend/`:
 **What it does:** Asks the connection behind `budget_hooks._sqlite_saver` for `PRAGMA secure_delete` and expects it on.
 
 **Why it's there:** A goal run that raises writes a checkpoint with debt names still in it. Deleting that only frees the rows, and SQLite otherwise leaves their bytes in the file. A TPC-25 review probe found them there.
+
+## `test_activity_lists_newest_runs_with_their_trace_and_steps`
+
+**What it does:** After two runs, `GET /budget/activity` lists them newest first. The newest has its date, its started steps (beginning with `sync` and including `diagnose`), and a trace showing the earlier alert as memory and the model's `no_op`.
+
+**Why it's there:** This is what the Agent activity panel on the Alerts page reads, both while a run is going and after it ends.
+
+## `test_activity_is_only_the_users_own`
+
+**What it does:** A run for one user doesn't appear in another user's activity.
+
+**Why it's there:** Run summaries describe someone's spending, so the route has to filter by the signed-in user like every other route.

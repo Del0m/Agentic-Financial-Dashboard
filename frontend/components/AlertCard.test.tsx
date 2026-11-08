@@ -30,6 +30,12 @@ describe("AlertCard", () => {
     expect(screen.getByText("Proposed limit next month: $85.00")).toBeTruthy();
   });
 
+  test("names the free line Everything else, as the dashboard does", () => {
+    draw(alert({ category: "FREE", severity: "medium" }));
+    expect(screen.getByText("Everything else")).toBeTruthy();
+    expect(screen.queryByText("Free")).toBeNull();
+  });
+
   test("shows no proposed limit when there is none", () => {
     draw(alert({ action: "suggest_cancel" }));
     expect(screen.queryByText(/Proposed limit/)).toBeNull();

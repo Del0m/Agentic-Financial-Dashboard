@@ -238,6 +238,30 @@ def test_run_202_then_ok(api):
     assert (body["status"], len(body["alert_ids"]), body["waiting_for"], body["error"]) == ("ok", 1, [], None)
 
 
+def test_activity_lists_newest_runs_with_their_trace_and_steps(api):
+    api.seed("overspend-one-time")
+    api.models.append(ScriptedChatModel(replies=[DIAG, ALERT]))
+    first = wait(api, start(api))
+    api.models.append(ScriptedChatModel(replies=[DIAG, reply(action="no_op", message="Told you.")]))
+    second = wait(api, start(api))
+    body = api.client.get("/budget/activity?limit=5").json()
+    assert [r["run_id"] for r in body] == [second["run_id"], first["run_id"]]
+    newest = body[0]
+    assert (newest["status"], newest["as_of"]) == ("ok", "2026-10-20")
+    assert newest["steps"][0] == "sync" and "diagnose" in newest["steps"]
+    [flag] = newest["summary"]["trace"]["flags"]
+    assert (flag["cause"], flag["model_action"], flag["alert_id"]) == ("one_time", "no_op", None)
+    assert len(flag["earlier_alerts"]) == 1
+
+
+def test_activity_is_only_the_users_own(api):
+    api.seed("overspend-one-time")
+    api.models.append(ScriptedChatModel(replies=[DIAG, ALERT]))
+    wait(api, start(api))
+    api.seed("overspend-recurring")
+    assert api.client.get("/budget/activity").json() == []
+
+
 def test_run_409_while_locked(api):
     uid = api.seed("overspend-one-time")
     from app.budget_service.daily import user_lock

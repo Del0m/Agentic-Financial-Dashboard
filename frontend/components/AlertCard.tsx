@@ -22,7 +22,7 @@ export default function AlertCard({ alert, onAccept, onDismiss, busy }: {
   return (
     <article className={`space-y-2 rounded-lg border border-black/10 p-4 dark:border-white/15 ${pending ? "" : "opacity-60"}`}>
       <header className="flex flex-wrap items-center gap-2">
-        <h3 className="font-semibold">{alert.category ? categoryLabel(alert.category) : "Budget"}</h3>
+        <h3 className="font-semibold">{alert.category === "FREE" ? "Everything else" : alert.category ? categoryLabel(alert.category) : "Budget"}</h3>
         <span className={`rounded px-1.5 text-xs ${alert.severity === "high" ? "bg-red-600 text-white" : "bg-amber-500 text-black"}`}>
           {KINDS[alert.kind] ?? (alert.severity === "high" ? "Over limit" : "Ahead of pace")}
         </span>

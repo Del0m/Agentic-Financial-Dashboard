@@ -243,3 +243,33 @@ SQLite gives the new run the same id, and it still pauses, with its alert pendin
 TPC-31 adds the safe `forecast` run-summary field. Static-balance fixtures isolate the cash snapshot; marked forecast tests use moving balances.
 
 The run's summary now also has `llm_calls` and `llm_retries` for TPC-27's retry ablation, and `graph_error` only when a projection failed (TPC-36).
+
+## `test_trace_records_measurement_diagnosis_and_alert`
+
+**What it does:** After a one-time overspend run, the run summary's `trace` has the flagged line's measured numbers, the model's cause and evidence, the model's choice, no override, and the id of the alert it became. Apart from the model's evidence text, the flag's trace holds no merchant name.
+
+**Why it's there:** The Alerts page's Agent activity panel shows this trace so a viewer can see each step of the decision. It has to match what the run actually did, and it keeps to the run summary's rule of numbers, not merchant names.
+
+## `test_trace_records_memory_and_the_quiet_choice`
+
+**What it does:** A second run on the same overspend records the earlier alert as memory, the model's `no_op`, and no alert id.
+
+**Why it's there:** Choosing to stay quiet because of memory is the decision a viewer would otherwise never see, since nothing appears in the alert list.
+
+## `test_trace_records_a_choice_the_code_overruled`
+
+**What it does:** When the model proposes `adjust_next_budget` for a seasonal cause, the trace keeps the model's choice, records the final `alert`, and names the override `downgraded`.
+
+**Why it's there:** The panel shows where code's checks changed the model's choice. Before this, the model's original choice was overwritten and lost.
+
+## `test_trace_records_a_model_that_did_not_answer`
+
+**What it does:** With every model reply unparseable, the trace has no cause and no model choice, and the override is `fallback`.
+
+**Why it's there:** A plain alert from a model that isn't answering (Ollama down, for example) has to look different from the model's own choice. Otherwise repeated fallback alerts look like the agent deciding to nag.
+
+## `test_every_step_reports_its_start`
+
+**What it does:** A run's started steps, read from `budget_service/progress.py`, begin with `sync` and `load_state`, end with `persist_state`, and have `diagnose` before `decide_action` before `log_advice`.
+
+**Why it's there:** The panel lights each step up as it starts, so the order has to be the graph's real order.

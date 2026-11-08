@@ -74,3 +74,9 @@ npm test -- components/AlertCard.test.tsx
 **What it does:** Omits unavailable cancellation amounts.
 
 **Why it's there:** Covers the recurring integration without coupling it to other cards.
+
+## `names the free line Everything else, as the dashboard does`
+
+**What it does:** An alert on the `FREE` line is titled "Everything else", never "Free".
+
+**Why it's there:** The dashboard calls that line "Everything else". An alert titled "Free" read like free money and didn't match the bar it was about.

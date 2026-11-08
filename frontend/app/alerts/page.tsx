@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import AgentActivity from "@/components/AgentActivity";
 import AlertCard from "@/components/AlertCard";
 import {
   acceptAlert, advanceSim, dismissAlert, errorMessage, getAlerts, getRun, getSim, getSimJob, runBudget, type Alert,
@@ -191,6 +192,8 @@ export default function AlertsPage() {
           {simResult && <p role="status" className="text-sm">{simResult}</p>}
         </section>
       )}
+
+      <AgentActivity live={running || simulating} reloadKey={reloadKey} />
 
       {error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
