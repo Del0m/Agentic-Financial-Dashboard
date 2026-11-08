@@ -12,16 +12,7 @@ Reviewed November 2, 2026 against the current agent code and Jira TPC. The chat 
 
 The shared pattern is **observe → model decision → code-enforced boundary → output or human approval**. Budget and goal graphs have fixed orchestration with model-selected decisions inside it; chat additionally lets the model choose its tool sequence. These are bounded agents, not unconstrained financial operators. No model transfers money or directly changes the current budget. Accepted proposals can affect a future budget through the deterministic period-close boundary.
 
-## 2. Evidence for the Agent-Track rubric
-
-| Criterion | Weight | Evidence to present |
-|---|---:|---|
-| Difficulty level | 30% | Two-stage budget reasoning conditioned on memory; multi-round chat tool selection; goal proposal, validation, and correction; persistent approval pauses and recovery. Show a decision trace, including a rejected choice, rather than just an app screen. |
-| Code runnability | 30% | [README quickstart](../README.md#quickstart), seeded demo, local model setup, explicit scheduler defaults, and [evaluation commands](../eval/README.md). The current code documents a Docker startup path; this documentation review does not claim a fresh-machine run passed. |
-| Presentation / Demo / Usable-System | 20% | Demonstrate a budget proposal and accept/dismiss outcome, a chat tool trace, and a goal proposal with its run outcome. Separate model choices from the deterministic facts and checks shown below. |
-| Uses course learning | 20% | Tool-using reasoning loops, structured outputs, retrieval, episodic outcome memory, constrained planning, feedback-driven correction, human approval, and evaluation. These are implemented concepts; map them to the actual lecture terminology in the report. |
-
-## 3. Agent decision diagrams
+## 2. Agent decision diagrams
 
 ### A. Budget: diagnose, decide, remember
 
@@ -125,7 +116,7 @@ stateDiagram-v2
 
 `ok` means execution completed, not that the advice was accepted or correct. A paused budget run reads persisted decisions on resume and waits again if any proposals remain. Budget CLI runs now create a SQLite checkpointer, so they can pause too. A direct caller without a checkpointer saves proposals and completes without waiting.
 
-## 4. Capabilities and evidence
+## 3. Capabilities and evidence
 
 | Capability | Implemented behavior | Evidence |
 |---|---|---|
@@ -142,7 +133,7 @@ stateDiagram-v2
 
 Memory supplies context for inference; it does not retrain the model. Budget duplicate suppression remains partly a model decision, so repeated alerts are possible.
 
-## 5. Approval, recovery, and autonomous execution
+## 4. Approval, recovery, and autonomous execution
 
 Human decisions are committed before graph resume. Budget decisions update alert status and advice outcome; goals record decisions per goal. Both graphs resume without an LLM and wait until all relevant proposals are resolved. Goal recovery can finish from saved rows when checkpoint recovery fails. Startup cleanup does not discard `awaiting_user` runs as abandoned `running` work. Completed budget runs delete their checkpoints; goal cleanup also removes completed checkpoints.
 
@@ -157,7 +148,7 @@ For execution, use the [README quickstart](../README.md#quickstart) and [demo wa
 3. Ask chat "How fast am I debt-free if I add $200 a month?". Show selected tool arguments, returned facts, and the answer. Distinguish automatic retrieval from model-requested tools. In the November 3 baseline this question called `plan_debt_payoff` but the answer left out total interest ([TPC-48](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-48)). "Which of my debts should I pay off first?" got generic advice with no tool call ([TPC-47](https://ucf-ctcw-senior-design.atlassian.net/browse/TPC-47)), so it isn't a reliable tool trace until that's fixed.
 4. Generate goals and show per-goal approval. For reliable correction evidence, use the scripted [goal validation tests](../backend/tests/test_goal_validation_graph.py); a live model may return a valid proposal on its first attempt, so a correction is not guaranteed during a demo.
 
-## 6. Delivery status and gaps
+## 5. Delivery status and gaps
 
 Jira snapshot: November 3, 2026. An implemented path does not imply its ticket is Done: a ticket is Done when its done-when holds and its work is on `main`. At this snapshot, TPC-25, TPC-33, TPC-31 and TPC-26 are in review on branches not yet merged to `main`.
 
@@ -180,7 +171,7 @@ Jira snapshot: November 3, 2026. An implemented path does not imply its ticket i
 
 Additional limits: categorization is a counting stub; model actions are advice and proposals; user approval does not move money; model-selected answers and rationales can still be wrong. Full comparative and longitudinal evidence remains incomplete.
 
-## 7. Evaluation evidence for the writeup
+## 6. Evaluation evidence for the writeup
 
 Use [eval/README.md](../eval/README.md) for commands, metrics, and prerequisites. [40 scenario definitions](../eval/scenarios) run the same graphs and tools as the application, against synthetic users in a throwaway database:
 

@@ -9,3 +9,10 @@ kb/sources/local/
 backend/data/
 docs/to-do/
 graphify-out/
+
+# kept locally, out of the repo: the live demo script, and the paper and its figure tooling
+docs/handoffs/2026-11-06-demo-purchases.md
+docs/handoffs/2026-11-05-tpc-28-results-manual-verification.md
+docs/diagrams/README.md
+docs/diagrams/paper-figures.tex
+paper/

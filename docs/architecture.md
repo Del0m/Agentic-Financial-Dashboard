@@ -1,6 +1,6 @@
 # Architecture: Agentic Financial Dashboard
 
-Term project, agentic track. Author: Armin Delmo (UCF).
+Author: Armin Delmo.
 Status: living design doc. Update it as you make decisions; the "Decision log" at the bottom is where those go.
 
 This doc is written so you can build the system one milestone at a time. Each section says what the piece does, why it's shaped that way, and what you'll learn building it. Where there was a real choice, the default is stated and the alternatives are listed so you can swap them deliberately.
@@ -915,8 +915,8 @@ plaid-agent/
 
 Each milestone ends with something you can demo. "Learn" lists the concept you'll come away with.
 
-### Schedule (tracked in Jira project TPC, "Term Project CAP6938")
-Assignment due **November 9, 2026**; everything is scheduled to finish by **November 7** for two days of buffer.
+### Schedule (tracked in Jira project TPC)
+Everything is scheduled to finish by **November 7, 2026**.
 
 | Epic | Jira | Dates |
 |---|---|---|
@@ -1023,7 +1023,7 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 | 2026-10-04 | Agent `llama3.1:8b`, judge `qwen2.5:14b` (Ollama, M5 24 GB) | Reliable tool calling at 8B; judge from a different model family; both fit in memory together |
 | 2026-10-04 | `mistral` (7B) included as a comparison agent model in benchmarks | Already installed; gives a model-vs-model results table |
 | 2026-10-04 | Use Plaid's primary `personal_finance_category` values as budget categories | No mapping layer to maintain; LLM only categorizes what Plaid leaves unclear |
-| 2026-10-08 | Every test is documented in `docs/tests/<module>.md` (what it does, why it exists) | Teammates and graders can tell what each test checks, and nobody has to guess why a regression test exists |
+| 2026-10-08 | Every test is documented in `docs/tests/<module>.md` (what it does, why it exists) | Anyone reading the tests can tell what each one checks, and nobody has to guess why a regression test exists |
 | 2026-10-08 | Removed transactions are soft-deleted (`removed=True`); one `liabilities` row per account (unique `account_id`); credit cards store the purchase APR | Keeps history for the budget agent; makes liability refresh an upsert; purchase APR is what applies to normal spending |
 | 2026-10-08 | Sync rows and cursor commit together; `SYNC_UPDATES_AVAILABLE` webhook syncs transactions only, in a background task | A crash replays pages instead of losing them; Plaid needs a fast 200, and balances/liabilities don't change on that webhook |
 | 2026-10-18 | `/plaid/exchange` syncs the item inline; on any sync failure the item is kept and `synced: false` is returned; `/dashboard` lists never-synced items so the page's Retry sync survives a refresh. **Superseded by the PR review fix below.** | The dashboard has data right after linking, and a valid access token is never thrown away over a retryable error |
@@ -1082,7 +1082,7 @@ All initial open questions were decided on 2026-10-04 (see the decision log). Ad
 | 2026-10-31 | Lines have a user-editable name and a group (`needs`, `wants`, `saving`, `free`); the rules read groups. Styles `caps` (default) and `50_30_20`, per user, from the next close; UI later | The user's requirement: nameable lines, adaptable to several budget types, 50/30/20 executable without UI |
 | 2026-10-31 | Transaction categories resolve user > merchant rule > LLM > savings transfer > Plaid in one place; a correction offers "Always for <merchant>?" | The user's choice: Plaid sets it automatically, the user fixes it when it's wrong, and one unusual purchase doesn't move a merchant |
 | 2026-11-02 | `initialize_budget` and close load one month before the 3-month fit window; `fit_budget` uses it only to find where the history starts and to count a bill paid early at its end, not for the usual bill | Fit reads the start of the history from the earliest transaction it's given, so with only the window loaded, a first in-window transaction after the 3rd dropped a complete month from every user with longer history. No eval or planted user's stored budget moved, since all of them have a transaction by the 3rd of each window month. Found in the TPC-23 final review |
-| 2026-11-01 | Add a temporal knowledge graph (Milestone 6) covering both the user's finances and the KB guidance, linked by bridge edges | The course is on AI knowledge systems, and vector RAG plus an agent graph isn't a knowledge graph. The user chose both halves, linked |
+| 2026-11-01 | Add a temporal knowledge graph (Milestone 6) covering both the user's finances and the KB guidance, linked by bridge edges | Vector RAG plus an agent graph isn't a knowledge graph. The user chose both halves, linked |
 | 2026-11-01 | Bitemporal edges (valid time + transaction time) in two app-DB tables, not Graphiti or a graph database | Corrections such as retroactive recategorization must not rewrite what the agent knew when it acted. Same DB, migrations and tests; nothing new to run |
 | 2026-11-01 | The user half is projected by code; only the guidance half is LLM-extracted, offline, against a fixed ontology, then reviewed and committed | Keeps "the LLM never does arithmetic that matters"; pins the cited facts the way `kb/sources/` pins the text |
 | 2026-11-01 | The chat agent gets `get_connections` and an on-demand `refresh_accounts`; the daily sync stays a fixed node | The agent should know how fresh its data is and fix it when asked. The rate limit and per-item lock keep a small model from hammering Plaid |

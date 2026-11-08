@@ -6,7 +6,7 @@ Branch: `docker-dev`, cut from `TPC-32`. No Jira ticket; a developer convenience
 
 Boot the app on this Mac with one command, `docker compose up`, as two containers on one Docker network: the FastAPI backend and the Next.js frontend. It runs in dev mode with live reload, the same as the two terminals in the README today.
 
-**Who it's for:** the developer, on this Mac. Not graders, CI or a deployment.
+**Who it's for:** the developer, on this Mac. Not CI or a deployment.
 
 **Done when:**
 - `docker compose up --build` serves http://localhost:3000 with the dashboard, chat (answered by Ollama on the host) and alerts working as they do today.

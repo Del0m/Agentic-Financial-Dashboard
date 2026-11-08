@@ -33,7 +33,7 @@ The ticket's acceptance criterion is a deliberately tight-surplus test that neve
 | Preferences | Enforce structured fields in code; note remains model guidance | Structured rules are verifiable | Interpret arbitrary notes as hard constraints | Moderate |
 | Cap below $1 | No model call; clear no-affordable-goals outcome; withdraw old proposal | Existing schema cannot produce a fitting goal | Error and preserve old proposal; sub-dollar goals | Moderate |
 | TDD evidence | Record red/green commands and results for each meaningful slice | Makes test-first development reviewable | Final results only; separate failing commits | Easy |
-| Handoff audience | User; concise host/venv instructions matching TPC-23 | Explicit user preference | Teammate/Docker guide; instructor report | Easy |
+| Handoff audience | User; concise host/venv instructions matching TPC-23 | Explicit user preference | Teammate/Docker guide | Easy |
 | Correction feedback | Same scrubbed facts, rejected normalized allocation, and all actionable validation reasons; no raw reply or rationale | Gives the model enough information to correct without echoing arbitrary text | First failure only; full conversation history | Easy |
 | Live checks | Five tight-surplus trials when Ollama is available; report skips explicitly | Complements the deterministic safety proof with real-model behavior | Mandatory live success; deterministic tests only | Easy |
 | Failure demonstration | Focused scripted pytest commands, plus a live CLI smoke check | Invalid-then-valid behavior is reproducible | Standalone script; live CLI only | Easy |

@@ -98,7 +98,7 @@ curl -s -X POST localhost:8000/plaid/link-token
 
 ### 7. Plaid, with your `.env`
 
-This is the path where you send your professor your `.env`. Copy it into the clean clone and link a sandbox bank:
+This is the path where someone is given a complete `.env`. Copy it into the clean clone and link a sandbox bank:
 
 ```bash
 cp <your repo>/.env .env

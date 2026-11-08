@@ -1,6 +1,6 @@
 # How the system works, and what is still missing
 
-For the current agent behavior, Jira status, and Agent-Track grading evidence, use [the agentic system guide](agent-pipelines.md), reviewed November 2 and updated November 3, 2026. This broader walkthrough retains historical system-design discussion; its other diagrams are not the current agent specification.
+For the current agent behavior and Jira status, use [the agentic system guide](agent-pipelines.md), reviewed November 2 and updated November 3, 2026. This broader walkthrough retains historical system-design discussion; its other diagrams are not the current agent specification.
 
 Review date: October 28, 2026. This walkthrough compares the architecture, milestone specs/plans, test documentation, and saved evaluation results with the implementation. It does not verify current external financial rules or re-run live Plaid/Ollama tests.
 
@@ -127,7 +127,7 @@ The chat harness uses the actual graph/tools with synthetic users and a throwawa
 
 **Saved results expose a reliability gap.** The second saved `qwen2.5:14b` run on October 27 has 15 runs: factual pass rate 60%, judge pass rate 80%, tool accuracy 80%, and 100% above the similarity threshold. The debt-priority scenario fails its full fact check in all three runs even though the judge passes it; the mixed debt/emergency scenario fails facts and data consistency. Inspect missing facts and tool use before interpreting the high similarity as success. These are saved historical results, not a fresh measurement of today's code.
 
-**The November 3 baseline widens this.** TPC-26 grew the benchmark to 40 scenarios across chat, budget and goal, including false alarms and time-to-flag over short windows of real daily runs. One pass on `qwen2.5:14b` passed 16 of 22 chat scenarios on facts, 9 of 12 budget and 6 of 6 goal. Results and the five open problems it found are in [the agentic system guide](agent-pipelines.md#7-evaluation-evidence-for-the-writeup).
+**The November 3 baseline widens this.** TPC-26 grew the benchmark to 40 scenarios across chat, budget and goal, including false alarms and time-to-flag over short windows of real daily runs. One pass on `qwen2.5:14b` passed 16 of 22 chat scenarios on facts, 9 of 12 budget and 6 of 6 goal. Results and the five open problems it found are in [the agentic system guide](agent-pipelines.md#6-evaluation-evidence-for-the-writeup).
 
 **Missing validation:** multi-period replay covering daily updates → flags → decisions → close → next month; repeat alerts, missed-job recovery and adaptation; and a multi-run comparison of models. The CLI intentionally exits successfully when an evaluation completes despite poor scores, so define a separate quality gate. Record skipped live checks explicitly rather than counting them as proof of behavior.
 
