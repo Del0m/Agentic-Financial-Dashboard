@@ -2,5 +2,6 @@
 FROM python:3.12-slim
 
 WORKDIR /app/backend
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# the lock pins every package to the version the results were produced with; requirements.txt is the short list
+COPY requirements.txt requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.txt -c requirements.lock

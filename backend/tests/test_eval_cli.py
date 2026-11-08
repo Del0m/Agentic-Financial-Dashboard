@@ -22,6 +22,29 @@ def test_results_dir_sanitizes_and_never_overwrites(tmp_path):
     assert run_eval.results_dir(tmp_path, DAY, "a/b").name == "a_b"
 
 
+class _Tags:
+    def __init__(self, models):
+        self.models = models
+
+    def json(self):
+        return {"models": [{"name": n, "digest": d} for n, d in self.models.items()]}
+
+
+def test_model_digests_records_each_model_once_and_matches_latest(monkeypatch):
+    monkeypatch.setattr(run_eval.httpx, "get", lambda *a, **k: _Tags({"q:14b": "aaa", "nomic-embed-text:latest": "bbb"}))
+
+    assert run_eval.model_digests(["q:14b", "nomic-embed-text", "q:14b", "gone:1"]) == {
+        "q:14b": "aaa", "nomic-embed-text": "bbb", "gone:1": "unknown"}
+
+
+def test_model_digests_without_ollama_says_unknown(monkeypatch):
+    def down(*a, **k):
+        raise run_eval.httpx.ConnectError("refused")
+    monkeypatch.setattr(run_eval.httpx, "get", down)
+
+    assert run_eval.model_digests(["q:14b"]) == {"q:14b": "unknown"}
+
+
 def test_preflight_reports_each_problem(monkeypatch):
     monkeypatch.setattr(run_eval, "missing_models", lambda models: None)
     [down] = run_eval.preflight("qwen2.5:14b", "gemma3:12b", FakeKB())
@@ -49,6 +72,7 @@ def offline(monkeypatch, tmp_path):
     monkeypatch.setattr(run_eval, "get_chat_model", lambda **kw: object())
     monkeypatch.setattr(run_eval, "get_embeddings", lambda: object())
     monkeypatch.setattr(run_eval, "preflight", lambda *a: [])
+    monkeypatch.setattr(run_eval, "model_digests", lambda models: {m: f"sha-{m}" for m in dict.fromkeys(models)})
     monkeypatch.setattr(run_eval, "score_run", lambda rec, sc, **kw: {
         "facts": {"found": 1, "total": 1, "passed": True, "score": 1.0, "missing": [], "forbidden_hits": []},
         "tools_ok": True, "sources_ok": True, "similarity": 0.9, "judge": None, "judge_passed": False})
@@ -86,6 +110,8 @@ def test_main_writes_runs_and_summary(offline, monkeypatch):
     assert summary["overall"]["runs"] == 4
     assert cfg["runs"] == 2 and cfg["model"] == "m:1" and cfg["judge"] == "gemma3:12b"
     assert cfg["scenarios"] == ["debt-highest-apr", "second"] and "finished_at" in cfg
+    assert cfg["model_digests"] == {"m:1": "sha-m:1", "nomic-embed-text": "sha-nomic-embed-text",
+                                    "gemma3:12b": "sha-gemma3:12b"}
     run1 = json.loads((out / "second.run1.json").read_text())
     assert run1["record"]["answer"] == "ok" and run1["scores"]["similarity"] == 0.9
 

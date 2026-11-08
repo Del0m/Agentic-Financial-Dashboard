@@ -31,6 +31,18 @@ Run them from `backend/`:
 
 **Why it's there:** Model names contain `:` and sometimes `/`, which aren't safe in folder names everywhere. Running the eval twice in one day is normal while tuning, and it must never overwrite results the writeup might use.
 
+## `test_model_digests_records_each_model_once_and_matches_latest`
+
+**What it does:** With Ollama reporting `q:14b` and `nomic-embed-text:latest`, `model_digests` maps `q:14b` to its digest, finds `nomic-embed-text` under its `:latest` name, lists `q:14b` once although it was asked for twice, and says `unknown` for a model that isn't pulled.
+
+**Why it's there:** A tag like `qwen2.5:14b` can be republished with new weights, so the name alone doesn't say which model produced a result. The digest does, and it's what someone reproducing the benchmark compares against.
+
+## `test_model_digests_without_ollama_says_unknown`
+
+**What it does:** When Ollama can't be reached, every model's digest is `unknown` instead of an error.
+
+**Why it's there:** Recording the digest must never stop a run. Preflight has already reported an unreachable Ollama by then.
+
 ## `test_preflight_reports_each_problem`
 
 **What it does:** Checks the messages `preflight` returns:
@@ -57,7 +69,7 @@ Run them from `backend/`:
 **What it does:** Runs 2 scenarios × 2 runs with model `m:1` and checks:
 - the results folder is `<date>/m_1`;
 - it holds 4 run files, `summary.json` (4 runs overall) and `config.json`;
-- `config.json` has the model, the judge, the run count, the scenario ids and a finish time;
+- `config.json` has the model, the judge, the run count, the scenario ids, a finish time, and the digest of each model the chat scenarios use (the agent, the embeddings and the judge);
 - each run file holds the record and its scores.
 
 **Why it's there:** These files are what TPC-27 and TPC-28 chart and the writeup cites, so their names and contents are pinned.

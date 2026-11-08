@@ -50,7 +50,7 @@ The exit code is 0 whenever the eval completes, even with low scores. Low scores
 |---|---|
 | `<id>.run<N>.json` | `record`: answer, tool calls, tool results, sources, latency, error. `scores`: facts (found, missing, forbidden hits), tools, sources, similarity, judge. Written as soon as the run finishes |
 | `summary.json` | For each scenario and overall: pass rates, mean similarity and the share of runs at target, judge means, tool and source accuracy, mean and p95 latency, errors, and the min/max across runs |
-| `config.json` | Models, run count, git commit, scenario ids, whole-run and per-kind scenario hashes, start and finish times |
+| `config.json` | Models and their Ollama digests, the Ollama version, run count, git commit, scenario ids, whole-run and per-kind scenario hashes, start and finish times |
 | `audit.jsonl` | Every prompt the privacy gateway built during the eval |
 
 ### Comparing conditions

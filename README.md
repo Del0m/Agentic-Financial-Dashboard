@@ -2,7 +2,7 @@
 
 Agentic financial dashboard: link bank accounts through Plaid, see balances, net worth and debts, chat about your money, and let a local-LLM budget agent flag overspending and propose changes. Design: [`docs/architecture.md`](docs/architecture.md).
 
-For the graded agentic portion, see [the agentic system guide](docs/agent-pipelines.md): model decisions, tool loops, memory, goal self-correction, approval, rubric evidence, and evaluation limits.
+For how the agents work, see [the agentic system guide](docs/agent-pipelines.md): model decisions, tool loops, memory, goal self-correction, approval, and evaluation limits.
 
 ## Quickstart
 
@@ -36,6 +36,12 @@ The demo user has a new $90 gym membership that its $42 personal care budget doe
    - "What is my net worth?" ($100)
 
 Chat follows the simulated date, so "last month" means October once the demo reaches November. The planted data ends on October 31, so November has no transactions. The model can also pick the wrong category for a merchant, so ask about "personal care" rather than "the gym".
+
+To show the agents reacting to new spending, add a purchase mid-demo with [`demo_purchase.py`](backend/scripts/demo_purchase.py), then click **Run budget check** on Alerts. `--list` shows the ready-made purchases:
+
+```bash
+docker compose exec backend python scripts/demo_purchase.py --list
+```
 
 To restart the demo:
 
@@ -78,7 +84,7 @@ First time only:
 
 ```bash
 cp .env.example .env                 # fill in PLAID_CLIENT_ID, PLAID_SECRET, FERNET_KEY
-python3.12 -m venv venv && venv/bin/pip install -r backend/requirements.txt
+python3.12 -m venv venv && venv/bin/pip install -r backend/requirements.txt -c backend/requirements.lock
 cd backend && ../venv/bin/alembic upgrade head && cd ..
 cd frontend && npm install && cd ..
 ```
@@ -124,7 +130,7 @@ docker compose exec backend python scripts/seed_budget_user.py --profile overspe
 docker compose exec backend python -m pytest -q -k "not live and not sandbox"
 ```
 
-After changing `backend/requirements.txt`, run `docker compose up -d --build backend` (a plain `build` leaves the old container running). After changing `frontend/package-lock.json`, run `docker compose build frontend && docker compose down -v`. The container's `node_modules` lives in a volume (the Mac's native packages don't run in Linux), and `down -v` drops it so the new packages show up.
+After changing `backend/requirements.txt`, regenerate `backend/requirements.lock` (its header says how), then run `docker compose up -d --build backend` (a plain `build` leaves the old container running). After changing `frontend/package-lock.json`, run `docker compose build frontend && docker compose down -v`. The container's `node_modules` lives in a volume (the Mac's native packages don't run in Linux), and `down -v` drops it so the new packages show up.
 
 ## Knowledge base
 
@@ -262,6 +268,24 @@ Use **Plaid Sandbox data only** for this demo. The app has one unauthenticated d
 3. On a phone on the same Wi-Fi, open `http://<that-ip>:3000`. The backend stays on `localhost:8000`, because the Next.js server reaches it from the Mac.
 4. If the phone can't connect (campus Wi-Fi often blocks one device from reaching another), use your phone's hotspot or run `ngrok http 3000` and open the HTTPS URL it prints.
 5. Use a non-OAuth Sandbox bank such as First Platypus Bank. OAuth banks need a registered `redirect_uri`, which isn't set up.
+
+## Reproducing the results
+
+Python packages are pinned in [`backend/requirements.lock`](backend/requirements.lock), which both the venv install above and the Docker image use. `requirements.txt` is only the short list of what the app imports directly.
+
+Ollama model names are tags, and a tag can be republished with different weights. The benchmark ran on Ollama 0.33.2 with these models:
+
+| Model | Role | Digest |
+|---|---|---|
+| `qwen2.5:14b` | chat and budget agent | `7cdf5a0187d5c58cc5d369b255592f7841d1c4696d45a8c8a9489440385b22f6` |
+| `nomic-embed-text` | knowledge base embeddings | `0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f` |
+| `gemma3:12b` | eval judge | `b92b218582c521ba287f38f1d6057dcd3c6cbff036f13cac97b5d861f5e58ec3` |
+| `llama3.1:8b` | baseline comparison | `46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e` |
+| `mistral` | baseline comparison | `6577803aa9a036369e481d648a2baebb381ebc6e897f2bb9a766a2aa7bfbc1cf` |
+
+`ollama list` shows the first 12 characters of each digest in its `ID` column. If yours differ, the model changed upstream, and results can drift. If `nomic-embed-text` differs, rebuild the store with `ingest_kb.py`, since its vectors no longer match the ones the results used. Every eval run records the digests it actually used in its `config.json` under `model_digests`.
+
+Even with the same packages and models, model output can differ a little across GPUs and Ollama versions, so expect close numbers rather than identical ones.
 
 ## Tests
 

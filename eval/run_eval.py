@@ -123,6 +123,16 @@ def _ollama_version() -> str:
         return "unknown"
 
 
+# a tag like qwen2.5:14b can be republished with new weights, so record exactly which ones ran
+def model_digests(models: list[str]) -> dict[str, str]:
+    try:
+        resp = httpx.get(f"{config.OLLAMA_BASE_URL}/api/tags", timeout=5)
+        tags = {m["name"]: m["digest"] for m in resp.json()["models"]}
+    except Exception:
+        tags = {}
+    return {m: tags.get(m) or tags.get(f"{m}:latest") or "unknown" for m in dict.fromkeys(models)}
+
+
 # so two results folders can be refused as not comparable if their scenarios differ
 def _scenario_hash(scenarios) -> str:
     digest = hashlib.sha256()
@@ -205,6 +215,8 @@ def main(argv=None) -> int:
     cfg = {"model": args.model, "judge": args.judge, "embeddings": config.OLLAMA_EMBED_MODEL,
            "runs": args.runs, "commit": _git_commit(), "scenarios": [s.id for s in scenarios],
            "scenario_hash": _scenario_hash(scenarios), "ollama_version": _ollama_version(), "label": args.label,
+           "model_digests": model_digests([args.model, config.OLLAMA_EMBED_MODEL, args.judge] if has_chat
+                                          else [args.model]),
            "scenario_hashes_by_kind": {kind: _scenario_hash([s for s in scenarios if s.kind == kind])
                                        for kind in KINDS if any(s.kind == kind for s in scenarios)},
            "retrieval": config.KG_CHAT, "kg_mode": config.KG_MODE, "retries": config.RETRIES_ENABLED,

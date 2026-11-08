@@ -38,6 +38,7 @@ from app.budget_service.initialize import load_txns
 from app.budget_service.simulate import advance_days
 from app.db.models import Alert, BudgetLine, BudgetPeriod
 from eval.budget_accuracy import SCORED
+from eval.run_eval import model_digests
 from eval.budget_users import IMPROVE_USERS, seed_profile
 from eval.fixtures import temp_db
 from eval.metrics import mape
@@ -169,7 +170,8 @@ def main(argv=None) -> int:
         (ACCEPTANCE_DIR / f"collected-{_safe(args.model)}.json").write_text(
             json.dumps(rows, indent=2, ensure_ascii=False) + "\n")
     (out / "results.json").write_text(json.dumps(
-        {"mode": name, "model": None if args.baseline else args.model, "results": results},
+        {"mode": name, "model": None if args.baseline else args.model,
+         "model_digests": {} if args.baseline else model_digests([args.model]), "results": results},
         indent=2, ensure_ascii=False) + "\n")
     for r in results:
         print(r["user"], [(p["start"][:7], p["mape"]) for p in r["periods"]], "proposals", r["proposals"],
