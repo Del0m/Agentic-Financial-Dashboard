@@ -1,4 +1,4 @@
-# Plaid-Agent-CAP6938
+# Agentic Financial Dashboard
 
 Agentic financial dashboard: link bank accounts through Plaid, see balances, net worth and debts, chat about your money, and let a local-LLM budget agent flag overspending and propose changes. Design: [`docs/architecture.md`](docs/architecture.md).
 
