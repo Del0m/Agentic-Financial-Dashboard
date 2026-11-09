@@ -120,3 +120,26 @@ describe("DebtPlanCompare", () => {
     expect((screen.getByLabelText("Extra per month") as HTMLInputElement).value).toBe("200");
   });
 });
+
+
+describe("accepted debt-payoff contributions", () => {
+  test("includes goal dates and separates goal money from additional extra", async () => {
+    await draw(vi.fn(async (extra: number) => response(extra, {
+      minimum_monthly_cents: 7500, goal_monthly_cents: 60000, additional_extra_monthly_cents: extra,
+      goal_contributions: [{ goal_id: 1, monthly_cents: 60000, start_date: "2026-12-01", target_date: "2027-03-01" }],
+    })));
+    expect(screen.getByText("Accepted debt-payoff goals included")).toBeTruthy();
+    expect(screen.getByText("$600.00/mo, December 2026 through March 2027")).toBeTruthy();
+    expect(screen.getByText(/Starting December 2026: \$675.00\/mo/)).toBeTruthy();
+    expect((screen.getByLabelText("Extra per month") as HTMLInputElement).value).toBe("0");
+    await typeExtra("100");
+    expect(screen.getByText(/Starting December 2026: \$775.00\/mo/)).toBeTruthy();
+  });
+
+  test("recalculates when accepted goals change even if balances are unchanged", async () => {
+    const fetchPlan = await draw();
+    fetchPlan.view.rerender(<DebtPlanCompare fetchPlan={fetchPlan} debtsKey="1:320000" goalsKey="goal-accepted" />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+    expect(fetchPlan).toHaveBeenCalledTimes(2);
+  });
+});

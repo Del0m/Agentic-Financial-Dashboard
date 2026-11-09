@@ -106,3 +106,7 @@ Interest is $1.50 on A and $10.15 on B, $11.65 in all.
 **What it does:** A $0 card with no APR, an overpaid card with neither APR nor minimum, and a paid-off mortgage are skipped without an excluded entry. Only the $800 card is planned.
 
 **Why it's there:** Found in the final review. Exclusion used to be checked before the balance, so a paid-off debt with a missing detail showed as "left out of the plan" on the card and in chat.
+
+## Scheduled goal payments
+
+`test_goal_contribution_stops_after_its_target_month` checks an accepted goal contributes only through its target month. `test_future_goal_waits_for_start_and_manual_extra_is_additional` checks delayed starts, manual extra and a baseline that already includes the same accepted-goal schedule. With no schedule the existing payoff behavior is unchanged.

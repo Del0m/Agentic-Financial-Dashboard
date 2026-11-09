@@ -1,8 +1,12 @@
+from datetime import date
+from typing import Sequence
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.budget_engine.payoff import Debt
-from app.db.models import Account, Liability
+from app.budget_engine.payoff import Debt, ScheduledExtra
+from app.db.models import Account, Liability, Goal
+from app.budget_engine.txns import month_start
 
 # the planner's debts (tpc-32), one loader for the api and the gateway so they never plan from different numbers.
 # the balance is the account's current one, like the dashboard and the debts purpose (review fix on #6)
@@ -27,3 +31,15 @@ def incomplete_card_obligations(session: Session, user_id: str) -> bool:
     return any(a.current_balance_cents is None or (
         a.current_balance_cents > 0 and (l is None or l.min_payment_cents is None)
     ) for a, l in rows)
+
+
+def debt_goal_contributions(session: Session, user_id: str, start: date) -> list[Goal]:
+    """Only accepted debt allocations that can still fund a planned month."""
+    return list(session.scalars(select(Goal).where(
+        Goal.user_id == user_id, Goal.kind == "debt_payoff", Goal.status == "accepted",
+        Goal.monthly_cents > 0, Goal.start_date.is_not(None), Goal.target_date.is_not(None),
+        Goal.target_date >= start).order_by(Goal.start_date, Goal.id)))
+
+
+def goal_payment_schedule(goals: Sequence[Goal]) -> tuple[ScheduledExtra, ...]:
+    return tuple(ScheduledExtra(g.monthly_cents, month_start(g.start_date), month_start(g.target_date)) for g in goals)

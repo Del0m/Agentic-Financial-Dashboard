@@ -45,3 +45,7 @@ Run them from `backend/`:
 **What it does:** A $10,000 card at 30% with a $100 minimum and no extra is never paid off. Its plan has no months and no total interest, and `never` lists the card by account id and name.
 
 **Why it's there:** A debt that's never paid off isn't in the payoff order, so the dashboard had no name to say which debt can't be paid. Found while writing the card's tests (TPC-32), when the first version needed a "Debt 1" fallback.
+
+## Accepted debt-payoff goals
+
+Accepted debt goals are included once, separately from minimum payments and manually entered extra. Tests check the monthly payment breakdown, date schedule, proposed/stopped/completed/non-debt exclusions, expired schedules, future starts and user ownership. The baseline includes accepted goals, so manual-extra savings do not count those contributions again.

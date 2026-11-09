@@ -171,42 +171,23 @@ def test_lock_freed_when_final_status_write_fails(admin, monkeypatch):
     lock.release()
 
 
-# the demo / plaid switch: a cookie swaps the configured demo user for the dev user plaid links banks to
-def test_view_switches_between_the_demo_user_and_the_plaid_user(admin):
-    admin.seed()
-    assert admin.client.get("/admin/view").json() == {"view": "demo", "available": True}
-    assert admin.client.get("/admin/sandbox").json()["simulated"] is True
-
-    r = admin.client.put("/admin/view", json={"view": "plaid"})
-    assert r.json() == {"view": "plaid", "available": True}
-    assert "view=plaid" in r.headers["set-cookie"] and "HttpOnly" in r.headers["set-cookie"]
-    assert admin.client.get("/admin/view").json()["view"] == "plaid"
-    # every route now reads the dev user, which has no simulated date
-    assert admin.client.get("/admin/sandbox").json() == {"simulated": False, "profile": None, "date": None}
-    with admin.db() as s:
-        assert s.query(User).filter_by(email="dev@localhost").count() == 1
-
-    admin.client.put("/admin/view", json={"view": "demo"})
-    assert admin.client.get("/admin/view").json()["view"] == "demo"
-    assert admin.client.get("/admin/sandbox").json()["simulated"] is True
-
-
-def test_view_has_nothing_to_switch_when_the_configured_user_is_the_plaid_one(admin):
-    admin.mp.setattr(config, "DEV_USER_EMAIL", "dev@localhost")
-    r = admin.client.put("/admin/view", json={"view": "plaid"})
-    assert r.json() == {"view": "demo", "available": False}
-    assert "view=plaid" not in r.headers.get("set-cookie", "")
-
-
-def test_view_cookie_is_ignored_without_the_admin_tools(admin):
-    admin.seed()
-    admin.client.put("/admin/view", json={"view": "plaid"})
-    admin.mp.setattr(config, "ENABLE_ADMIN", False)
+# Public requests cannot switch between the Plaid and seeded users.
+@pytest.mark.parametrize("enabled", [False, True])
+@pytest.mark.parametrize("view", ["demo", "plaid", "someone-else"])
+def test_retired_view_routes_are_unavailable(admin, enabled, view):
+    admin.mp.setattr(config, "ENABLE_ADMIN", enabled)
     assert admin.client.get("/admin/view").status_code == 404
-    # the cookie is still in the jar, but the request reads the configured demo user
-    accounts = admin.client.get("/dashboard").json()["accounts"]
-    assert [a["name"] for a in accounts] == ["Checking"]       # the seeded demo user's; the dev user has none
+    assert admin.client.put("/admin/view", json={"view": view}).status_code == 404
 
 
-def test_view_rejects_an_unknown_view(admin):
-    assert admin.client.put("/admin/view", json={"view": "someone-else"}).status_code == 422
+@pytest.mark.parametrize("cookie", ["demo", "plaid", "budget-overspend-one-time"])
+def test_legacy_cookie_cannot_select_seeded_data(admin, cookie):
+    uid = admin.seed()
+    admin.mp.setattr(config, "DEV_USER_EMAIL", "dev@localhost")
+    admin.client.cookies.set("view", cookie)
+    result = admin.client.get("/admin/sandbox")
+    assert result.status_code == 200
+    assert result.json() == {"simulated": False, "profile": None, "date": None}
+    assert admin.client.get("/dashboard").json()["accounts"] == []
+    with admin.db() as s:
+        assert s.get(User, uid) is not None  # the internal fixture is preserved

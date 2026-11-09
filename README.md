@@ -6,48 +6,33 @@ For how the agents work, see [the agentic system guide](docs/agent-pipelines.md)
 
 ## Quickstart
 
-You need [Docker](https://www.docker.com/products/docker-desktop/) and [Ollama](https://ollama.com/download), about 13 GB of free disk space, and roughly 16 GB of memory for the chat model. No keys or accounts are needed.
+You need [Docker](https://www.docker.com/products/docker-desktop/), [Ollama](https://ollama.com/download), the supplied **Plaid client ID and Sandbox secret** (or your own [Plaid developer account](https://dashboard.plaid.com/signup)), about 13 GB of free disk space, and roughly 16 GB of memory for the chat model. The walkthrough uses Plaid Sandbox test accounts; no real bank account is needed.
 
 1. Start Docker and Ollama.
-2. From the repo root:
+2. In the repo root, create `.env` by copying `.env.example` **only if `.env` does not already exist**. Set these values before starting the app:
+
+   ```dotenv
+   PLAID_CLIENT_ID=<your client ID>
+   PLAID_SECRET=<your Sandbox secret>
+   PLAID_ENV=sandbox
+   DEV_USER_EMAIL=dev@localhost
+   ```
+
+   On a fresh installation, leave `FERNET_KEY` blank: setup generates it. If `.env` already has a key, retain it so existing bank tokens remain readable. Never commit `.env`.
+3. From the repo root:
 
    ```bash
    docker compose up --build
    ```
 
-3. Open http://localhost:3000. The dashboard opens as a demo user on a simulated date, October 1, 2026.
+4. Open http://localhost:3000. With the configuration above, the dashboard opens directly on the Plaid user. Follow the [Plaid Sandbox walkthrough](#plaid-sandbox-demo-income-goals-and-live-purchases) below to connect the custom test accounts, generate goals and add a live purchase.
 
-The first start builds the images and downloads a 9 GB model. The app opens before the download finishes, but chat and the budget agent's advice need it. It's ready when the logs say `all set: chat and the budget agent are ready`. To stop, press Ctrl+C. To start again, run the same command; your progress is kept.
+The first start builds the images and downloads a 9 GB model. The app opens before the download finishes, but Chat and model-driven agent decisions require it. Wait for successful model setup; on a first installation the logs finish with `all set: chat and the budget agent are ready`. To stop, press Ctrl+C. To restart, run the same command; linked accounts and progress are kept.
 
-**Setup runs by itself.** [`setup_env.py`](backend/scripts/setup_env.py) creates `.env` and generates its encryption key, [`setup_demo.py`](backend/scripts/setup_demo.py) seeds the demo user, [`setup_graph.py`](backend/scripts/setup_graph.py) fills the temporal graph, and [`setup_models.py`](backend/scripts/setup_models.py) pulls the models and builds the knowledge base. If Ollama wasn't running the first time, start it and run `docker compose run --rm models`.
-
-### Demo walkthrough
-
-The demo user has a new $90 gym membership that its $42 personal care budget doesn't cover.
-
-1. Open **Alerts** and click **Advance 7 days**. Each simulated day runs the budget agent, so this takes about 2 to 3 minutes on an Apple Silicon Mac. The date moves to October 8. A **Personal care** alert proposes a $135 budget for next month. You'll also see a few **Low balance** warnings from the cash forecast, because the demo checking account holds only $100 against $1,500 rent. The dashboard's Budget card shows personal care in red, $48 over its limit.
-2. Click **Accept** on the Personal care alert. Dismiss the low-balance warnings, or leave them.
-3. Click **To month end**, then **Advance 1 day**. Expect about 20 seconds per simulated day, so roughly 8 minutes in all. On November 1 the month closes, and the dashboard's Budget card shows personal care at $135.
-4. Open **Chat** and try these:
-   - "What did I spend on personal care last month?" ($130: $40 at Barber and $90 at FitClub Gym)
-   - "What did I spend on rent last month?" ($1,500)
-   - "What is a Roth IRA?"
-   - "What is the 50/30/20 budgeting rule?"
-   - "What is my net worth?" ($100)
-
-Chat follows the simulated date, so "last month" means October once the demo reaches November. The planted data ends on October 31, so November has no transactions. The model can also pick the wrong category for a merchant, so ask about "personal care" rather than "the gym".
-
-To show the agents reacting to new spending, add a purchase mid-demo with [`demo_purchase.py`](backend/scripts/demo_purchase.py), then click **Run budget check** on Alerts. `--list` shows the ready-made purchases:
+Setup creates the encryption key if needed, applies database migrations, initializes the temporal graph, pulls the models and builds the knowledge base. If Ollama was unavailable during setup, start it and run:
 
 ```bash
-docker compose exec backend python scripts/demo_purchase.py --list
-```
-
-To restart the demo:
-
-```bash
-docker compose exec backend python scripts/seed_budget_user.py --profile overspend-recurring --replace --start default
-docker compose exec backend python scripts/setup_demo.py
+docker compose run --rm models
 ```
 
 ### Plaid Sandbox demo: income, goals and live purchases
@@ -56,7 +41,7 @@ This walkthrough uses simulated bank accounts served through Plaid Sandbox. No r
 
 #### 1. Configure Plaid
 
-After initial setup has created `.env`, add the supplied **client ID and Sandbox secret** (or use your own [Plaid developer account](https://dashboard.plaid.com/signup)):
+Quickstart configures these values in the repo-root `.env`. Confirm them before following the walkthrough:
 
 ```dotenv
 PLAID_CLIENT_ID=...
@@ -65,13 +50,13 @@ PLAID_ENV=sandbox
 DEV_USER_EMAIL=dev@localhost
 ```
 
-Keep the generated `FERNET_KEY` and never commit `.env`. `DEV_USER_EMAIL=dev@localhost` opens the app directly on the Plaid user and hides the user switch, so the full walkthrough uses the same linked accounts. After changing configuration, run:
+Keep the generated `FERNET_KEY` and never commit `.env`. `DEV_USER_EMAIL=dev@localhost` selects the Plaid user for the walkthrough, so the full walkthrough uses the same linked accounts. After changing configuration, run:
 
 ```bash
 docker compose up -d
 ```
 
-Wait for the model and knowledge base setup described in Quickstart to finish. Open http://localhost:3000/dashboard. If the user switch is still present, select **Plaid bank**. If this user already has other banks linked, use the reset in step 5 before proceeding.
+Wait for the model and knowledge base setup described in Quickstart to finish. Open http://localhost:3000/dashboard. If this user already has other banks linked, use the reset in step 5 before proceeding.
 
 #### 2. Connect the custom test accounts through Link
 
@@ -101,7 +86,7 @@ The savings/card histories contain $0 initialization entries to prevent random t
 4. Complete the remaining Link screens and select all three accounts. Wait for background import. If it fails, use **Retry sync** rather than connecting the bank again.
 5. Confirm the three account names and check **Debts by APR** for the card's **24% APR and $75 minimum**. There should be no unrelated generic loan or credit-card accounts.
 
-Both custom login methods are described in [Plaid's custom Sandbox user documentation](https://plaid.com/docs/sandbox/user-custom/). Editing a saved custom user's JSON does not update an existing connection; reset and link again to apply changes. Completing **Link another account** adds another connection—it does not replace the old one.
+Both custom login methods are described in [Plaid's custom Sandbox user documentation](https://plaid.com/docs/sandbox/user-custom/). Editing a saved custom user's JSON does not update an existing connection; reset and link again to apply changes. The dashboard prompts **Connect a bank** only when there is no connection. Once linked, it shows **Bank connected** and will not start another Link session until you explicitly disconnect or reset. Refreshing or returning to the website reuses the saved connection; use **Retry sync** for an incomplete import. To replace the Sandbox bank, reset first.
 
 #### 3. Generate and approve goals
 
@@ -130,6 +115,12 @@ Verification: the JSON was accepted by Plaid Sandbox and returned the three inte
 
 #### 5. Reset for another presentation
 
+For the browser demo, click **Disconnect bank** beside **Bank connected** on Dashboard. Review the confirmation, then click **Disconnect and clear demo data**. It creates a database backup, revokes the Sandbox Item at Plaid, and clears the local connection, transactions, budget, alerts, goals and advice. The dashboard returns to **Connect a bank** so you can demonstrate the full Link login again. **Cancel** leaves everything intact. This button is available only for the Sandbox demo with admin tools enabled, and refuses to run during active Chat, agent or sync work.
+
+Reconnect with the custom JSON from step 2, then wait for import and run a new budget check. This is a fresh presentation: prior approvals and injected purchases do not carry over. The database backup and older checkpoint/audit files remain on disk.
+
+The terminal command below is an alternative local reset. Unlike the button, it does not revoke the old Item at Plaid:
+
 Wait for active runs to finish, then run:
 
 ```bash
@@ -156,7 +147,7 @@ Use username `user_custom` and paste that JSON as the password at the **First Pl
 docker compose exec backend python scripts/demo_purchase.py --list
 ```
 
-The preset descriptions are tuned for the separate simulated scenario; Plaid's returned categories, your current budget and alert history determine this walkthrough's results.
+Preset descriptions are examples, not guaranteed outcomes. Plaid's returned categories, your current budget and alert history determine the results.
 
 **Add the main $1,200 laptop purchase, then start the agent in the browser:**
 
@@ -217,8 +208,9 @@ If a port is taken, stop whatever is using 3000 or 8000.
 First time only:
 
 ```bash
-cp .env.example .env                 # fill in PLAID_CLIENT_ID, PLAID_SECRET, FERNET_KEY
+# Configure .env as in Quickstart; retain an existing FERNET_KEY.
 python3.12 -m venv venv && venv/bin/pip install -r backend/requirements.txt -c backend/requirements.lock
+venv/bin/python backend/scripts/setup_env.py
 cd backend && ../venv/bin/alembic upgrade head && cd ..
 cd frontend && npm install && cd ..
 ```
@@ -235,7 +227,7 @@ cd frontend && npm run dev
 
 The browser only talks to the Next.js server. It forwards `/api/*` to FastAPI on `:8000` (`BACKEND_URL` overrides that), so no CORS setup is needed.
 
-To try it: open http://localhost:3000, click **Connect a bank**, pick **First Platypus Bank**, and log in with `user_good` / `pass_good`.
+To try it, follow the [custom Plaid Sandbox login](#2-connect-the-custom-test-accounts-through-link) above. Use the same JSON and only that connection for the walkthrough.
 
 Linking returns immediately after saving the bank connection; its first full sync runs in the background. The dashboard polls while it is syncing and keeps **Retry sync** available if any step fails, including balances or liabilities. Run one API worker: per-item sync locks serialize webhook, initial and manual syncs within that process.
 
@@ -253,14 +245,14 @@ The details behind the quickstart, for developing in the containers. The backend
 
    Open http://localhost:3000. The API is still on http://localhost:8000 (`/docs`).
 
-The repo is mounted into both containers, so they use the same `.env`, `dev.db`, checkpoints and `kb/chroma` as running locally, and edits reload like `--reload` and `npm run dev`. The one-off `init` service runs on every `up`, before the backend: it creates `.env` if needed, runs `alembic upgrade head`, seeds the demo user if it's missing, and fills the temporal graph with [`setup_graph.py`](backend/scripts/setup_graph.py). The one-off `models` service pulls whatever's missing and builds the knowledge base if it's empty. Nothing waits for it. The frontend reaches the backend at `http://backend:8000` over the Compose network, and the backend reaches Ollama at `host.docker.internal:11434`.
+The repo is mounted into both containers, so they use the same `.env`, `dev.db`, checkpoints and `kb/chroma` as running locally, and edits reload like `--reload` and `npm run dev`. The one-off `init` service runs on every `up`, before the backend: it creates `.env` if needed, runs `alembic upgrade head`, initializes its fixtures, and fills the temporal graph with [`setup_graph.py`](backend/scripts/setup_graph.py). The one-off `models` service pulls whatever's missing and builds the knowledge base if it's empty. Nothing waits for it. The frontend reaches the backend at `http://backend:8000` over the Compose network, and the backend reaches Ollama at `host.docker.internal:11434`.
 
-Compose sets `DEV_USER_EMAIL` to the demo user and `ENABLE_ADMIN` to `1` unless `.env` says otherwise. To see accounts you linked yourself, set `DEV_USER_EMAIL=dev@localhost` in `.env`.
+The documented Plaid walkthrough requires `DEV_USER_EMAIL=dev@localhost` in `.env`; keep it set when using Compose. `ENABLE_ADMIN` is enabled by default for local development.
 
 One-off commands run inside the backend container, where it's `python`, not `../venv/bin/python`:
 
 ```bash
-docker compose exec backend python scripts/seed_budget_user.py --profile overspend-recurring --replace
+docker compose exec backend python scripts/demo_purchase.py laptop --plaid
 docker compose exec backend python -m pytest -q -k "not live and not sandbox"
 ```
 
@@ -294,27 +286,7 @@ Answers stream in as they're written; the chips under each answer show which too
 
 The budget agent checks spending against this month's budget. It asks the local model (`qwen2.5:14b`) why a category is overspent and what to do about it, and posts alerts to `/alerts`. A proposal to change next month's budget waits for your Accept or Dismiss. The dashboard's **Budget** card shows each line's pace, and the **Transactions** card shows this month's transactions with the line each one counts against: pick another line to correct one, then **Always for <merchant>?** to remember it.
 
-To try it on a synthetic user with a planted overspend:
-
-```bash
-cd backend
-../venv/bin/python scripts/seed_budget_user.py --profile overspend-recurring --replace
-DEV_USER_EMAIL=overspend-recurring@eval.local ../venv/bin/uvicorn app.main:app
-```
-
-Then start the web app. On `/alerts`, run a budget check for **2026-10-20**, accept the $135 proposal, and run again: the agent remembers and doesn't alert twice. Other planted users are `overspend-one-time`, `overspend-seasonal` and `overspend-known-merchant`. The same run works from the terminal with `../venv/bin/python -m app.agents.budget_graph --user budget-overspend-recurring --date 2026-10-20 --no-sync`.
-
-## Simulate a month
-
-A synthetic user can live on a simulated date. Each advanced day injects that day's generated transactions and runs the real budget agent, so a planted month can be replayed and watched:
-
-```bash
-cd backend
-../venv/bin/python scripts/seed_budget_user.py --profile overspend-one-time --replace --start default
-../venv/bin/python scripts/simulate.py --user budget-overspend-one-time --days 31
-```
-
-With Ollama running, each flagged day takes a few seconds of model time, so a month takes several minutes. To drive it from the browser, start the API with `ENABLE_ADMIN=1 DEV_USER_EMAIL=overspend-one-time@eval.local`; the Alerts page then shows the simulated date with **Advance 1 day**, **Advance 7 days** and **To month end**.
+Use the [Plaid walkthrough](#4-send-a-purchase-through-plaid-and-inspect-the-agent) to run a check before and after a Sandbox purchase. Inspect each run's measured facts, earlier advice, model diagnosis, chosen action and any code override in **Agent activity**. An additional check without a new purchase can demonstrate how prior advice affects the next decision; a new alert is not guaranteed.
 
 ## Month-end close and budget styles
 
@@ -322,18 +294,16 @@ On the 1st, every daily run first closes the month that ended. Each line's next 
 
 The budget's total is your typical monthly income. Besides the category lines it has a **Savings** line (fitted from transfers to savings) and a **Free** line: whatever income the other lines leave, never below $0, which also covers spending in categories without a line. If the lines add up to more than your income, close tells you instead of cutting anything.
 
-Two styles: `caps` (the default, above) and `50_30_20`, which sets needs, wants and savings targets from income (free is the room left in wants). Choose one when seeding, or switch a simulated user; it applies from the next close:
-
-```bash
-../venv/bin/python scripts/seed_budget_user.py --profile overspend-recurring --replace --start default --style 50_30_20
-../venv/bin/python scripts/simulate.py --user budget-overspend-recurring --days 32 --style caps
-```
+Two styles are supported: `caps` (the default) and `50_30_20`, which sets needs, wants and savings targets from income. Style changes apply from the next close. The Plaid walkthrough uses the default style and real dates; there are no day-advance steps in this presentation.
 
 The API has `PUT /budget/style`, `PATCH /budget/lines/{id}` (rename a line, or move it between needs and wants) and `GET`/`PATCH /transactions`; the UI for styles and renaming comes later.
 
 ## Debt payoff
 
 The dashboard's **Paying off your debts** card compares the two usual ways to pay off debt: **avalanche** (highest APR first) and **snowball** (smallest balance first). Type an extra amount per month and it shows each method's months to debt-free, total interest, the month each debt is paid off, and what the extra saves. In chat, ask "How fast am I debt-free if I add $200 a month?" and the answer comes from the same simulation. It charges interest monthly at APR/12 and holds minimum payments at today's amounts, so it's for comparing plans, not predicting a statement. Debts with no APR or minimum on file are listed and left out. The API is `POST /debt-plan`.
+
+Accepted **debt-payoff goals are included automatically** during their start-to-target months. The card lists each contribution and separates minimum payments, accepted goals and additional extra. For example, a $600 accepted debt goal plus a $75 card minimum models $675/month when Extra per month is zero. Enter only money beyond those commitments in Extra per month. Proposed, stopped, expired and non-debt goals are excluded. Both strategies apply the scheduled goal money across eligible debts in their respective payoff order; goals are not assigned to individual accounts. Chat's payoff tool uses the same schedule. Extra-payment savings compare against minimums plus accepted goals, so the goal is not counted twice.
+
 
 ## Cash forecast
 
@@ -343,15 +313,7 @@ Daily runs warn when the low path crosses the buffer within 14 days. The alert n
 
 Monthly surplus comes from normalized income minus bills, uncovered card minimums, accepted goals and average everyday spending; it is independent of the cash balance and buffer. Goals use this figure when supported, otherwise the measured three-month fallback, and display the source. The debt planner shows a suggested extra without entering it for you.
 
-```bash
-cd backend
-../venv/bin/python scripts/seed_budget_user.py --profile forecast-dip --replace --start 2026-09-30
-DEV_USER_EMAIL=forecast-dip@eval.local ENABLE_ADMIN=1 ../venv/bin/uvicorn app.main:app
-# another terminal, same disposable DATABASE_URL:
-../venv/bin/python scripts/simulate.py --user budget-forecast-dip --days 12
-```
-
-See the [forecast verification handoff](docs/handoffs/2026-11-02-tpc-31-manual-verification.md) for isolated setup. Offline replay: `venv/bin/python eval/forecast_accuracy.py`. On 79 synthetic dates: MAE $7.31 at d+7 and $10.07 at d+14, coverage 68.4% / 79.7%, Landlord dip named 14 days ahead. Real Plaid balances and live seven-tool choice remain unverified.
+See the [forecast verification handoff](docs/handoffs/2026-11-02-tpc-31-manual-verification.md) for isolated setup. Offline replay: `venv/bin/python eval/forecast_accuracy.py`. On 79 synthetic dates: MAE $7.31 at d+7 and $10.07 at d+14, coverage 68.4% / 79.7%, Landlord dip named 14 days ahead. Those scores measure synthetic fixtures, not forecast accuracy on production bank accounts.
 
 ## Recurring charges
 
@@ -359,29 +321,13 @@ The dashboard lists stored recurring charges and income between Goals and Transa
 
 Accepting an optional `suggest_cancel` lowers the category's next budget line once, after accepted budget adjustments, rounded up to $5. It does not cancel anything with a merchant. Pending suggestions survive month-end, and accepted streams stop raising recurring signals. These alerts do not pause the run.
 
-```bash
-cd backend
-../venv/bin/python scripts/seed_budget_user.py --profile recurring-planted --replace --start 2026-09-30
-DEV_USER_EMAIL=recurring-planted@eval.local ENABLE_ADMIN=1 ../venv/bin/uvicorn app.main:app
-# in another terminal, with the same disposable DATABASE_URL:
-../venv/bin/python scripts/simulate.py --user budget-recurring-planted --days 25
-```
-
 Use a disposable database as described in [the recurring verification handoff](docs/handoffs/2026-11-02-tpc-33-manual-verification.md). New Plaid Items request 180 days; existing Items need relinking. The offline detector gate is `venv/bin/python eval/recurring_accuracy.py` from the repo root.
 
 ## Goals
 
 Open **Goals** from the dashboard header. **Generate goals** asks the goal agent to work out what you have left in a typical month, asks the local model for 1-3 goals (debt payoff, emergency fund, savings) that fit within 80% of it, and computes each goal's target and date. High-interest debt comes first. Accept or dismiss each goal on its own. An accepted goal shows on the dashboard's Goals card and joins the budget as a line (for example "Debt payoff: $583.00/mo") when the next month opens; the month under way never changes. **Stop** ends an accepted goal's line at the next close. A proposal you don't answer expires when that month opens, and you can generate again. The API is `POST /goals/generate`, `GET /goals/runs/{id}`, `POST /goals/{id}/accept` and `/dismiss`.
 
-The same agent runs from the command line, which doesn't pause for approval:
-
-```bash
-cd backend
-../venv/bin/python scripts/seed_budget_user.py --profile goals-card-24 --replace
-../venv/bin/python -m app.agents.goal_graph --user budget-goals-card-24 --date 2026-11-02
-```
-
-`--prefs '{"skip_kinds": ["savings"], "max_share": 0.5, "note": "emergency fund matters most"}'` sets your preferences. `GET /goals` returns the current proposal (`?status=accepted` or `current` for accepted goals too). Goals proposed on the command line can be accepted in the app. The app doesn't track what you actually pay toward a goal, so a goal line is a slice of the plan with no spending measured against it. See the [TPC-25 verification handoff](docs/handoffs/2026-11-02-tpc-25-manual-verification.md) to try it by hand.
+`GET /goals` returns the current proposal (`?status=accepted` or `current` for accepted goals too). Goals proposed on the command line can be accepted in the app. The app doesn't track what you actually pay toward a goal, so a goal line is a slice of the plan with no spending measured against it. See the [TPC-25 verification handoff](docs/handoffs/2026-11-02-tpc-25-manual-verification.md) to try it by hand.
 
 Goals are validated as a complete proposal before storage: the monthly total must fit the cap, kinds must be offered and unique, and every computed date must be achievable within 600 months. There are at most two model calls, including malformed replies; the correction receives scrubbed feedback. Failed attempts preserve the previous proposal and report why no replacement was generated. A cap below $1 withdraws it without calling the model. See the [TPC-24 verification handoff](docs/handoffs/2026-11-02-tpc-24-manual-verification.md) for deterministic failure checks and a live CLI walkthrough.
 

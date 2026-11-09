@@ -27,13 +27,17 @@ _locks: dict[tuple[int, int], threading.RLock] = {}
 _locks_guard = threading.Lock()
 
 
+def item_lock(session: Session, item_id: int):
+    """The same process lock for sync and Sandbox disconnect (one API worker)."""
+    key = (id(session.get_bind().engine), item_id)
+    with _locks_guard:
+        return _locks.setdefault(key, threading.RLock())
+
+
 def _serialized_item_sync(fn):
     @wraps(fn)
     def run(session: Session, item: PlaidItem):
-        key = (id(session.get_bind().engine), item.id)
-        with _locks_guard:
-            lock = _locks.setdefault(key, threading.RLock())
-        with lock:
+        with item_lock(session, item.id):
             # The session may have loaded the item before another sync advanced its cursor.
             session.refresh(item)
             try:

@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from ..budget_engine.payoff import Plan, compare
 from ..budget_engine.txns import add_months, month_start
-from ..budget_service.debts import load_debts
+from ..budget_service.debts import debt_goal_contributions, goal_payment_schedule, load_debts
+from ..budget_service.daily import sim_today
 from ..db.models import User
 from ..db.session import get_session
 from .deps import get_current_user
@@ -61,12 +62,23 @@ class ExcludedOut(BaseModel):
     reason: str
 
 
+class DebtGoalOut(BaseModel):
+    goal_id: int
+    monthly_cents: int
+    start_date: Date
+    target_date: Date
+
+
 class DebtPlanResponse(BaseModel):
     avalanche: PlanOut
     snowball: PlanOut
     baseline: BaselineOut
     excluded: list[ExcludedOut]
     start: Date
+    goal_contributions: list[DebtGoalOut]
+    goal_monthly_cents: int              # accepted contributions in the first planned month
+    minimum_monthly_cents: int           # included debts only
+    additional_extra_monthly_cents: int  # entered extra, on top of goals
 
 
 def _plan(plan: Plan, names: dict[int, str]) -> PlanOut:
@@ -82,8 +94,10 @@ def _plan(plan: Plan, names: dict[int, str]) -> PlanOut:
 def debt_plan(body: DebtPlanRequest, user: User = Depends(get_current_user),
               session: Session = Depends(get_session)):
     debts = load_debts(session, user.id)
-    start = add_months(month_start(_today()), 1)
-    plans = compare(debts, body.extra_monthly_cents, start=start, include_mortgage=body.include_mortgage)
+    start = add_months(month_start(sim_today(session, user.id) or _today()), 1)
+    goals = debt_goal_contributions(session, user.id, start)
+    plans = compare(debts, body.extra_monthly_cents, start=start, include_mortgage=body.include_mortgage,
+                    scheduled_extras=goal_payment_schedule(goals))
     names = {d.key: d.name for d in debts}
     return DebtPlanResponse(
         avalanche=_plan(plans["avalanche"], names), snowball=_plan(plans["snowball"], names),
@@ -92,4 +106,10 @@ def debt_plan(body: DebtPlanRequest, user: User = Depends(get_current_user),
         excluded=[ExcludedOut(account_id=key, name=names[key], reason=reason)
                   for key, reason in plans["avalanche"].excluded],
         start=start,
+        goal_contributions=[DebtGoalOut(goal_id=g.id, monthly_cents=g.monthly_cents,
+                                       start_date=g.start_date, target_date=g.target_date) for g in goals],
+        goal_monthly_cents=sum(g.monthly_cents for g in goals if g.start_date <= start),
+        minimum_monthly_cents=sum(d.min_payment_cents or 0 for d in debts if d.balance_cents > 0
+                                 and d.key not in {k for k, _ in plans["avalanche"].excluded}),
+        additional_extra_monthly_cents=body.extra_monthly_cents,
     )

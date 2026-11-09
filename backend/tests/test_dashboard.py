@@ -61,7 +61,7 @@ def test_empty_user_gets_zeros(client, db):
     assert resp.status_code == 200
     assert resp.json() == {
         "net_worth_cents": 0, "assets_cents": 0, "debts_cents": 0,
-        "accounts_missing_balance": 0, "accounts": [], "debts": [], "unsynced_items": [],
+        "accounts_missing_balance": 0, "accounts": [], "debts": [], "unsynced_items": [], "bank_linked": False, "can_disconnect": False,
     }
 
 
@@ -243,3 +243,18 @@ def test_seed_placeholder_item_not_listed_as_unsynced(client, db):
     seed(db, uid, [], institution="Seeded Bank", cursor=None, token=SEED_TOKEN)
 
     assert client.get("/dashboard").json()["unsynced_items"] == []
+
+
+def test_connection_is_reported_before_accounts_arrive(client, db):
+    seed(db, dev_user_id(db), [], cursor=None)
+    body = client.get("/dashboard").json()
+    assert body["bank_linked"] is True
+    assert body["accounts"] == []
+    assert len(body["unsynced_items"]) == 1
+
+
+def test_dashboard_connection_status_is_not_cached(client, db):
+    dev_user_id(db)
+    response = client.get("/dashboard")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"

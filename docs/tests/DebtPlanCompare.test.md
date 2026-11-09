@@ -67,3 +67,7 @@ npm test -- components/DebtPlanCompare.test.tsx
 **What it does:** Shows the suggested extra without changing the input.
 
 **Why it's there:** Checks the forecast integration while preserving the existing workflow.
+
+## Accepted goal contribution display
+
+The component displays accepted debt-goal amounts and dates, plus the first-month minimums/goal/additional-extra breakdown. Tests keep the extra input at zero when a goal is already included, verify typed extra is additive, and refetch when accepted goals change without a balance change. Results from a superseded request are ignored.

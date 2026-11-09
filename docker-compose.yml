@@ -7,7 +7,7 @@ x-backend: &backend
   environment:
     OLLAMA_BASE_URL: http://host.docker.internal:11434
     TZ: America/New_York           # the app's "today" (date.today()) must be the host's, not utc's
-    DEV_USER_EMAIL: ${DEV_USER_EMAIL:-overspend-recurring@eval.local}
+    DEV_USER_EMAIL: ${DEV_USER_EMAIL:-dev@localhost}
     ENABLE_ADMIN: ${ENABLE_ADMIN:-1}
   extra_hosts:
     - "host.docker.internal:host-gateway"   # docker desktop has this name already; linux needs it spelled out

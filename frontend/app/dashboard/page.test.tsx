@@ -1,13 +1,14 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import DashboardPage from "@/app/dashboard/page";
 import {
-  ApiError, getAlerts, getBudget, getDashboard, getForecast, getGoals, getRecurring, getSim, getTransactions, type Budget, type Dashboard, type Goal,
+  ApiError, disconnectBank, getAlerts, getBudget, getDashboard, getForecast, getGoals, getRecurring, getSim, getTransactions, type Budget, type Dashboard, type Goal,
 } from "@/lib/api";
 
 vi.mock("@/lib/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api")>()),
   getDashboard: vi.fn(),
+  disconnectBank: vi.fn(),
   getBudget: vi.fn(),
   getAlerts: vi.fn(),
   getTransactions: vi.fn(),
@@ -18,7 +19,7 @@ vi.mock("@/lib/api", async (importOriginal) => ({
 }));
 // these draw charts, open Plaid or call the planner; none of it matters here
 vi.mock("@/components/BalanceChart", () => ({ default: () => null }));
-vi.mock("@/components/PlaidLinkButton", () => ({ default: ({ label }: { label: string }) => <button type="button">{label}</button> }));
+vi.mock("@/components/PlaidLinkButton", () => ({ default: ({ label, onError }: { label: string; onError: (message: string) => void }) => <button type="button" onClick={() => onError("A bank is already linked.")}>{label}</button> }));
 vi.mock("@/components/DebtPlanCompare", () => ({ default: () => null }));
 vi.mock("@/components/ForecastChart", () => ({ default: () => null }));
 
@@ -69,6 +70,14 @@ async function goalsCard() {
 }
 
 describe("Dashboard goals", () => {
+  test("does not expose a user switch", async () => {
+    render(<DashboardPage />);
+    await screen.findByText("Cash forecast");
+    expect(screen.queryByRole("group", { name: "Whose data to show" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Demo user" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Plaid bank" })).toBeNull();
+  });
+
   test("shows the Cash forecast card", async () => {
     render(<DashboardPage />);
     expect(await screen.findByRole("heading", { name: "Cash forecast" })).toBeTruthy();
@@ -142,9 +151,11 @@ describe("Dashboard goals", () => {
 });
 
 describe("Dashboard demo user", () => {
-  test("a real user can link another account", async () => {
+  test("an existing connection has no repeat-link button", async () => {
     render(<DashboardPage />);
-    expect(await screen.findByRole("button", { name: "Link another account" })).toBeTruthy();
+    expect(await screen.findByText("Bank connected")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Link another account" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Connect a bank" })).toBeNull();
     expect(screen.queryByText(/^Demo ·/)).toBeNull();
   });
 
@@ -165,5 +176,97 @@ describe("Dashboard demo user", () => {
     render(<DashboardPage />);
     expect(await screen.findByText(/Day 10 of 31\. The ring shows how your monthly budget is split/)).toBeTruthy();
     expect(screen.getByRole("img", { name: /Budget split/ })).toBeTruthy();
+  });
+});
+
+
+describe("Plaid connection state", () => {
+  test("a fresh page mount waits for saved connection state before offering Link", async () => {
+    const linked = { ...DASHBOARD, bank_linked: true };
+    vi.mocked(getDashboard).mockResolvedValueOnce(linked);
+    const first = render(<DashboardPage />);
+    expect(await screen.findByText("Bank connected")).toBeTruthy();
+    first.unmount();
+
+    let resolve!: (dashboard: Dashboard) => void;
+    vi.mocked(getDashboard).mockReturnValueOnce(new Promise<Dashboard>((done) => { resolve = done; }));
+    render(<DashboardPage />);
+    expect(screen.queryByRole("button", { name: "Connect a bank" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Link another account" })).toBeNull();
+    await act(async () => resolve(linked));
+    expect(await screen.findByText("Bank connected")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Connect a bank" })).toBeNull();
+  });
+
+  test("a stale unlinked tab reloads connection state after Link is refused", async () => {
+    vi.mocked(getDashboard)
+      .mockResolvedValueOnce({ ...DASHBOARD, bank_linked: false, accounts: [], debts: [] })
+      .mockResolvedValue({ ...DASHBOARD, bank_linked: true });
+    render(<DashboardPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Connect a bank" }));
+    expect(await screen.findByText("Bank connected")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Connect a bank" })).toBeNull();
+    expect(getDashboard).toHaveBeenCalledTimes(2);
+  });
+
+  test("an unlinked user is prompted to connect, without financial cards", async () => {
+    vi.mocked(getDashboard).mockResolvedValue({ ...DASHBOARD, bank_linked: false, accounts: [], debts: [] });
+    render(<DashboardPage />);
+    expect(await screen.findByRole("button", { name: "Connect a bank" })).toBeTruthy();
+    expect(screen.getByText(/No bank is linked yet/)).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Budget" })).toBeNull();
+  });
+
+  test("a linked bank with no imported accounts offers retry instead of another link", async () => {
+    vi.mocked(getDashboard).mockResolvedValue({ ...DASHBOARD, bank_linked: true, accounts: [], debts: [],
+      unsynced_items: [{ id: 4, institution_name: "Test Bank", syncing: false }] });
+    render(<DashboardPage />);
+    expect(await screen.findByRole("heading", { name: "Bank already connected" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retry sync" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Connect a bank" })).toBeNull();
+  });
+});
+
+
+describe("Sandbox disconnect", () => {
+  test("opening and cancelling confirmation does not disconnect", async () => {
+    vi.mocked(getDashboard).mockResolvedValue({ ...DASHBOARD, bank_linked: true, can_disconnect: true });
+    render(<DashboardPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Disconnect bank" }));
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+    expect(disconnectBank).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(disconnectBank).not.toHaveBeenCalled();
+  });
+
+  test("confirmed disconnect returns to Connect a bank without old financial cards", async () => {
+    vi.mocked(getDashboard).mockResolvedValueOnce({ ...DASHBOARD, bank_linked: true, can_disconnect: true })
+      .mockResolvedValue({ ...DASHBOARD, bank_linked: false, can_disconnect: false, accounts: [], debts: [] });
+    vi.mocked(disconnectBank).mockResolvedValue({ disconnected: true });
+    render(<DashboardPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Disconnect bank" }));
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect and clear demo data" }));
+    expect(await screen.findByRole("button", { name: "Connect a bank" })).toBeTruthy();
+    expect(disconnectBank).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("heading", { name: "Budget" })).toBeNull();
+  });
+
+  test("a refused disconnect leaves the connection visible and reports the error", async () => {
+    vi.mocked(getDashboard).mockResolvedValue({ ...DASHBOARD, bank_linked: true, can_disconnect: true });
+    vi.mocked(disconnectBank).mockRejectedValue(new ApiError(409, { detail: "Chat is still running." }));
+    render(<DashboardPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Disconnect bank" }));
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect and clear demo data" }));
+    expect(await screen.findByText("Chat is still running.")).toBeTruthy();
+    expect(screen.getByText("Bank connected")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Connect a bank" })).toBeNull();
+  });
+
+  test("disconnect is hidden when unavailable", async () => {
+    vi.mocked(getDashboard).mockResolvedValue({ ...DASHBOARD, bank_linked: true, can_disconnect: false });
+    render(<DashboardPage />);
+    expect(await screen.findByText("Bank connected")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Disconnect bank" })).toBeNull();
   });
 });

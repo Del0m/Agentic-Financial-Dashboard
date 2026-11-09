@@ -8,7 +8,7 @@ from app.budget_engine.txns import add_months
 from app.finance import avalanche_key
 
 # paying off every debt month by month (architecture 6a.3, tpc-32). pure: the caller loads the debts and picks the
-# first planned month. every month pays one budget, the extra plus every debt's minimum: minimums first, the rest
+# first planned month. each month pays minimums, entered extra and any scheduled goal contributions: minimums first, the rest
 # to the strategy's target, spilling to the next, so a paid-off debt's minimum rolls over
 
 MAX_MONTHS = 600
@@ -23,6 +23,13 @@ class Debt:
     apr: Optional[float]           # percent, e.g. 24.99
     balance_cents: int
     min_payment_cents: Optional[int]
+
+
+@dataclass(frozen=True)
+class ScheduledExtra:
+    monthly_cents: int
+    start: date
+    end: date
 
 
 @dataclass(frozen=True)
@@ -63,7 +70,7 @@ def _target_key(strategy: Strategy, debt: Debt, balance: int) -> tuple:
 
 
 def simulate(debts: Iterable[Debt], extra_monthly_cents: int, strategy: Strategy, *, start: date,
-             include_mortgage: bool = False) -> Plan:
+             include_mortgage: bool = False, scheduled_extras: Iterable[ScheduledExtra] = ()) -> Plan:
     included, excluded = [], []
     for d in debts:
         if d.balance_cents <= 0:   # nothing owed (or a credit balance): nothing to plan, whatever's missing
@@ -77,11 +84,15 @@ def simulate(debts: Iterable[Debt], extra_monthly_cents: int, strategy: Strategy
     rates = {d.key: Fraction(Decimal(str(d.apr))) / 1200 for d in included}
     balance = {d.key: d.balance_cents for d in included}
     interest = {d.key: 0 for d in included}
-    budget = extra_monthly_cents + sum(d.min_payment_cents for d in included)
+    minimum_budget = sum(d.min_payment_cents for d in included)
+    scheduled_extras = tuple(scheduled_extras)
     order: list[Payoff] = []
     month = 0
     while any(balance.values()) and month < MAX_MONTHS:
         month += 1
+        when = add_months(start, month - 1)
+        budget = minimum_budget + extra_monthly_cents + sum(
+            g.monthly_cents for g in scheduled_extras if g.start <= when <= g.end)
         open_debts = [d for d in included if balance[d.key] > 0]
         for d in open_debts:
             rate = rates[d.key]
@@ -106,7 +117,6 @@ def simulate(debts: Iterable[Debt], extra_monthly_cents: int, strategy: Strategy
             pool -= pay
             if balance[d.key] == 0:
                 cleared.append(d)
-        when = add_months(start, month - 1)
         order += [Payoff(d.key, d.name, month, when, interest[d.key]) for d in cleared]
 
     never = tuple(d.key for d in included if balance[d.key] > 0)
@@ -119,11 +129,13 @@ def simulate(debts: Iterable[Debt], extra_monthly_cents: int, strategy: Strategy
 
 # both strategies with the extra, and each again without it, so every answer can say what the extra changes
 def compare(debts: Iterable[Debt], extra_monthly_cents: int, *, start: date,
-            include_mortgage: bool = False) -> dict[str, Plan]:
+            include_mortgage: bool = False, scheduled_extras: Iterable[ScheduledExtra] = ()) -> dict[str, Plan]:
     debts = list(debts)
+    scheduled_extras = tuple(scheduled_extras)
     plans = {}
     for strategy in ("avalanche", "snowball"):
         plans[strategy] = simulate(debts, extra_monthly_cents, strategy, start=start,
-                                   include_mortgage=include_mortgage)
-        plans[f"baseline_{strategy}"] = simulate(debts, 0, strategy, start=start, include_mortgage=include_mortgage)
+                                   include_mortgage=include_mortgage, scheduled_extras=scheduled_extras)
+        plans[f"baseline_{strategy}"] = simulate(debts, 0, strategy, start=start, include_mortgage=include_mortgage,
+                                                 scheduled_extras=scheduled_extras)
     return plans

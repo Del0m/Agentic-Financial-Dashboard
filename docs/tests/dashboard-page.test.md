@@ -79,7 +79,7 @@ npm test -- app/dashboard/page.test.tsx
 
 ## `a real user can link another account`
 
-**What it does:** When `getSim` fails with a 404, the header shows "Link another account" and no demo chip.
+**What it does:** An existing bank shows "Bank connected" with no Connect/Link another account button. An unlinked user sees the Connect a bank prompt. A connected bank with no accounts yet offers Retry sync rather than another Link flow.
 
 **Why it's there:** A real user must keep the Link button, including when the admin routes are off.
 
@@ -100,3 +100,15 @@ npm test -- app/dashboard/page.test.tsx
 **What it does:** With day 10 of 31, the Budget card starts with "Day 10 of 31. The ring shows how your monthly budget is split…", and the ring is there as an image named "Budget split…".
 
 **Why it's there:** The ring shows the plan and the list shows the spending. The sentence tells the reader which is which, so they don't read a slice's size as money spent.
+
+## User-switch regression
+
+`does not expose a user switch` checks that the page has no “Whose data to show” group, “Demo user” button or “Plaid bank” button. The application uses its server-configured user instead.
+
+## Fresh-page connection state
+
+`a fresh page mount waits for saved connection state before offering Link` unmounts the dashboard and mounts it again with a delayed connection response. Neither Connect a bank nor Link another account is rendered while waiting; the saved connection then restores Bank connected. The dashboard fetch explicitly uses `cache: no-store`.
+
+## Sandbox disconnect confirmation
+
+The Dashboard exposes Disconnect bank only when `can_disconnect` is true. Opening/cancelling confirmation does not call the endpoint. Confirmed success clears stale financial state and reloads the server's unlinked Dashboard, while a failed request leaves the bank connected and displays its error. No test clicks through a real live disconnect.

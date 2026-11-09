@@ -1,9 +1,10 @@
 from datetime import date as Date
 from typing import Literal, Optional
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
+from .. import config
 from ..budget_service.alerts import SEED_TOKEN
 from ..db.models import Account, Liability, PlaidItem, User
 from ..db.session import get_session
@@ -49,6 +50,8 @@ class DashboardResponse(BaseModel):
     net_worth_cents: int
     assets_cents: int
     debts_cents: int
+    can_disconnect: bool = False          # confirmed reset is available only for this Sandbox demo
+    bank_linked: bool                     # persists even if initial import has no accounts yet
     accounts_missing_balance: int        # asset/debt accounts left out of the totals for lack of a balance
     accounts: list[AccountOut]
     debts: list[DebtOut]
@@ -60,7 +63,9 @@ def _group(account_type: str) -> int:
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
-def get_dashboard(user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+def get_dashboard(response: Response, user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    # Connection state must be re-read on every visit, including after a reset/link.
+    response.headers["Cache-Control"] = "no-store"
     rows = session.execute(
         select(Account, PlaidItem.institution_name)
         .join(PlaidItem, Account.item_id == PlaidItem.id)
@@ -108,7 +113,13 @@ def get_dashboard(user: User = Depends(get_current_user), session: Session = Dep
                                     PlaidItem.status.in_(("syncing", "sync_failed")))).order_by(PlaidItem.id)
     ).all()
 
+    bank_linked = session.scalar(select(PlaidItem.id).where(
+        PlaidItem.user_id == user.id, PlaidItem.access_token_enc != SEED_TOKEN).limit(1)) is not None
+
     return DashboardResponse(
+        bank_linked=bank_linked,
+        can_disconnect=(bank_linked and config.ENABLE_ADMIN and config.PLAID_ENV == "sandbox"
+                        and user.email == "dev@localhost" and not (user.prefs_json or {}).get("sim")),
         net_worth_cents=assets - debts, assets_cents=assets, debts_cents=debts,
         accounts_missing_balance=missing, accounts=accounts, debts=debt_rows,
         unsynced_items=[UnsyncedItemOut(id=i.id, institution_name=i.institution_name,

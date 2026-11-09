@@ -78,3 +78,61 @@ def test_never_debt_named(client, db):
     body = client.post("/debt-plan", json={"extra_monthly_cents": 0}).json()
     assert (body["avalanche"]["months"], body["avalanche"]["total_interest_cents"]) == (None, None)
     assert [(n["name"], n["account_id"] > 0) for n in body["avalanche"]["never"]] == [("Old Card", True)]
+
+
+def add_goal(db, uid, **overrides):
+    from app.db.models import Goal
+    values = dict(user_id=uid, kind='debt_payoff', status='accepted', priority=1, monthly_cents=60000,
+                  target_cents=240000, start_date=date(2026,12,1), target_date=date(2027,3,1), rationale='test')
+    values.update(overrides)
+    with db() as s:
+        goal = Goal(**values);s.add(goal);s.commit();return goal.id
+
+
+def test_accepted_goal_is_included_once_and_extra_is_additional(client, db):
+    from app.budget_engine.payoff import ScheduledExtra
+    uid = seed_debts(db, ('Demo Card',240000, {'kind':'credit','apr':24,'min_payment_cents':7500}))
+    gid = add_goal(db, uid)
+    base = client.post('/debt-plan', json={'extra_monthly_cents':0}).json()
+    assert base['goal_monthly_cents'] == 60000
+    assert base['minimum_monthly_cents'] == 7500
+    assert base['additional_extra_monthly_cents'] == 0
+    assert base['avalanche']['months'] == 4
+    assert base['goal_contributions'][0]['goal_id'] == gid
+    extra = client.post('/debt-plan', json={'extra_monthly_cents':10000}).json()
+    with db() as s:
+        expected = compare(load_debts(s,uid), 10000, start=PLAN_START,
+            scheduled_extras=[ScheduledExtra(60000,PLAN_START,date(2027,3,1))])
+    assert extra['avalanche']['months'] == expected['avalanche'].months
+    assert extra['avalanche']['total_interest_cents'] == expected['avalanche'].total_interest_cents
+    assert extra['baseline']['avalanche'] == base['avalanche']
+
+
+@pytest.mark.parametrize('overrides', [
+    {'status':'proposed'}, {'status':'dismissed'}, {'status':'stopped'}, {'status':'completed'},
+    {'kind':'emergency_fund'}, {'kind':'savings'}, {'target_date':date(2026,11,30)},
+])
+def test_non_funding_goals_are_not_included(client, db, overrides):
+    uid = seed_debts(db, CARD)
+    add_goal(db, uid, **overrides)
+    body = client.post('/debt-plan', json={'extra_monthly_cents':0}).json()
+    assert body['goal_monthly_cents'] == 0
+    assert body['goal_contributions'] == []
+
+
+def test_future_goal_is_scheduled_but_not_added_to_the_first_month(client, db):
+    uid = seed_debts(db, CARD)
+    add_goal(db, uid, start_date=date(2027,1,1))
+    body = client.post('/debt-plan', json={'extra_monthly_cents':0}).json()
+    assert body['goal_monthly_cents'] == 0
+    assert body['goal_contributions'][0]['start_date'] == '2027-01-01'
+
+
+def test_other_users_debt_goal_is_not_used(client, db):
+    from app.db.models import User
+    seed_debts(db, CARD)
+    with db() as s:
+        s.add(User(id='other-goal-owner',email='other-goal-owner@example.com',password_hash='!'));s.commit()
+    add_goal(db,'other-goal-owner')
+    body = client.post('/debt-plan',json={'extra_monthly_cents':0}).json()
+    assert body['goal_contributions'] == []

@@ -243,3 +243,45 @@ def test_exchange_returns_before_background_sync_and_background_owns_session(cli
     work(*args)  # the original request dependency has already closed its session
     assert synced == ["item-1"]
     assert items(db)[0].status == "active"
+
+
+def test_already_linked_user_cannot_start_another_link(client, db, monkeypatch, synced):
+    fake_exchange(monkeypatch, "item-1", "access-1")
+    client.post("/plaid/exchange", json={"public_token": "first"})
+    def unexpected(**kwargs):
+        raise AssertionError("must not request a new Plaid token")
+    monkeypatch.setattr(plaid, "create_link_token", unexpected)
+    response = client.post("/plaid/link-token")
+    assert response.status_code == 409
+    assert "already linked" in response.json()["detail"]
+    assert len(items(db)) == 1
+
+
+def test_a_different_item_cannot_duplicate_an_existing_connection(client, db, monkeypatch, synced):
+    fake_exchange(monkeypatch, "item-1", "access-1")
+    first = client.post("/plaid/exchange", json={"public_token": "first"})
+    fake_exchange(monkeypatch, "item-2", "access-2")
+    response = client.post("/plaid/exchange", json={"public_token": "second"})
+    assert first.status_code == 200
+    assert response.status_code == 409
+    assert "already linked" in response.json()["detail"]
+    assert len(items(db)) == 1
+    assert synced == ["item-1"]
+
+
+def test_concurrent_exchange_is_refused_while_user_claim_is_held(client, db, monkeypatch, synced):
+    from app.budget_service.daily import user_lock
+    client.get("/dashboard")
+    with db() as session:
+        uid = session.scalar(select(User.id))
+    lock = user_lock(uid)
+    assert lock.acquire(blocking=False, session_factory=db)
+    try:
+        def unexpected(public_token):
+            raise AssertionError("must not exchange while another request owns the user")
+        monkeypatch.setattr(plaid, "exchange_public_token", unexpected)
+        response = client.post("/plaid/exchange", json={"public_token": "second"})
+        assert response.status_code == 409
+        assert items(db) == []
+    finally:
+        lock.release()

@@ -1,21 +1,25 @@
 import logging
-from typing import Optional
+from typing import Literal, Optional
+from contextlib import ExitStack
 import httpx
 from cryptography.fernet import InvalidToken
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.engine import Connection, Engine
+from .. import config
 from ..budget_service.alerts import SEED_TOKEN
+from ..budget_service.daily import user_lock
 from ..db.models import PlaidItem, User
 from ..db.session import get_session
 from ..plaid_service import client as plaid
 from ..plaid_service.client import PlaidError
-from ..plaid_service.sync import sync_item
+from ..plaid_service.sync import item_lock, sync_item
+from ..plaid_service.demo_reset import EMAIL, backup_database, checked_user, reset_user
 from ..plaid_service.webhooks import handle_webhook
-from ..security import encrypt
+from ..security import decrypt, encrypt
 from .deps import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -80,9 +84,12 @@ def _queue_sync(session: Session, item: PlaidItem, background: BackgroundTasks) 
 
 
 @router.post("/link-token", response_model=LinkTokenResponse)
-def create_link_token(user: User = Depends(get_current_user)):
+def create_link_token(user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     if (user.prefs_json or {}).get("sim"):
         raise HTTPException(409, "Bank linking is disabled for simulated users. Select a non-simulated user first.")
+    if session.scalar(select(PlaidItem.id).where(
+        PlaidItem.user_id == user.id, PlaidItem.access_token_enc != SEED_TOKEN).limit(1)) is not None:
+        raise HTTPException(409, "A bank is already linked. Use the existing connection or Retry sync. Reset the Plaid demo before linking a replacement.")
     try:
         token = plaid.create_link_token(client_user_id=user.id)
     except plaid.PlaidNotConfigured:
@@ -104,6 +111,17 @@ def exchange_public_token(
 ):
     if (user.prefs_json or {}).get("sim"):
         raise HTTPException(409, "Bank linking is disabled for simulated users. Select a non-simulated user first.")
+    lock = user_lock(user.id)
+    factory = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+    if not lock.acquire(blocking=False, session_factory=factory):
+        raise HTTPException(409, "A bank connection or agent run is already in progress. Please wait.")
+    try:
+        return _exchange_public_token(body, background, user, session)
+    finally:
+        lock.release()
+
+
+def _exchange_public_token(body, background, user, session):
     try:
         access_token, plaid_item_id = plaid.exchange_public_token(body.public_token)
     except (PlaidError, httpx.HTTPError) as err:
@@ -123,6 +141,12 @@ def exchange_public_token(
         # read the id first: a failed sync rolls back, which expires the row
         return _queue_sync(session, existing, background)
 
+    # This demo has one bank connection per user. Different Sandbox Items for the
+    # same credentials have different IDs but repeat all accounts and transactions.
+    if session.scalar(select(PlaidItem.id).where(
+        PlaidItem.user_id == user.id, PlaidItem.access_token_enc != SEED_TOKEN).limit(1)) is not None:
+        raise HTTPException(409, "A bank is already linked. Use the existing connection or Retry sync. Reset the Plaid demo before linking a replacement.")
+
     item = PlaidItem(
         user_id=user.id,
         plaid_item_id=plaid_item_id,
@@ -137,6 +161,68 @@ def exchange_public_token(
         session.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, detail="item already linked")
     return _queue_sync(session, item, background)
+
+
+class DisconnectRequest(BaseModel):
+    confirmed: Literal[True]
+
+
+@router.post("/disconnect")
+def disconnect_bank(body: DisconnectRequest, user: User = Depends(get_current_user),
+                    session: Session = Depends(get_session)):
+    if not config.ENABLE_ADMIN or config.PLAID_ENV != "sandbox" or user.email != EMAIL:
+        raise HTTPException(404, "Not found.")
+    from .chat import _user_lock as chat_lock
+    lock = user_lock(user.id)
+    factory = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+    if not lock.acquire(blocking=False, session_factory=factory):
+        raise HTTPException(409, "A bank connection or agent run is in progress. Wait for it to finish.")
+    try:
+        with ExitStack() as locks:
+            conversation = chat_lock(user.id)
+            if not conversation.acquire(blocking=False):
+                raise HTTPException(409, "Chat is still running. Wait for it to finish.")
+            locks.callback(conversation.release)
+            try:
+                checked_user(session, check_claim=False)
+            except ValueError as exc:
+                raise HTTPException(409, str(exc)) from exc
+            except InvalidToken as exc:
+                raise HTTPException(409, "This bank token cannot be read. Use the local reset command.") from exc
+            items = list(session.scalars(select(PlaidItem).where(PlaidItem.user_id == user.id)))
+            if not items:
+                return {"disconnected": True}
+            for item in items:
+                mutex = item_lock(session, item.id)
+                if item.status == "syncing" or not mutex.acquire(blocking=False):
+                    raise HTTPException(409, "Bank data is syncing. Wait for it to finish, or Retry sync.")
+                locks.callback(mutex.release)
+            # Do not revoke or delete anything unless the complete local backup succeeded.
+            try:
+                backup_database(session.get_bind())
+            except Exception as exc:
+                logger.warning("disconnect backup failed: %s", type(exc).__name__)
+                raise HTTPException(503, "Could not back up the database. Nothing was disconnected.") from exc
+            lock.assert_owned(session)
+            for item in items:
+                try:
+                    plaid.plaid_post("/item/remove", {"access_token": decrypt(item.access_token_enc)})
+                except plaid.PlaidNotConfigured as exc:
+                    raise HTTPException(503, "Plaid credentials are missing. The bank was not disconnected.") from exc
+                except PlaidError as exc:
+                    # A previous attempt may have revoked this Item before its local commit failed.
+                    if exc.error_code not in ("ITEM_NOT_FOUND", "INVALID_ACCESS_TOKEN"):
+                        raise _plaid_failure(exc)
+                except httpx.HTTPError as exc:
+                    raise _plaid_failure(exc)
+            reset_user(session, check_claim=False)
+            session.commit()
+            return {"disconnected": True}
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        lock.release()
 
 
 # pull everything for one of the current user's items; safe to call repeatedly

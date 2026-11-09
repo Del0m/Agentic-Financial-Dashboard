@@ -90,26 +90,10 @@ Run them from `backend/`:
 
 **Why it's there:** It was found in the TPC-21 review. The release came after the status write, so a failing write (SQLite "database is locked") left the user locked out of every run until a restart. Run inline, the exception climbed back into the route, whose fallback hid the leak, which is why this test uses a thread.
 
-## `test_view_switches_between_the_demo_user_and_the_plaid_user`
+## `test_retired_view_routes_are_unavailable`
 
-**What it does:** It starts on the seeded demo user: `GET /admin/view` returns `demo`, and the user is simulated. `PUT /admin/view` with `plaid` sets an HttpOnly `view=plaid` cookie, and every route then reads the dev user (`dev@localhost`, created on first use), which isn't simulated. Switching back to `demo` returns to the seeded user.
+GET and PUT `/admin/view` return 404 with admin tools enabled or disabled, including requests for `demo`, `plaid` and unknown values. User selection is no longer a browser-accessible feature.
 
-**Why it's there:** The demo shows the scripted story on the demo user and the real Plaid path on the user whose banks are linked through Plaid. The cookie switches between them without editing `.env` or restarting.
+## `test_legacy_cookie_cannot_select_seeded_data`
 
-## `test_view_has_nothing_to_switch_when_the_configured_user_is_the_plaid_one`
-
-**What it does:** With `DEV_USER_EMAIL` set to `dev@localhost`, `PUT /admin/view` with `plaid` answers `{"view": "demo", "available": false}` and sets no cookie.
-
-**Why it's there:** Without a separate demo user, both views would be the same user, so the frontend hides the switch.
-
-## `test_view_cookie_is_ignored_without_the_admin_tools`
-
-**What it does:** After switching to `plaid`, turning `ENABLE_ADMIN` off makes `/admin/view` a 404. The dashboard shows the seeded demo user's "Checking" account even though the cookie is still sent.
-
-**Why it's there:** Like the other admin tools, the switch only exists in development. A leftover cookie mustn't change whose data a request reads.
-
-## `test_view_rejects_an_unknown_view`
-
-**What it does:** `PUT /admin/view` with any value other than `demo` or `plaid` is a 422.
-
-**Why it's there:** The cookie can only ever name the Plaid user. Nothing a request sends can point it at another user.
+With the server configured for `dev@localhost`, old or forged `view` cookies cannot select another user. The API returns the non-simulated Plaid user's data, while the seeded fixture still exists for internal testing.

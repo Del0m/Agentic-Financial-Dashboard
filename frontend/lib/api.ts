@@ -27,6 +27,8 @@ export type Debt = {
 };
 
 export type Dashboard = {
+  can_disconnect?: boolean;
+  bank_linked?: boolean; // connection exists even before accounts finish importing
   net_worth_cents: number;
   assets_cents: number;
   debts_cents: number;
@@ -83,7 +85,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function getDashboard(): Promise<Dashboard> {
-  return request<Dashboard>("/dashboard");
+  return request<Dashboard>("/dashboard", { cache: "no-store" });
+}
+
+export function disconnectBank(): Promise<{ disconnected: boolean }> {
+  return request("/plaid/disconnect", { method: "POST", body: JSON.stringify({ confirmed: true }) });
 }
 
 export async function createLinkToken(): Promise<string> {
@@ -272,6 +278,10 @@ export type Plan = {
 export type PlanExcluded = { account_id: number; name: string; reason: "no_apr" | "no_minimum" | "mortgage" };
 
 export type DebtPlan = {
+  goal_contributions?: { goal_id: number; monthly_cents: number; start_date: string; target_date: string }[];
+  goal_monthly_cents?: number;
+  minimum_monthly_cents?: number;
+  additional_extra_monthly_cents?: number;
   avalanche: Plan;
   snowball: Plan;
   baseline: { avalanche: Plan; snowball: Plan };

@@ -131,3 +131,7 @@ npm test -- app/alerts/page.test.tsx
 **Why it's there:** It was found in the TPC-21 review. A month on the real model can take longer than the run button's 10-minute cap. The simulation allows 2 minutes per day, never under 10.
 
 The shared alert fixture includes nullable `stream_id`, matching the recurring API response. Existing assertions are unchanged.
+
+## User-switch regression
+
+`does not expose a user switch` checks that the page has no “Whose data to show” group, “Demo user” button or “Plaid bank” button. The application uses its server-configured user instead.

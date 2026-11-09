@@ -1,3 +1,5 @@
+> Historical component tests: `ViewSwitch` is no longer mounted by any application page. The backend view-switch routes have been removed; this component cannot switch the live app. Current regression coverage is in the Dashboard/Alerts page tests and `test_admin_api.py`.
+
 # Tests: `frontend/components/ViewSwitch.test.tsx`
 
 These tests cover `components/ViewSwitch.tsx`, the **Demo user / Plaid bank** switch in the Dashboard and Alerts headers. It reads `GET /admin/view`. Choosing the other view calls `PUT /admin/view`, which sets or clears the backend's `view` cookie, then reloads the page so every card reads the new user. It only appears with the admin tools on and a separate demo user configured.

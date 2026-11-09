@@ -699,3 +699,29 @@ def test_cash_summary_with_no_days():
     from types import SimpleNamespace as NS
     from app.privacy.gateway import _cash_summary
     assert _cash_summary(NS(days=[], dip=None, income="none"), 0, None) == "No forecast is available."
+
+
+def test_debt_plan_includes_accepted_goals_with_the_same_schedule(db, tmp_path):
+    from app.db.models import Goal
+    from app.budget_engine.payoff import ScheduledExtra
+    seed_debts(db)
+    with db() as s:
+        s.add(Goal(user_id='u-1',kind='debt_payoff',status='accepted',priority=1,
+                   monthly_cents=60000,target_cents=320000,start_date=PLAN_START,
+                   target_date=date(2027,2,1),rationale='private goal text'))
+        s.commit()
+        prompt=PrivacyGateway(s,'u-1',audit_path=tmp_path/'goals-plan.jsonl').build_context(
+            'debt_plan',extra_monthly_cents=10000)
+        expected=compare(load_debts(s,'u-1'),10000,start=PLAN_START,
+            scheduled_extras=[ScheduledExtra(60000,PLAN_START,date(2027,2,1))])
+    d=data(prompt)
+    assert d['goal_monthly']==600
+    assert d['extra_monthly']==100
+    assert d['accepted_debt_goals']==[{'monthly':600.0,'start':'2026-11','through':'2027-02'}]
+    assert 'private goal text' not in prompt
+    for plan in d['plans']:
+        want=expected[plan['strategy']]
+        assert plan['months']==want.months
+        assert plan['total_interest']==want.total_interest_cents/100
+        base=expected['baseline_'+plan['strategy']]
+        assert plan['without_extra']['months']==base.months

@@ -1,7 +1,7 @@
 import logging
-from typing import Literal, Optional
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -11,7 +11,7 @@ from ..budget_service.simulate import advance_days
 from ..db.models import AgentRun, User, utcnow
 from . import budget as budget_routes
 from . import budget_hooks
-from .deps import DEV_USER_EMAIL, VIEW_COOKIE, current_email, get_current_user
+from .deps import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -45,37 +45,6 @@ class JobOut(BaseModel):
     run_ids: list[int]
     alerts_written: int
     error: Optional[str]
-
-
-class ViewOut(BaseModel):
-    view: Literal["demo", "plaid"]
-    available: bool        # false when the configured user already is the plaid one, so there's nothing to switch
-
-class ViewIn(BaseModel):
-    view: Literal["demo", "plaid"]
-
-
-def _view(request: Request) -> ViewOut:
-    available = config.DEV_USER_EMAIL != DEV_USER_EMAIL
-    return ViewOut(view="plaid" if available and current_email(request) == DEV_USER_EMAIL else "demo", available=available)
-
-
-# which user the app shows: the demo (simulated) user, or the dev user whose banks are linked through plaid
-@router.get("/view", response_model=ViewOut)
-def get_view(request: Request):
-    return _view(request)
-
-
-@router.put("/view", response_model=ViewOut)
-def set_view(body: ViewIn):
-    available = config.DEV_USER_EMAIL != DEV_USER_EMAIL
-    view = body.view if available else "demo"
-    response = JSONResponse(ViewOut(view=view, available=available).model_dump())
-    if view == "plaid":
-        response.set_cookie(VIEW_COOKIE, "plaid", httponly=True, samesite="lax", path="/")
-    else:
-        response.delete_cookie(VIEW_COOKIE, path="/")
-    return response
 
 
 @router.get("/sandbox", response_model=SimStateOut)

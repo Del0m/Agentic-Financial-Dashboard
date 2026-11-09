@@ -13,9 +13,8 @@ import NetWorthSummary from "@/components/NetWorthSummary";
 import PlaidLinkButton from "@/components/PlaidLinkButton";
 import RecurringList from "@/components/RecurringList";
 import TransactionsTable from "@/components/TransactionsTable";
-import ViewSwitch from "@/components/ViewSwitch";
 import {
-  correctTransaction, errorMessage, getAlerts, getBudget, getDashboard, getForecast, getGoals, getRecurring, getSim, getTransactions, setForecastBuffer, syncItem, type Budget,
+  correctTransaction, disconnectBank, errorMessage, getAlerts, getBudget, getDashboard, getForecast, getGoals, getRecurring, getSim, getTransactions, setForecastBuffer, syncItem, type Budget,
   type Dashboard, type ExchangeResult, type Forecast, type Goal, type RecurringResponse, type SimState, type Txn,
 } from "@/lib/api";
 import { categoryLabel, formatCents, formatDate, formatMonth } from "@/lib/format";
@@ -36,6 +35,9 @@ export default function DashboardPage() {
   // "Account linked." after a link whose first sync worked; failed syncs come back from the
   // server as unsynced_items instead, so their Retry sync survives a page refresh
   const [linkedNotice, setLinkedNotice] = useState(false);
+  const [disconnectOpen, setDisconnectOpen] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [disconnectError, setDisconnectError] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<{ itemId: number; message: string } | null>(null);
   const [retrying, setRetrying] = useState<number | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
@@ -153,7 +155,10 @@ export default function DashboardPage() {
     [load],
   );
 
-  const onLinkError = useCallback((message: string) => setLinkError(message), []);
+  const onLinkError = useCallback((message: string) => {
+    setLinkError(message);
+    load(); // another tab may have completed linking while this dialog was open
+  }, [load]);
 
   // a correction moves spending between lines, so the pace bars reload with it
   const onCorrect = useCallback(
@@ -178,16 +183,41 @@ export default function DashboardPage() {
     }
   }
 
+  async function disconnect() {
+    setDisconnecting(true);
+    setDisconnectError(null);
+    try {
+      await disconnectBank();
+      setDisconnectOpen(false);
+      setLinkedNotice(false);
+      setLinkError(null);
+      setSyncError(null);
+      setData(null);
+      setBudget(null);
+      setGoals(null);
+      setTxns(null);
+      setForecast(null);
+      setRecurring(null);
+      setPendingAlerts(0);
+      setLoading(true);
+      load();
+    } catch (err) {
+      setDisconnectError(errorMessage(err));
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
   const proposedGoals = goals?.filter((g) => g.status === "proposed").length ?? 0;
   const acceptedGoals = goals?.filter((g) => g.status === "accepted") ?? [];
-  const linked = data !== null && data.accounts.length > 0;
+  const hasAccounts = data !== null && data.accounts.length > 0;
+  const linked = data !== null && (data.bank_linked ?? (hasAccounts || data.unsynced_items.length > 0));
 
   return (
     <main className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <div className="flex flex-wrap items-center gap-3">
-          <ViewSwitch />
           <Link href="/alerts" className="text-sm underline underline-offset-2">
             {pendingAlerts > 0 ? `Alerts (${pendingAlerts})` : "Alerts"}
           </Link>
@@ -202,9 +232,36 @@ export default function DashboardPage() {
               Demo · {formatDate(sim.date)}
             </span>
           )}
-          {linked && sim?.simulated === false && <PlaidLinkButton label="Link another account" onLinked={onLinked} onError={onLinkError} />}
+          {linked && sim?.simulated === false && <span className="text-sm text-neutral-500">Bank connected</span>}
+          {linked && data?.can_disconnect && (
+            <button type="button" onClick={() => { setDisconnectError(null); setDisconnectOpen(true); }}
+              disabled={disconnecting || syncing} className="text-sm underline underline-offset-2 disabled:opacity-50">
+              Disconnect bank
+            </button>
+          )}
         </div>
       </header>
+
+      {disconnectOpen && (
+        <section role="alertdialog" aria-modal="false" aria-labelledby="disconnect-title" aria-describedby="disconnect-details"
+          className="space-y-3 rounded-lg border border-amber-400 p-4">
+          <h2 id="disconnect-title" className="font-semibold">Disconnect this Sandbox bank?</h2>
+          <p id="disconnect-details" className="text-sm">
+            This backs up the database, disconnects the bank at Plaid, and clears its local accounts, transactions,
+            budget, alerts, goals and saved advice. Old Chat conversations will no longer load. You can then connect
+            again through Plaid Link with fresh test data.
+          </p>
+          {disconnectError && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{disconnectError}</p>}
+          <div className="flex gap-3">
+            <button type="button" disabled={disconnecting} onClick={() => setDisconnectOpen(false)}
+              className="rounded border border-black/20 px-3 py-1.5 dark:border-white/20 disabled:opacity-50">Cancel</button>
+            <button type="button" disabled={disconnecting} onClick={disconnect}
+              className="rounded bg-red-700 px-3 py-1.5 text-white disabled:opacity-50">
+              {disconnecting ? "Disconnecting…" : "Disconnect and clear demo data"}
+            </button>
+          </div>
+        </section>
+      )}
 
       {linkError && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
@@ -265,11 +322,16 @@ export default function DashboardPage() {
             Retry
           </button>
         </div>
-      ) : !linked ? (
+      ) : !hasAccounts && linked ? (
+        <section className="mx-auto max-w-md space-y-4 rounded-lg border border-black/10 p-6 text-center dark:border-white/15">
+          <h2 className="text-lg font-semibold">Bank already connected</h2>
+          <p className="text-sm text-neutral-500">Your bank is linked. Wait for its accounts to load, or use Retry sync above. You do not need to link again.</p>
+        </section>
+      ) : !hasAccounts ? (
         <section className="mx-auto max-w-md space-y-4 rounded-lg border border-black/10 p-6 text-center dark:border-white/15">
           <h2 className="text-lg font-semibold">Connect a bank</h2>
           <p className="text-sm text-neutral-500">
-            Link an account through Plaid to see your balances, net worth and debts. Your bank login goes to Plaid,
+            No bank is linked yet. Connect your Sandbox bank to see balances, transactions and budgets. Your bank login goes to Plaid,
             not to this app.
           </p>
           <PlaidLinkButton label="Connect a bank" onLinked={onLinked} onError={onLinkError} />
@@ -355,7 +417,9 @@ export default function DashboardPage() {
           </Card>
           {data.debts.length > 0 && (
             <Card title="Paying off your debts">
-              <DebtPlanCompare suggestedExtraCents={forecast?.suggested_extra_cents} debtsKey={data.debts
+              <DebtPlanCompare suggestedExtraCents={forecast?.suggested_extra_cents}
+                goalsKey={JSON.stringify((goals ?? []).filter((g) => g.kind === "debt_payoff")
+                  .map((g) => [g.id, g.status, g.monthly_cents, g.start_date, g.target_date]))} debtsKey={data.debts
                 .map((d) => `${d.account_id}:${d.balance_cents}:${d.apr}:${d.min_payment_cents}`).join("|")} />
             </Card>
           )}

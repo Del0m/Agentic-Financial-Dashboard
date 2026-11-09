@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { debtPlan, errorMessage, type DebtPlan, type Plan, type PlanExcluded } from "@/lib/api";
-import { formatCents } from "@/lib/format";
+import { formatCents, formatMonth } from "@/lib/format";
 
 // avalanche vs snowball for the user's debts (tpc-32). the backend simulates; this only shows the numbers.
 // typing in the extra waits 300 ms, and only the latest request's answer is shown
@@ -60,8 +60,8 @@ function Column({ plan, base, extraCents, cheapest }: {
 }
 
 // debtsKey changes when the dashboard's debts do (a new link, a sync), so the plan is asked for again
-export default function DebtPlanCompare({ debtsKey = "", fetchPlan = debtPlan, suggestedExtraCents }: {
-  debtsKey?: string; fetchPlan?: typeof debtPlan; suggestedExtraCents?: number | null;
+export default function DebtPlanCompare({ debtsKey = "", goalsKey = "", fetchPlan = debtPlan, suggestedExtraCents }: {
+  debtsKey?: string; goalsKey?: string; fetchPlan?: typeof debtPlan; suggestedExtraCents?: number | null;
 }) {
   const [dollars, setDollars] = useState("0");
   const [result, setResult] = useState<{ extraCents: number; plan: DebtPlan } | null>(null);
@@ -70,15 +70,16 @@ export default function DebtPlanCompare({ debtsKey = "", fetchPlan = debtPlan, s
 
   useEffect(() => {
     const extraCents = Math.max(0, Math.round(Number(dollars) || 0)) * 100;
+    const id = ++latest.current;
+    let cancelled = false;
     const timer = setTimeout(() => {
-      const id = ++latest.current;
       fetchPlan(extraCents).then(
-        (plan) => { if (id === latest.current) { setResult({ extraCents, plan }); setError(null); } },
-        (err) => { if (id === latest.current) setError(errorMessage(err)); },
+        (plan) => { if (!cancelled && id === latest.current) { setResult({ extraCents, plan }); setError(null); } },
+        (err) => { if (!cancelled && id === latest.current) setError(errorMessage(err)); },
       );
     }, DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [dollars, debtsKey, fetchPlan]);
+    return () => { clearTimeout(timer); cancelled = true; };
+  }, [dollars, debtsKey, goalsKey, fetchPlan]);
 
   const plan = result?.plan;
   const planned = plan && !(plan.avalanche.months === 0 && plan.avalanche.order.length === 0);
@@ -95,6 +96,25 @@ export default function DebtPlanCompare({ debtsKey = "", fetchPlan = debtPlan, s
           onChange={(e) => setDollars(e.target.value)}
           className="w-28 rounded border border-black/20 bg-transparent px-2 py-1 dark:border-white/25" />
       </label>
+      {(plan?.goal_contributions?.length ?? 0) > 0 && (
+        <div className="space-y-1 text-sm">
+          <p className="font-medium">Accepted debt-payoff goals included</p>
+          <ul className="list-disc pl-5">
+            {plan!.goal_contributions!.map((g) => (
+              <li key={g.goal_id}>{formatCents(g.monthly_cents)}/mo, {formatMonth(g.start_date)} through {formatMonth(g.target_date)}</li>
+            ))}
+          </ul>
+          <p className="text-neutral-500">Extra per month is additional to these goals. Do not enter the goal amount again.</p>
+          <p className="text-neutral-500">Both strategies apply these goals across the eligible debts, using the selected payoff order.</p>
+        </div>
+      )}
+      {plan?.minimum_monthly_cents != null && (
+        <p className="text-sm text-neutral-600 dark:text-neutral-300">
+          Starting {formatMonth(plan.start)}: {formatCents(plan.minimum_monthly_cents + (plan.goal_monthly_cents ?? 0) + (result?.extraCents ?? 0))}/mo
+          {" = "}{formatCents(plan.minimum_monthly_cents)} minimums + {formatCents(plan.goal_monthly_cents ?? 0)} accepted goals
+          {" + "}{formatCents(result?.extraCents ?? 0)} additional extra.
+        </p>
+      )}
       {suggestedExtraCents != null && <p className="text-sm text-neutral-500">You could add about {formatCents(suggestedExtraCents)}.</p>}
       {error && <p className="text-sm text-red-600 dark:text-red-400">Couldn&apos;t plan your payoff: {error}</p>}
       {!plan ? (
@@ -118,7 +138,7 @@ export default function DebtPlanCompare({ debtsKey = "", fetchPlan = debtPlan, s
             </div>
           )}
           <p className="text-xs text-neutral-500">
-            Interest is charged monthly at APR/12, and minimum payments are held at today&apos;s amounts. Not
+            Interest is charged monthly at APR/12, and minimum payments are held at today&apos;s amounts. Accepted goals apply only during their scheduled months. Extra-payment savings are compared with minimums plus accepted goals. Not
             financial advice.
           </p>
         </>

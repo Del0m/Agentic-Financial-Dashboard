@@ -68,6 +68,14 @@ afterEach(() => {
 });
 
 describe("Alerts page", () => {
+  test("does not expose a user switch", async () => {
+    render(<AlertsPage />);
+    await screen.findByRole("button", { name: "Run budget check" });
+    expect(screen.queryByRole("group", { name: "Whose data to show" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Demo user" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Plaid bank" })).toBeNull();
+  });
+
   test("loads pending and history", async () => {
     render(<AlertsPage />);
     expect(await screen.findByText("Alert 2")).toBeTruthy();

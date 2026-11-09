@@ -106,3 +106,24 @@ def test_nothing_owed_never_excluded():
     plan = simulate([D(1, None, 0, 25), D(2, None, -50, None), D(3, 4, 0, 1200, kind="mortgage"), D(4, 18, 800, 40)],
                     0, "avalanche", start=START)
     assert plan.excluded == () and [p.key for p in plan.order] == [4]
+
+
+def test_goal_contribution_stops_after_its_target_month():
+    from app.budget_engine.payoff import ScheduledExtra
+    from app.budget_engine.txns import add_months
+    goal = ScheduledExtra(20000, START, add_months(START, 1))
+    # Two $300 payments, then four $100 payments. A permanent extra would finish in four months.
+    plan = simulate([D(1, 0, 1000, 100)], 0, 'avalanche', start=START, scheduled_extras=[goal])
+    assert plan.months == 6
+
+
+def test_future_goal_waits_for_start_and_manual_extra_is_additional():
+    from app.budget_engine.payoff import ScheduledExtra
+    from app.budget_engine.txns import add_months
+    later = add_months(START, 1)
+    goal = ScheduledExtra(20000, later, later)
+    assert simulate([D(1, 0, 1000, 100)], 0, 'avalanche', start=START,
+                    scheduled_extras=[goal]).months == 8
+    plans = compare([D(1, 0, 1000, 100)], 10000, start=START, scheduled_extras=[goal])
+    assert plans['avalanche'].months == 4
+    assert plans['baseline_avalanche'].months == 8

@@ -363,3 +363,7 @@ The graph can supply an explicit debt snapshot to the goals context; default cal
 **Why they're there:** Given only the daily figures, the model left out the bill on 2 of 3 runs, and one answer said "you won't run short" above a real dip. The post-fix baseline found this as a regression in `cash-before-payday`.
 
 Graph facts about a user go through `build_context("graph", ...)`, and are tested in `test_kg_retrieve.py`.
+
+## Accepted goals in payoff answers
+
+`test_debt_plan_includes_accepted_goals_with_the_same_schedule` checks Chat's payoff context uses the same dated contributions as the API/engine. It exposes scheduled amounts and dates, without including the goal's free-text rationale. Manual extra and the without-extra baseline remain additional to the accepted goals.

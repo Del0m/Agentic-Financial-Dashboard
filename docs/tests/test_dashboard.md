@@ -108,3 +108,11 @@ The test file has these helpers:
 **What it does:** Seeds a legacy brokerage asset, mixed-case names, a debt and an unknown type. It checks totals, case-insensitive ordering, and the API's asset/debt/other classification.
 
 **Why it's there:** The chart consumes the server's classification, so supported account types cannot silently drift between totals and chart bars.
+
+## Connection status before import
+
+`test_connection_is_reported_before_accounts_arrive` requires `bank_linked: true` when the Item exists but has no imported accounts. The frontend must offer sync/retry rather than prompt another connection. Empty users report `bank_linked: false`.
+
+## Connection status on refresh
+
+`test_dashboard_connection_status_is_not_cached` checks the API returns `Cache-Control: no-store`. Connection state is read from the database on every request.

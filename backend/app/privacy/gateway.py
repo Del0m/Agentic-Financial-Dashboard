@@ -14,7 +14,7 @@ from ..budget_engine.goals import GoalAllocation, GoalFacts, GoalIssue, planned_
 from ..budget_engine.payoff import Debt, Plan, compare
 from ..budget_engine.signals import Signal, allowed_actions
 from ..budget_engine.txns import Txn, add_months, month_start, spending
-from ..budget_service.debts import load_debts
+from ..budget_service.debts import debt_goal_contributions, goal_payment_schedule, load_debts
 from ..db.models import Account, Liability, Transaction
 from ..finance import avalanche_key
 from .scrub import scrub_account_name, scrub_merchant, scrub_note
@@ -282,7 +282,8 @@ class PrivacyGateway:
             raise ValueError(f"unknown strategy: {strategy}")
         debts = load_debts(self._session, self._user_id)
         start = add_months(month_start(self.today()), 1)
-        plans = compare(debts, extra_monthly_cents, start=start)
+        goals = debt_goal_contributions(self._session, self._user_id, start)
+        plans = compare(debts, extra_monthly_cents, start=start, scheduled_extras=goal_payment_schedule(goals))
         names = {d.key: scrub_account_name(d.name) for d in debts}
         month = lambda d: d.strftime("%Y-%m") if d else None
         # an unpaid debt's interest summed over 600 months runs to billions: there's no total to quote
@@ -321,6 +322,12 @@ class PrivacyGateway:
             "excluded": [{"name": names[k], "reason": EXCLUDED_REASONS[r]} for k, r in first.excluded],
             "assumptions": PLAN_ASSUMPTIONS,
         }
+        if goals:
+            out["accepted_debt_goals"] = [{"monthly": _dollars(g.monthly_cents),
+                                           "start": month(g.start_date), "through": month(g.target_date)} for g in goals]
+            out["goal_monthly"] = _dollars(sum(g.monthly_cents for g in goals if g.start_date <= start))
+            out["assumptions"] += (" Accepted debt-payoff goals are included only during their scheduled months. "
+                                   "extra_monthly and without_extra mean additional payments above those goals and minimums.")
         # nothing planned reads as "debt-free in 0 months" to a model, so it gets no plan and says why
         if not first.order and not first.never:
             out["plans"] = []

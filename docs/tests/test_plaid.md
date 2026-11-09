@@ -107,3 +107,11 @@ The test file has two helpers and one fixture:
 **What it does:** Captures the background task instead of executing it. Exchange returns a queued-sync response with no sync calls yet; the dashboard reports syncing. Executing the task after the request session closes completes the sync in its own session and returns the item to active.
 
 **Why it is there:** Loading a long bank history must not delay the link response beyond the proxy timeout, and background work must not reuse the closed request session.
+
+## Duplicate-connection prevention
+
+- `test_already_linked_user_cannot_start_another_link`: an existing connection makes `/plaid/link-token` return 409 before calling Plaid.
+- `test_a_different_item_cannot_duplicate_an_existing_connection`: a different Sandbox Item cannot be added to a user who already has a bank. No second local Item is stored or synced. Refreshing an existing Item's token remains idempotent.
+- `test_concurrent_exchange_is_refused_while_user_claim_is_held`: a database-backed user claim serializes exchange writes and rejects a concurrent request before exchanging its token.
+
+The demo intentionally supports one bank connection per user. Reset before replacing it. A failed initial sync retains the connection and offers Retry sync.
