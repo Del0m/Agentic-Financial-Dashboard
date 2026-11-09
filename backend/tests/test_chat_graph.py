@@ -115,6 +115,18 @@ def test_tool_call_round_trips():
     assert final(graph).content == f"It's 24.\n\n{DISCLAIMER}"
 
 
+# each result records when its tool started and how long it ran, for the chat's tool box; the content is unchanged
+def test_tool_result_records_its_timing():
+    model = ScriptedChatModel(replies=[tool_call("get_lucky_number", {"name": "Ada"}), AIMessage("It's 24.")])
+
+    run(model)
+
+    sent = model.seen[1][-1]
+    assert sent.content == "24"
+    assert set(sent.additional_kwargs) == {"started_at", "ms"}
+    assert all(isinstance(v, int) and v >= 0 for v in sent.additional_kwargs.values())
+
+
 # small models invent tool names; that reaches the model as an error, not a crash
 def test_unknown_tool_gets_error_message():
     model = ScriptedChatModel(replies=[tool_call("nope"), AIMessage("ok")])

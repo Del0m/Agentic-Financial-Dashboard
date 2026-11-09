@@ -1,3 +1,4 @@
+import time
 from datetime import date, timedelta
 from typing import Annotated, Callable, Optional
 from langchain_core.language_models import BaseChatModel
@@ -148,12 +149,16 @@ def build_chat_graph(tools: list[BaseTool], *, retrieve: Optional[Callable[[str]
             reply = model.invoke(messages)
         return {"messages": [reply]}
 
+    # each result carries when its tool started and how long it took, for the chat's tool-call box. it rides in
+    # additional_kwargs, which the ollama client doesn't send, so the model sees exactly what it saw before
     def run_tools(state: ChatState) -> dict:
-        calls = state["messages"][-1].tool_calls
-        return {
-            "messages": [ToolMessage(_run_tool(by_name, tc), tool_call_id=tc["id"], name=tc["name"]) for tc in calls],
-            "tool_rounds": state.get("tool_rounds", 0) + 1,
-        }
+        messages = []
+        for tc in state["messages"][-1].tool_calls:
+            started, t0 = time.time(), time.perf_counter()
+            content = _run_tool(by_name, tc)
+            timing = {"started_at": round(started * 1000), "ms": round((time.perf_counter() - t0) * 1000)}
+            messages.append(ToolMessage(content, tool_call_id=tc["id"], name=tc["name"], additional_kwargs=timing))
+        return {"messages": messages, "tool_rounds": state.get("tool_rounds", 0) + 1}
 
     def route(state: ChatState) -> str:
         return "tools" if getattr(state["messages"][-1], "tool_calls", None) else "finish"

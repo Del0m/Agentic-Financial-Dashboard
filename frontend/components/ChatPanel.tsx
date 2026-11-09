@@ -11,7 +11,8 @@ import {
   type ChatTool,
 } from "@/lib/api";
 
-// the m2 chat: streamed answers from POST /api/chat, with the tools each answer used and the
+// the m2 chat: streamed answers from POST /api/chat, with a box of the tools each answer called (when, how long,
+// whether they worked) and the
 // guidance the app retrieved for it. one conversation per tab, kept across a refresh
 
 export const THREAD_KEY = "chatThreadId";
@@ -24,7 +25,8 @@ function randomId(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-type Tool = ChatTool & { id?: string; pending?: boolean };
+// calledAt: when the model asked for the tool (epoch ms), shown until the result says when it actually started
+type Tool = ChatTool & { id?: string; pending?: boolean; calledAt?: number };
 type Turn = { role: "user" | "assistant"; text: string; tools: Tool[]; sources: ChatSource[]; graph?: boolean; error?: boolean };
 
 // storage can throw (private mode, blocked site data); chat still works for the life of the page
@@ -61,10 +63,15 @@ function applyEvent(turns: Turn[], e: ChatEvent): Turn[] {
     case "tool_call":
       // text the model wrote next to a tool call isn't the answer (qwen does this); the answer follows
       last.text = "";
-      last.tools = [...last.tools, { id: e.data.id, name: e.data.name, args: e.data.args, ok: false, pending: true }];
+      last.tools = [
+        ...last.tools,
+        { id: e.data.id, name: e.data.name, args: e.data.args, ok: false, pending: true, calledAt: e.data.at ?? Date.now() },
+      ];
       break;
     case "tool_result":
-      last.tools = last.tools.map((t) => (t.id === e.data.id ? { ...t, ok: e.data.ok, pending: false } : t));
+      last.tools = last.tools.map((t) =>
+        t.id === e.data.id ? { ...t, ok: e.data.ok, pending: false, started_at: e.data.started_at, ms: e.data.ms } : t,
+      );
       break;
     case "token":
       last.text += e.data.text;
@@ -79,20 +86,74 @@ function applyEvent(turns: Turn[], e: ChatEvent): Turn[] {
   return [...turns.slice(0, -1), last];
 }
 
-function ToolChips({ tools }: { tools: Tool[] }) {
+// the chat tools, in words. the code name is shown next to it, so an unknown tool still reads fine
+const TOOL_LABELS: Record<string, string> = {
+  get_accounts: "Account balances",
+  get_debts: "Debts",
+  get_spending: "Spending",
+  get_recurring: "Recurring charges",
+  get_cash_forecast: "Cash forecast",
+  plan_debt_payoff: "Debt payoff plan",
+  search_kb: "Search guidance",
+  get_history: "History lookup",
+};
+
+const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+const duration = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`);
+
+// small models send "" for an argument they mean to leave out, so those aren't shown
+function argsText(args: Record<string, unknown>): string {
+  const set = Object.entries(args).filter(([, v]) => v !== "" && v !== null && v !== undefined);
+  if (set.length === 0) return "no arguments";
+  return set.map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`).join(", ");
+}
+
+function ToolStatus({ tool }: { tool: Tool }) {
+  if (tool.pending) return <span className="animate-pulse font-medium text-amber-700 dark:text-amber-400">running</span>;
+  return tool.ok
+    ? <span className="font-medium text-emerald-700 dark:text-emerald-400">done</span>
+    : <span className="font-medium text-red-600 dark:text-red-400">failed</span>;
+}
+
+// the tools the agent called for one answer, in order, with when each ran and for how long. `thinking` is the
+// gap after the last result, while the model reads what came back and before its answer starts
+function ToolCalls({ tools, thinking }: { tools: Tool[]; thinking: boolean }) {
   if (tools.length === 0) return null;
+  const running = tools.some((t) => t.pending);
   return (
-    <div className="mt-2 flex flex-wrap gap-1.5">
-      {tools.map((t, i) => (
-        <span
-          key={t.id ?? i}
-          title={JSON.stringify(t.args)}
-          className="rounded-full border border-black/10 px-2 py-0.5 font-mono text-xs text-neutral-600 dark:border-white/15 dark:text-neutral-300"
-        >
-          {`${t.name} ${t.pending ? "…" : t.ok ? "✓" : "✗"}`}
-        </span>
-      ))}
-    </div>
+    <details open aria-label="Tool calls" className="mb-2 rounded-md border border-black/10 bg-black/[0.02] text-xs dark:border-white/15 dark:bg-white/5">
+      <summary className="cursor-pointer select-none px-2.5 py-1.5 font-medium text-neutral-600 dark:text-neutral-300">
+        {running ? "Using tools…" : `Used ${tools.length} tool${tools.length === 1 ? "" : "s"}`}
+      </summary>
+      <ol className="space-y-2 border-t border-black/10 px-2.5 py-2 dark:border-white/15">
+        {tools.map((t, i) => {
+          const at = t.started_at ?? t.calledAt;
+          return (
+            <li key={t.id ?? i} data-state={t.pending ? "running" : t.ok ? "done" : "failed"}
+              className="grid grid-cols-[1rem_1fr_auto] items-start gap-2">
+              <span className="text-neutral-400">{i + 1}</span>
+              <div className="min-w-0">
+                <p>
+                  <span className="font-medium">{TOOL_LABELS[t.name] ?? t.name}</span>{" "}
+                  <code className="text-neutral-500">{t.name}</code>
+                </p>
+                <p className="break-words font-mono text-neutral-500">{argsText(t.args)}</p>
+              </div>
+              <div className="whitespace-nowrap text-right">
+                <ToolStatus tool={t} />
+                {at !== undefined && (
+                  <p className="text-neutral-500">
+                    {clock(at)}
+                    {t.ms !== undefined && ` · ${duration(t.ms)}`}
+                  </p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+        {thinking && <li role="status" className="animate-pulse text-neutral-500">The model is reading the results…</li>}
+      </ol>
+    </details>
   );
 }
 
@@ -195,23 +256,28 @@ export default function ChatPanel() {
         {turns.length === 0 && (
           <li className="text-sm text-neutral-500">Ask about your accounts, debts or spending.</li>
         )}
-        {turns.map((t, i) => (
-          <li
-            key={i}
-            className={
-              t.role === "user"
-                ? "self-end max-w-[85%] rounded-lg bg-black/5 px-3 py-2 dark:bg-white/10"
-                : "max-w-[85%] rounded-lg border border-black/10 px-3 py-2 dark:border-white/15"
-            }
-          >
-            <p className={`whitespace-pre-wrap ${t.error ? "text-red-600 dark:text-red-400" : ""}`}>
-              {t.text || (t.role === "assistant" && streaming && i === turns.length - 1 ? "…" : t.text)}
-            </p>
-            {t.role === "assistant" && <ToolChips tools={t.tools} />}
-            {t.role === "assistant" && t.graph && <span className="mt-2 inline-block rounded-full border border-black/10 px-2 py-0.5 font-mono text-xs text-neutral-600 dark:border-white/15 dark:text-neutral-400">graph</span>}
-            {t.role === "assistant" && <Sources sources={t.sources} />}
-          </li>
-        ))}
+        {turns.map((t, i) => {
+          const live = t.role === "assistant" && streaming && i === turns.length - 1;
+          return (
+            <li
+              key={i}
+              className={
+                t.role === "user"
+                  ? "self-end max-w-[85%] rounded-lg bg-black/5 px-3 py-2 dark:bg-white/10"
+                  : "max-w-[85%] rounded-lg border border-black/10 px-3 py-2 dark:border-white/15"
+              }
+            >
+              {t.role === "assistant" && (
+                <ToolCalls tools={t.tools} thinking={live && !t.text && t.tools.length > 0 && !t.tools.some((x) => x.pending)} />
+              )}
+              <p className={`whitespace-pre-wrap ${t.error ? "text-red-600 dark:text-red-400" : ""}`}>
+                {t.text || (live ? "…" : t.text)}
+              </p>
+              {t.role === "assistant" && t.graph && <span className="mt-2 inline-block rounded-full border border-black/10 px-2 py-0.5 font-mono text-xs text-neutral-600 dark:border-white/15 dark:text-neutral-400">graph</span>}
+              {t.role === "assistant" && <Sources sources={t.sources} />}
+            </li>
+          );
+        })}
       </ol>
 
       <form onSubmit={send} className="flex gap-2">

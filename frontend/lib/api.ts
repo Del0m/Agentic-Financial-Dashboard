@@ -413,13 +413,14 @@ export function getSimJob(jobId: number): Promise<SimJob> {
 }
 
 export type ChatSource = { title: string; section: string; url: string };
-export type ChatTool = { name: string; args: Record<string, unknown>; ok: boolean };
+// started_at is epoch ms and ms how long the tool ran; both are missing on calls from before they were recorded
+export type ChatTool = { name: string; args: Record<string, unknown>; ok: boolean; started_at?: number; ms?: number };
 
 export type ChatEvent =
   | { event: "sources"; data: { sources: ChatSource[] } }
   | { event: "graph"; data: { used: boolean } }
-  | { event: "tool_call"; data: { id: string; name: string; args: Record<string, unknown> } }
-  | { event: "tool_result"; data: { id: string; name: string; ok: boolean } }
+  | { event: "tool_call"; data: { id: string; name: string; args: Record<string, unknown>; at?: number } }
+  | { event: "tool_result"; data: { id: string; name: string; ok: boolean; started_at?: number; ms?: number } }
   | { event: "token"; data: { text: string } }
   | { event: "done"; data: Record<string, never> }
   | { event: "error"; data: { message: string } };

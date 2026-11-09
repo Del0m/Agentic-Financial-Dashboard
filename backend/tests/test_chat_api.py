@@ -43,6 +43,14 @@ def types(events):
     return [e for e, _ in events]
 
 
+TIMING = ("at", "started_at", "ms")
+
+
+# an event's data without the clock fields, which change every run (test_tool_events_say_when_they_ran checks them)
+def untimed(data: dict) -> dict:
+    return {k: v for k, v in data.items() if k not in TIMING}
+
+
 # u-1 has a 22% card and a 5.25% loan; u-2 exists only to prove threads are per user
 @pytest.fixture
 def users(db):
@@ -95,8 +103,8 @@ def test_turn_streams_tools_then_tokens_then_done(api, model):
     assert set(types(events)[3:-1]) == {"token"} and len(events) > 5
     assert types(events)[-1] == "done"
     assert events[0][1] == {"sources": [SOURCE]}
-    assert events[1][1] == {"id": "c1", "name": "get_debts", "args": {}}
-    assert events[2][1] == {"id": "c1", "name": "get_debts", "ok": True}
+    assert untimed(events[1][1]) == {"id": "c1", "name": "get_debts", "args": {}}
+    assert untimed(events[2][1]) == {"id": "c1", "name": "get_debts", "ok": True}
     assert "".join(d["text"] for e, d in events if e == "token") == ANSWERED
 
 
@@ -112,7 +120,20 @@ def test_failed_tool_reports_not_ok(api, model):
 
     events = read_events(ask(api).text)
 
-    assert ("tool_result", {"id": "c1", "name": "nope", "ok": False}) in events
+    assert ("tool_result", {"id": "c1", "name": "nope", "ok": False}) in [(e, untimed(d)) for e, d in events]
+
+
+# the chat's tool box says when each call happened and how long it ran: epoch ms, from this turn
+def test_tool_events_say_when_they_ran(api, model):
+    model.replies += [tool_call("get_debts"), AIMessage(ANSWER)]
+    before = time.time() * 1000
+
+    events = dict(read_events(ask(api).text))
+
+    after = time.time() * 1000
+    call, result = events["tool_call"], events["tool_result"]
+    assert before - 1 <= call["at"] <= result["started_at"] <= after + 1
+    assert isinstance(result["ms"], int) and 0 <= result["ms"] <= after - before + 1
 
 
 @pytest.mark.parametrize("message", ["", "   ", "x" * 4001])
@@ -172,8 +193,11 @@ def test_token_with_blank_lines_is_one_event(api, model):
 def test_history_grouped_after_turn(api, model):
     model.replies += [tool_call("get_debts"), AIMessage(ANSWER)]
     ask(api)
+    history = api.get("/chat/t1").json()
+    timing = {k: history[1]["tools"][0].pop(k) for k in ("started_at", "ms")}   # kept, so a reload still shows when
 
-    assert api.get("/chat/t1").json() == [
+    assert all(isinstance(v, int) for v in timing.values())
+    assert history == [
         {"role": "user", "text": QUESTION, "tools": []},
         {"role": "assistant", "text": ANSWERED, "tools": [{"name": "get_debts", "args": {}, "ok": True}],
          "sources": [SOURCE], "graph": False},

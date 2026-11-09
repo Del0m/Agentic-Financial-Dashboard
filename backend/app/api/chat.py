@@ -3,6 +3,7 @@ import json
 import logging
 import sqlite3
 import threading
+import time
 from functools import lru_cache
 from typing import Annotated
 import httpx
@@ -84,6 +85,11 @@ def _sources(found: list[dict]) -> list[dict]:
     return [{"title": r["title"], "section": r["section"], "url": r["source_url"]} for r in found]
 
 
+# when a tool started and how long it ran (see chat_graph.run_tools); messages from before it was recorded have none
+def _timing(m: ToolMessage) -> dict:
+    return {k: m.additional_kwargs[k] for k in ("started_at", "ms") if k in m.additional_kwargs}
+
+
 def _error_key(exc: Exception) -> str:
     return "ollama" if isinstance(exc, (httpx.ConnectError, ConnectionError)) else "other"
 
@@ -120,11 +126,13 @@ def _turn_events(user: User, req: ChatRequest):
                     streamed = False   # text written next to a tool call isn't the answer (the client drops it)
                 for tc in calls:
                     tools_seen.append(tc["name"])
-                    yield format_event("tool_call", {"id": tc["id"], "name": tc["name"], "args": tc["args"]})
+                    # "at": when the model asked for it, epoch ms, so the browser can say when each call happened
+                    yield format_event("tool_call", {"id": tc["id"], "name": tc["name"], "args": tc["args"],
+                                                     "at": round(time.time() * 1000)})
             elif "tools" in payload:
                 for m in payload["tools"]["messages"]:
                     yield format_event("tool_result", {"id": m.tool_call_id, "name": m.name,
-                                                       "ok": not str(m.content).startswith("error:")})
+                                                       "ok": not str(m.content).startswith("error:"), **_timing(m)})
             # the closing line the graph added; an answer that didn't stream is sent whole below, with it included
             elif payload.get("finish") and streamed:
                 yield format_event("token", {"text": f"\n\n{DISCLAIMER}"})
@@ -227,4 +235,5 @@ def get_history(thread_id: str = Path(pattern=THREAD_ID), user: User = Depends(g
                 current["text"] = m.content
         elif isinstance(m, ToolMessage) and m.tool_call_id in by_id:
             by_id[m.tool_call_id]["ok"] = not str(m.content).startswith("error:")
+            by_id[m.tool_call_id].update(_timing(m))
     return turns

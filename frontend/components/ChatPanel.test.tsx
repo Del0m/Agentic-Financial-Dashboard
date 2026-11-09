@@ -61,20 +61,57 @@ describe("ChatPanel", () => {
     await reply.finish();
   });
 
-  test("shows tool chips with ✓ and ✗", async () => {
+  test("shows each tool call in a box with its status, arguments and timing", async () => {
+    const at = new Date(2026, 10, 8, 14, 3, 5).getTime();
     replyWith([
-      { event: "tool_call", data: { id: "c1", name: "get_debts", args: {} } },
-      { event: "tool_result", data: { id: "c1", name: "get_debts", ok: true } },
-      { event: "tool_call", data: { id: "c2", name: "search_kb", args: { query: "debt" } } },
-      { event: "tool_result", data: { id: "c2", name: "search_kb", ok: false } },
+      { event: "tool_call", data: { id: "c1", name: "get_debts", args: {}, at } },
+      { event: "tool_result", data: { id: "c1", name: "get_debts", ok: true, started_at: at, ms: 42 } },
+      { event: "tool_call", data: { id: "c2", name: "search_kb", args: { query: "debt", extra: "" }, at: at + 1000 } },
+      { event: "tool_result", data: { id: "c2", name: "search_kb", ok: false, started_at: at + 1000, ms: 1500 } },
       { event: "token", data: { text: "Pay the card." } },
       { event: "done", data: {} },
     ]);
     render(<ChatPanel />);
     await send();
+    await screen.findByText("Pay the card.");
 
-    expect(await screen.findByText("get_debts ✓")).toBeDefined();
-    expect(screen.getByText("search_kb ✗")).toBeDefined();
+    const box = screen.getByRole("group", { name: "Tool calls" });
+    expect(box.textContent).toContain("Used 2 tools");
+    const rows = box.querySelectorAll("li");
+    expect([...rows].map((r) => r.getAttribute("data-state"))).toEqual(["done", "failed"]);
+    expect(rows[0].textContent).toContain("Debts");
+    expect(rows[0].textContent).toContain("get_debts");
+    expect(rows[0].textContent).toContain("no arguments");
+    expect(rows[0].textContent).toContain(`${new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })} · 42 ms`);
+    expect(rows[1].textContent).toContain("query: debt");
+    expect(rows[1].textContent).not.toContain("extra");   // blank arguments the model sent are left out
+    expect(rows[1].textContent).toContain("1.5 s");
+  });
+
+  test("marks a tool running until its result arrives, then the model reading", async () => {
+    render(<ChatPanel />);
+    const reply = heldReply();
+    await send();
+
+    await reply.push({ event: "tool_call", data: { id: "c1", name: "get_debts", args: {}, at: Date.now() } });
+    expect(screen.getByRole("group", { name: "Tool calls" }).textContent).toContain("Using tools…");
+    expect(screen.getByText("running")).toBeDefined();
+
+    await reply.push({ event: "tool_result", data: { id: "c1", name: "get_debts", ok: true, started_at: Date.now(), ms: 5 } });
+    expect(screen.getByText("done")).toBeDefined();
+    expect(screen.getByRole("status").textContent).toMatch(/reading the results/);
+
+    await reply.push({ event: "token", data: { text: "Pay the card." } });
+    expect(screen.queryByText(/reading the results/)).toBeNull();
+    await reply.finish();
+  });
+
+  test("shows no tool box for an answer without tool calls", async () => {
+    replyWith([{ event: "token", data: { text: "Answer" } }, { event: "done", data: {} }]);
+    render(<ChatPanel />);
+    await send();
+    await screen.findByText("Answer");
+    expect(screen.queryByRole("group", { name: "Tool calls" })).toBeNull();
   });
 
   test("shows a graph chip only when graph facts were used", async () => {
@@ -161,6 +198,8 @@ describe("ChatPanel", () => {
 
     expect(await screen.findByText("Earlier answer")).toBeDefined();
     expect(screen.getByText("Earlier question")).toBeDefined();
+    // an old call with no timing still gets its row, just without a time
+    expect(screen.getByRole("group", { name: "Tool calls" }).textContent).toContain("Used 1 tool");
     expect(historyMock).toHaveBeenCalledWith("abc");
   });
 
