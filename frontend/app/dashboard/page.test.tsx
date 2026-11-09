@@ -124,7 +124,7 @@ describe("Dashboard goals", () => {
     const card = await goalsCard();
     expect(await card.findByText(/Goals are down\./)).toBeTruthy();
     // the budget card and the header still work
-    expect(await screen.findByText("$583.00/mo")).toBeTruthy();
+    expect(await screen.findByText("$583.00/mo planned")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Goals" })).toBeTruthy();
   });
 
@@ -155,8 +155,15 @@ describe("Dashboard demo user", () => {
     expect(screen.queryByRole("button", { name: "Link another account" })).toBeNull();
   });
 
-  test("the budget card explains the day marker", async () => {
+  test("the budget card lists an accepted goal that starts after this month", async () => {
+    goalsMock.mockResolvedValue([goal(2, { kind: "savings", strategy: null, monthly_cents: 20000, start_date: "2027-01-01" })]);
     render(<DashboardPage />);
-    expect(await screen.findByText(/Day 10 of 31\. The mark on each bar/)).toBeTruthy();
+    expect(await screen.findByText("$200.00/mo from January 2027")).toBeTruthy();
+  });
+
+  test("the budget card explains the ring and the list", async () => {
+    render(<DashboardPage />);
+    expect(await screen.findByText(/Day 10 of 31\. The ring shows how your monthly budget is split/)).toBeTruthy();
+    expect(screen.getByRole("img", { name: /Budget split/ })).toBeTruthy();
   });
 });

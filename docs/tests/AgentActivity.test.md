@@ -68,3 +68,27 @@ npm test -- components/AgentActivity.test.tsx
 **What it does:** A run with an empty summary says it finished before decision traces were recorded.
 
 **Why it's there:** Runs from before this change have no trace. They need to say so, not show a misleading empty view.
+
+## `syncLine`: `a plaid user's run says what the bank feed brought in`
+
+**What it does:** A sync of 1 bank that added 1 transaction reads "Bank sync through Plaid: 1 new transaction from 1 linked bank."
+
+**Why it's there:** For a user linked through Plaid, the run's first step is the bank feed. Saying what it brought in shows that a purchase reached the agent through Plaid.
+
+## `syncLine`: `a bank that couldn't be reached is called out`
+
+**What it does:** 4 banks with 3 errors reads "... 0 new transactions from 4 linked banks; 3 of them couldn't be reached, so their data may be stale."
+
+**Why it's there:** A failed bank still lets the run go ahead on stored data, and the reader should know that data may be old.
+
+## `syncLine`: `the demo user says it has no bank feed`
+
+**What it does:** A skipped sync says the user's data is seeded for the demo, not linked through Plaid. No sync record gives no line.
+
+**Why it's there:** It's honest about the demo user: it doesn't talk to Plaid. Older runs without a sync record show nothing.
+
+## `a finished run shows the sync line`
+
+**What it does:** A finished run with a sync of 2 new transactions shows "Bank sync through Plaid: 2 new transactions from 1 linked bank." above its trace.
+
+**Why it's there:** It checks the line is actually on the panel, not only built by the helper.

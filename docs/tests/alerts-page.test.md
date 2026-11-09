@@ -80,7 +80,7 @@ npm test -- app/alerts/page.test.tsx
 
 ## Not covered
 
-- **The dashboard's Budget card and Alerts link** have no component test. They reuse `BudgetPaceBar` (tested) and the API calls (tested), and `npm run build` checks the page compiles and prerenders.
+- **The dashboard's Budget card and Alerts link** have no component test. They reuse `BudgetPie` (tested) and the API calls (tested), and `npm run build` checks the page compiles and prerenders.
 
 ## `no panel when admin is off`
 

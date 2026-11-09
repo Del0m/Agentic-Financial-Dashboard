@@ -196,6 +196,7 @@ export function RunView({ run }: { run: ActivityRun }) {
   return (
     <div className="space-y-4">
       <Pipeline run={run} />
+      {!live && syncLine(run.summary.sync) && <p className="text-sm">{syncLine(run.summary.sync)}</p>}
       {live ? (
         <p role="status" className="text-sm">{working(run.steps[run.steps.length - 1])}</p>
       ) : run.status === "error" ? (
@@ -224,6 +225,16 @@ export function RunView({ run }: { run: ActivityRun }) {
       )}
     </div>
   );
+}
+
+// the run's first step, in words: what came in from the bank through plaid, or that the demo user has no bank feed
+export function syncLine(sync: ActivityRun["summary"]["sync"]): string | null {
+  if (!sync) return null;
+  if (sync.skipped) return "Bank sync: skipped. This user's data is seeded for the demo, not linked through Plaid.";
+  const banks = plural(sync.items ?? 0, "linked bank");
+  const failed = sync.errors?.length ? `; ${sync.errors.length} of them couldn't be reached, so their data may be stale` : "";
+  const what = sync.added === undefined ? banks : `${plural(sync.added, "new transaction")} from ${banks}`;
+  return `Bank sync through Plaid: ${what}${failed}.`;
 }
 
 function runLine(run: ActivityRun): string {

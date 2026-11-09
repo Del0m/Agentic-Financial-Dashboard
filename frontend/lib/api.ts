@@ -128,6 +128,9 @@ export type Budget = {
   income_cents: number | null;
   total_cents: number | null;
   style: string;
+  // limits the user approved for next month; month close applies them on next_start
+  next_limits?: { category: string; name: string; limit_cents: number; next_cents: number }[];
+  next_start?: string | null;
 };
 
 export type Alert = {
@@ -243,7 +246,7 @@ export type ActivityRun = {
     llm_failures?: number;
     streams?: { count: number; new: number[]; price_up: number[]; income_change: number[] };
     forecast?: { ok?: boolean; low_balance?: { date: string; shortfall_cents: number } | null } | null;
-    sync?: { skipped?: boolean; items?: number; errors?: string[] } | null;
+    sync?: { skipped?: boolean; items?: number; errors?: string[]; added?: number } | null;
     error?: string;
   };
 };
@@ -400,6 +403,18 @@ export type SimJob = {
 };
 
 // 404 when the server's admin routes are off; the alerts page then shows no simulation panel
+export type View = "demo" | "plaid";
+export type ViewState = { view: View; available: boolean };
+
+// the demo user, or the user whose banks are linked through plaid (admin tools only; a cookie the backend sets)
+export function getView(): Promise<ViewState> {
+  return request<ViewState>("/admin/view");
+}
+
+export function setView(view: View): Promise<ViewState> {
+  return request<ViewState>("/admin/view", { method: "PUT", body: JSON.stringify({ view }) });
+}
+
 export function getSim(): Promise<SimState> {
   return request<SimState>("/admin/sandbox");
 }

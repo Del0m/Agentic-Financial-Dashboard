@@ -85,7 +85,7 @@ java -jar plantuml.jar -tsvg docs/diagrams/*.puml
 Refer to `system-design.png` while reading.
 
 ### 4.1 Frontend
-- **Dashboard:** net worth, account balances, debts sorted by APR, and a **Budget** card with one pace bar per line (TPC-20).
+- **Dashboard:** net worth, account balances, debts sorted by APR, and a **Budget** card: a ring that splits the month's plan by line, beside a list of what has been spent on each line (TPC-20). Under the ring, it lists limits the user approved for next month and accepted goals that haven't started yet, since month close is what applies them.
   - The bar fills with the share of the limit spent, and a marker shows how much of the month has passed.
   - Colours: amber when the agent flags it for pace, red over the limit, neutral otherwise.
   - The numbers come live from `GET /budget`. Unbudgeted spending is listed under the bars.
@@ -100,7 +100,7 @@ Refer to `system-design.png` while reading.
   - Decisions are written back as the advice's outcome, which is the agent's memory.
 - **Goals** (`/goals`, TPC-25): a **Generate goals** button with a status line (it polls the run every 2 s), the proposal as cards with Accept / Dismiss, and accepted goals with a Stop button.
   - The dashboard has a **Goals** card listing accepted goals and the month each joins the budget ("From December 2026"), and a Goals link in the header with the proposal count. A failure stays inside the card.
-  - A goal line on the Budget card reads "Debt payoff $583.00/mo" with no meter, and the transaction picker doesn't offer goal lines.
+  - A goal line on the Budget card reads "Debt payoff $583.00/mo planned" with no meter, and the transaction picker doesn't offer goal lines.
 - **Recurring charges:** subscriptions and bills the agent found, with frequency, typical amount, next expected date and a badge for new or price-increased ones.
 - **Cash-flow forecast:** projected checking balance per day to the next paycheck, as a line with a low/high band, the buffer as a reference line, and markers on the days bills land.
 - **Debt payoff:** avalanche vs snowball side by side (months to debt-free, total interest, payoff order), with an "extra per month" input that recomputes both.
@@ -871,7 +871,7 @@ plaid-agent/
 │   └── diagrams/*.puml
 ├── frontend/                    # Next.js
 │   ├── app/                     # routes: /, /dashboard, /chat, /goals
-│   ├── components/              # PlaidLinkButton, BudgetPaceBar, ChatPanel, AlertCard,
+│   ├── components/              # PlaidLinkButton, BudgetPie, ChatPanel, AlertCard,
 │   │                            # RecurringList, ForecastChart, DebtPlanCompare
 │   └── lib/api.ts
 ├── backend/

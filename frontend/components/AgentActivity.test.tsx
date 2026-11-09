@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
-import { FlagTrace, RunView } from "@/components/AgentActivity";
+import { FlagTrace, RunView, syncLine } from "@/components/AgentActivity";
 import type { ActivityRun, TraceFlag } from "@/lib/api";
 
 afterEach(cleanup);
@@ -88,5 +88,26 @@ describe("RunView", () => {
   test("an older run without a trace says so", () => {
     render(<RunView run={run({ summary: {} })} />);
     expect(screen.getByText(/finished before decision traces were recorded/)).toBeTruthy();
+  });
+});
+
+describe("syncLine", () => {
+  test("a plaid user's run says what the bank feed brought in", () => {
+    expect(syncLine({ items: 1, errors: [], added: 1 })).toBe("Bank sync through Plaid: 1 new transaction from 1 linked bank.");
+  });
+
+  test("a bank that couldn't be reached is called out", () => {
+    expect(syncLine({ items: 4, errors: ["PlaidError", "PlaidError", "PlaidError"], added: 0 }))
+      .toBe("Bank sync through Plaid: 0 new transactions from 4 linked banks; 3 of them couldn't be reached, so their data may be stale.");
+  });
+
+  test("the demo user says it has no bank feed", () => {
+    expect(syncLine({ skipped: true })).toMatch(/seeded for the demo, not linked through Plaid/);
+    expect(syncLine(null)).toBeNull();
+  });
+
+  test("a finished run shows the sync line", () => {
+    render(<RunView run={run({ summary: { ...run().summary, sync: { items: 1, errors: [], added: 2 } } })} />);
+    expect(screen.getByText("Bank sync through Plaid: 2 new transactions from 1 linked bank.")).toBeTruthy();
   });
 });

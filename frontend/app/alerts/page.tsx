@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AgentActivity from "@/components/AgentActivity";
 import AlertCard from "@/components/AlertCard";
+import ViewSwitch from "@/components/ViewSwitch";
 import {
   acceptAlert, advanceSim, dismissAlert, errorMessage, getAlerts, getRun, getSim, getSimJob, runBudget, type Alert,
   type RunStatus, type SimJob, type SimState,
@@ -155,9 +156,12 @@ export default function AlertsPage() {
     <main className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
       <header className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Alerts</h1>
-        <Link href="/dashboard" className="text-sm underline underline-offset-2">
-          Dashboard
-        </Link>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <ViewSwitch />
+          <Link href="/dashboard" className="text-sm underline underline-offset-2">
+            Dashboard
+          </Link>
+        </div>
       </header>
 
       <section className="flex flex-col gap-3 rounded-lg border border-black/10 p-4 sm:flex-row sm:items-end dark:border-white/15">

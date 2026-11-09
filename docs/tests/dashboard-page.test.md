@@ -89,8 +89,14 @@ npm test -- app/dashboard/page.test.tsx
 
 **Why it's there:** The server refuses bank linking for simulated users. The button requested a link token as soon as it appeared, so the demo opened with a red "Couldn't start Link" error. The chip also says which date the demo is on.
 
-## `the budget card explains the day marker`
+## `the budget card lists an accepted goal that starts after this month`
 
-**What it does:** With day 10 of 31, the Budget card starts with "Day 10 of 31. The mark on each bar…".
+**What it does:** With December's budget and an accepted savings goal starting in January 2027, the Budget card shows "$200.00/mo from January 2027".
 
-**Why it's there:** The marker had no explanation, so a reader couldn't tell what it was for.
+**Why it's there:** It checks that the dashboard passes its accepted goals to the Budget card, so a goal the user just accepted shows up there too.
+
+## `the budget card explains the ring and the list`
+
+**What it does:** With day 10 of 31, the Budget card starts with "Day 10 of 31. The ring shows how your monthly budget is split…", and the ring is there as an image named "Budget split…".
+
+**Why it's there:** The ring shows the plan and the list shows the spending. The sentence tells the reader which is which, so they don't read a slice's size as money spent.

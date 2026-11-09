@@ -551,3 +551,34 @@ def test_decide_needs_no_model(api):
 # a goal run that raises leaves its facts in a checkpoint, and deleting that only frees the rows
 def test_checkpoint_connection_overwrites_deleted_rows():
     assert budget_hooks._sqlite_saver().conn.execute("PRAGMA secure_delete").fetchone()[0] == 1
+
+
+# --- approved limits for next month ---
+
+def test_budget_lists_an_accepted_increase_for_next_month(api):
+    uid = api.seed("overspend-recurring")
+    api.run(uid, RECUR, ADJUST, checkpointer=api.ck)
+    [aid] = alert_ids(api.db)
+    assert api.client.post(f"/alerts/{aid}/accept").status_code == 200
+    api.mp.setattr(budget_api, "_today", lambda: ONE)
+    body = api.client.get("/budget").json()
+    with api.db() as s:
+        alert = s.get(Alert, aid)
+        line = s.query(BudgetLine).filter_by(category=alert.category).one()
+    assert body["next_start"] == "2026-11-01"
+    assert body["next_limits"] == [{"category": alert.category, "name": line.name, "limit_cents": line.limit_cents,
+                                    "next_cents": 13500}]
+    # this month keeps its limit; close applies the new one
+    [shown] = [ln for ln in body["lines"] if ln["category"] == alert.category]
+    assert shown["limit_cents"] == line.limit_cents != 13500
+
+
+@pytest.mark.parametrize("answer", [None, "dismiss"])
+def test_budget_lists_no_change_until_accepted(api, answer):
+    uid = api.seed("overspend-recurring")
+    api.run(uid, RECUR, ADJUST, checkpointer=api.ck)
+    if answer:
+        [aid] = alert_ids(api.db)
+        assert api.client.post(f"/alerts/{aid}/{answer}").status_code == 200
+    api.mp.setattr(budget_api, "_today", lambda: ONE)
+    assert api.client.get("/budget").json()["next_limits"] == []

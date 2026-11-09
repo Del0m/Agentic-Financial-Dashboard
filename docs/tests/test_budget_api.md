@@ -287,3 +287,15 @@ Run them from `backend/`:
 **What it does:** A run for one user doesn't appear in another user's activity.
 
 **Why it's there:** Run summaries describe someone's spending, so the route has to filter by the signed-in user like every other route.
+
+## `test_budget_lists_an_accepted_increase_for_next_month`
+
+**What it does:** After the agent proposes raising Personal care to $135 and the user accepts it, `GET /budget` returns that change in `next_limits` (the current limit and $135), with `next_start` November 1. October's line keeps its old limit.
+
+**Why it's there:** Month close applies an accepted increase, so until then the Budget card had nothing to show for it, which made Accept look like it hadn't worked. The route uses the same `accepted_limits` helper as close, so the dashboard lists exactly what close will apply.
+
+## `test_budget_lists_no_change_until_accepted`
+
+**What it does:** With the proposal still pending, or dismissed, `next_limits` is empty.
+
+**Why it's there:** Only the user's yes changes next month's budget.

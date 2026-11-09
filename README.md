@@ -64,6 +64,17 @@ If you were given a complete `.env` instead, put it in the repo root and add onl
 
 Run `docker compose up -d`, click **Connect a bank**, pick **First Platypus Bank**, and log in with `user_good` / `pass_good`. To return to the demo user, remove the `DEV_USER_EMAIL` line and run `docker compose up -d` again.
 
+With Docker Compose you can skip the `DEV_USER_EMAIL` line: the Dashboard and Alerts headers have a **Demo user / Plaid bank** switch, available while `ENABLE_ADMIN` is on. **Plaid bank** shows `dev@localhost`, the user Plaid links banks to.
+
+To send purchases through Plaid, link Plaid's `user_transactions_dynamic` test user. You can log in as that user in **Connect a bank** (any password), or run:
+
+```bash
+docker compose exec backend python scripts/sandbox_link.py --dynamic
+docker compose exec backend python scripts/demo_purchase.py laptop --plaid --run
+```
+
+`--plaid` sends the purchase to Plaid Sandbox. Plaid names and categorizes it, and the next budget run's sync pulls it in like any bank transaction. Without `--run`, click **Run budget check** on Alerts a few seconds later. Plaid rate-limits new Sandbox transactions to a few a minute.
+
 ### On other machines
 
 macOS is the tested setup. On Linux or Windows, or if you'd rather not install Ollama, run it in a container:
@@ -247,7 +258,7 @@ cd backend
 ../venv/bin/python -m app.agents.goal_graph --user budget-goals-card-24 --date 2026-11-02
 ```
 
-`--prefs '{"skip_kinds": ["savings"], "max_share": 0.5, "note": "emergency fund matters most"}'` sets your preferences. `GET /goals` returns the current proposal (`?status=accepted` or `current` for accepted goals too). Goals proposed on the command line can be accepted in the app. The app doesn't track what you actually pay toward a goal, so a goal line is a plan, not a pace bar. See the [TPC-25 verification handoff](docs/handoffs/2026-11-02-tpc-25-manual-verification.md) to try it by hand.
+`--prefs '{"skip_kinds": ["savings"], "max_share": 0.5, "note": "emergency fund matters most"}'` sets your preferences. `GET /goals` returns the current proposal (`?status=accepted` or `current` for accepted goals too). Goals proposed on the command line can be accepted in the app. The app doesn't track what you actually pay toward a goal, so a goal line is a slice of the plan with no spending measured against it. See the [TPC-25 verification handoff](docs/handoffs/2026-11-02-tpc-25-manual-verification.md) to try it by hand.
 
 Goals are validated as a complete proposal before storage: the monthly total must fit the cap, kinds must be offered and unique, and every computed date must be achievable within 600 months. There are at most two model calls, including malformed replies; the correction receives scrubbed feedback. Failed attempts preserve the previous proposal and report why no replacement was generated. A cap below $1 withdraws it without calling the model. See the [TPC-24 verification handoff](docs/handoffs/2026-11-02-tpc-24-manual-verification.md) for deterministic failure checks and a live CLI walkthrough.
 

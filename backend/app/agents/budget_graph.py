@@ -89,14 +89,15 @@ class BudgetState(TypedDict, total=False):
 def plaid_sync(session: Session, user_id: str) -> dict:
     items = session.scalars(select(PlaidItem).where(PlaidItem.user_id == user_id,
                                                     PlaidItem.status == "active")).all()
-    errors = []
+    errors, added = [], 0
     for item in items:
         try:
-            sync_item(session, item)
+            added += sync_item(session, item)["transactions"]["added"]
         except Exception as exc:
             session.rollback()
             errors.append(type(exc).__name__)
-    return {"items": len(items), "errors": errors}
+    # added: new transactions plaid sent this run, so the activity panel can show the bank feed at work
+    return {"items": len(items), "errors": errors, "added": added}
 
 
 def _severity(reason: str) -> str:

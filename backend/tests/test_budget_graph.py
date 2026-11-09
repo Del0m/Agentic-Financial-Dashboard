@@ -351,6 +351,25 @@ def test_sync_called_and_failure_recorded(db, tmp_path):
     assert rows(db, AgentRun)[-1].summary_json["sync"] == {"items": 0, "errors": ["RuntimeError"]}
 
 
+def test_plaid_sync_counts_what_each_bank_sent(db, monkeypatch):
+    from app.agents import budget_graph
+    from app.db.models import PlaidItem, User
+    with db() as s:
+        s.add(User(id="u-p", email="p@x", password_hash="!"))
+        s.add_all([PlaidItem(user_id="u-p", plaid_item_id=f"it-{i}", access_token_enc="t") for i in range(3)])
+        s.commit()
+    sent = iter([{"transactions": {"added": 2}}, RuntimeError("bad token"), {"transactions": {"added": 1}}])
+
+    def fake_sync(session, item):
+        nxt = next(sent)
+        if isinstance(nxt, Exception):
+            raise nxt
+        return nxt
+    monkeypatch.setattr(budget_graph, "sync_item", fake_sync)
+    with db() as s:
+        assert budget_graph.plaid_sync(s, "u-p") == {"items": 3, "errors": ["RuntimeError"], "added": 3}
+
+
 def test_no_sync_fn_skipped(db, tmp_path):
     uid = seed(db, "overspend-one-time")
     assert run(db, uid, model=fake(DIAG, ALERT), tmp_path=tmp_path)["sync"] == {"skipped": True}

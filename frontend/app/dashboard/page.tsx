@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import AccountsTable from "@/components/AccountsTable";
 import BalanceChart from "@/components/BalanceChart";
-import BudgetPaceBar from "@/components/BudgetPaceBar";
+import BudgetPie from "@/components/BudgetPie";
 import DebtPlanCompare from "@/components/DebtPlanCompare";
 import ForecastChart from "@/components/ForecastChart";
 import DebtsTable from "@/components/DebtsTable";
@@ -13,6 +13,7 @@ import NetWorthSummary from "@/components/NetWorthSummary";
 import PlaidLinkButton from "@/components/PlaidLinkButton";
 import RecurringList from "@/components/RecurringList";
 import TransactionsTable from "@/components/TransactionsTable";
+import ViewSwitch from "@/components/ViewSwitch";
 import {
   correctTransaction, errorMessage, getAlerts, getBudget, getDashboard, getForecast, getGoals, getRecurring, getSim, getTransactions, setForecastBuffer, syncItem, type Budget,
   type Dashboard, type ExchangeResult, type Forecast, type Goal, type RecurringResponse, type SimState, type Txn,
@@ -185,7 +186,8 @@ export default function DashboardPage() {
     <main className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <ViewSwitch />
           <Link href="/alerts" className="text-sm underline underline-offset-2">
             {pendingAlerts > 0 ? `Alerts (${pendingAlerts})` : "Alerts"}
           </Link>
@@ -289,13 +291,10 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-3">
                 <p className="text-xs text-neutral-500">
-                  Day {budget.days_elapsed} of {budget.days_in_period}. The mark on each bar shows how much of the month
-                  has passed, so a bar past its mark is spending ahead of schedule.
+                  Day {budget.days_elapsed} of {budget.days_in_period}. The ring shows how your monthly budget is split,
+                  and the list shows what you&apos;ve spent on each line so far.
                 </p>
-                {budget.lines.map((line) => (
-                  <BudgetPaceBar key={line.category} line={line} daysElapsed={budget.days_elapsed}
-                    daysInPeriod={budget.days_in_period} />
-                ))}
+                <BudgetPie budget={budget} goals={acceptedGoals} />
                 {budget.unbudgeted.length > 0 && (
                   <p className="text-sm text-neutral-500">
                     Unbudgeted:{" "}

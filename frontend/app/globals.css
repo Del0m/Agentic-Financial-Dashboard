@@ -3,6 +3,15 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* budget ring slices: categorical, fixed order, checked for colour-blind separation on this surface */
+  --slice-1: #2a78d6;
+  --slice-2: #eb6834;
+  --slice-3: #1baf7a;
+  --slice-4: #eda100;
+  --slice-5: #e87ba4;
+  --slice-6: #008300;
+  --slice-7: #6250d6;
+  --slice-other: #a3a3a3;
 }
 
 @theme inline {
@@ -16,6 +25,14 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --slice-1: #3987e5;
+    --slice-2: #d95926;
+    --slice-3: #199e70;
+    --slice-4: #c98500;
+    --slice-5: #d55181;
+    --slice-6: #008300;
+    --slice-7: #9085e9;
+    --slice-other: #737373;
   }
 }
 

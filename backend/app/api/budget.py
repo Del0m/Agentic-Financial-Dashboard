@@ -13,6 +13,7 @@ from ..agents.budget_graph import waiting_for
 from ..budget_engine.pace import BudgetLine as EngineLine, evaluate, history_start
 from ..budget_engine.txns import add_months, month_start
 from ..budget_service import progress
+from ..budget_service.close import accepted_limits
 from ..budget_service.daily import run_daily_locked, sim_today, user_lock
 from ..budget_service.initialize import load_txns
 from ..budget_service.settings import set_user_style, user_style
@@ -54,6 +55,13 @@ class LineOut(BaseModel):
     flagged: bool
     reason: Optional[str]
 
+# a limit the user approved for next month: month close applies it, so until then the dashboard lists it
+class NextLimitOut(BaseModel):
+    category: str
+    name: str
+    limit_cents: int
+    next_cents: int
+
 class UnbudgetedOut(BaseModel):
     category: str
     spent_cents: int
@@ -68,6 +76,8 @@ class BudgetOut(BaseModel):
     income_cents: Optional[int] = None
     total_cents: Optional[int] = None
     style: str = "caps"
+    next_limits: list[NextLimitOut] = []
+    next_start: Optional[Date] = None
 
 class LineEdit(BaseModel):
     name: Optional[str] = None
@@ -121,6 +131,12 @@ def get_budget(user: User = Depends(get_current_user)):
                                      period.start_date - timedelta(days=1)))
         stored = {ln.category: ln for ln in period.lines}
         out = PeriodOut(start=period.start_date, end=period.end_date)
+        # close never adjusts the free or a goal line, so an approval can only change the others
+        approved, _ = accepted_limits(s, period)
+        next_limits = [NextLimitOut(category=ln.category, name=ln.name, limit_cents=ln.limit_cents,
+                                    next_cents=approved[ln.category])
+                       for ln in period.lines if ln.category in approved and ln.group not in ("free", "goal")
+                       and approved[ln.category] != ln.limit_cents]
         income, total = period.income_cents, period.total_cents
     return BudgetOut(
         period=out, ended_period=None, days_elapsed=today.day, days_in_period=days,
@@ -130,7 +146,8 @@ def get_budget(user: User = Depends(get_current_user)):
                for r in results if r.kind != "unbudgeted"],
         unbudgeted=[UnbudgetedOut(category=r.category, spent_cents=r.spent_cents)
                     for r in results if r.kind == "unbudgeted"],
-        income_cents=income, total_cents=total, style=style)
+        income_cents=income, total_cents=total, style=style,
+        next_limits=next_limits, next_start=out.end + timedelta(days=1))
 
 
 # rename a line, or move it between needs and wants (tpc-22). only the open period's lines; close carries the

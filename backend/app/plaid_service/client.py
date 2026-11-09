@@ -60,9 +60,15 @@ def exchange_public_token(public_token: str) -> tuple[str, str]:
     data = plaid_post("/item/public_token/exchange", {"public_token": public_token})
     return data["access_token"], data["item_id"]
 
-# sandbox only: get a public_token without the Link UI (First Platypus Bank by default)
-def sandbox_public_token(institution_id: str = "ins_109508") -> str:
+DYNAMIC_USER = "user_transactions_dynamic"   # the sandbox user that takes new transactions (/sandbox/transactions/create)
+
+
+# sandbox only: get a public_token without the Link UI (First Platypus Bank by default). username picks a sandbox test
+# user; none is plaid's default user_good
+def sandbox_public_token(institution_id: str = "ins_109508", username: str | None = None) -> str:
     options = {"transactions": {"days_requested": 180}}
+    if username:
+        options |= {"override_username": username, "override_password": "pass_good"}
     if config.PLAID_WEBHOOK_URL:
         options["webhook"] = config.PLAID_WEBHOOK_URL
     data = plaid_post("/sandbox/public_token/create", {

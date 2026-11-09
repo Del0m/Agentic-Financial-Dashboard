@@ -174,6 +174,12 @@ SQLite gives the new run the same id, and it still pauses, with its alert pendin
 
 **Why it's there:** A Plaid outage shouldn't stop the daily budget check, which then runs on the data already stored.
 
+## `test_plaid_sync_counts_what_each_bank_sent`
+
+**What it does:** With three linked banks, where Plaid sends 2 new transactions, one bank fails and the third sends 1, `plaid_sync` returns `{"items": 3, "errors": ["RuntimeError"], "added": 3}`.
+
+**Why it's there:** The Agent activity panel and `demo_purchase.py --run` show how many transactions came in through Plaid on each run, which is how the demo shows the bank feed at work. A failing bank still mustn't stop the others from counting.
+
 ## `test_no_sync_fn_skipped`
 
 **What it does:** Without a sync function, the run records the sync as skipped.

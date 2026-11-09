@@ -83,6 +83,40 @@ def _goal_commitments(session: Session, period: BudgetPeriod, new_start: date) -
     return goals, [g.id for g in committed if finished_before(g, new_start)]
 
 
+# the limits the user approved for the month after this period: accepted increases (the latest answer wins), then
+# accepted cancellations taking the stream's cost off. close applies them, and the dashboard shows them ahead of it
+def accepted_limits(session: Session, period: BudgetPeriod) -> tuple[dict[str, int], list[dict]]:
+    period_id = period.id
+    limits = {ln.category: ln.limit_cents for ln in period.lines}
+    accepted = {}
+    for alert in session.scalars(select(Alert).where(
+            Alert.period_id == period_id, Alert.action == "adjust_next_budget", Alert.status == "accepted",
+            Alert.proposed_limit_cents.is_not(None)).order_by(Alert.id)):
+        accepted[alert.category] = alert.proposed_limit_cents       # the latest answer wins
+
+    # pending cancellations survive close. consume each accepted stream once, including an answer to an older month
+    consumed = {outcome["stream_id"] for summary in session.scalars(select(AgentRun.summary_json).where(
+        AgentRun.user_id == period.user_id, AgentRun.graph == "close", AgentRun.status == "ok"))
+        for outcome in (summary or {}).get("cancel_outcomes", [])}
+    cancel_outcomes = []
+    for alert, stream in session.execute(select(Alert, RecurringStream).join(
+            RecurringStream, Alert.stream_id == RecurringStream.id).where(
+            Alert.user_id == period.user_id, RecurringStream.user_id == period.user_id,
+            Alert.action == "suggest_cancel", Alert.status == "accepted").order_by(Alert.id)):
+        if stream.id in consumed:
+            continue
+        consumed.add(stream.id)
+        category = stream.category
+        old = accepted.get(category, limits.get(category))
+        new = None if old is None else cancel_limit(old, monthly_cents(stream.typical_cents, stream.frequency))
+        outcome = "no_line" if old is None else "nonpositive" if new is None else "applied"
+        if new is not None:
+            accepted[category] = new
+        cancel_outcomes.append({"alert_id": alert.id, "stream_id": stream.id, "category": category,
+                                "old_cents": old, "new_cents": new, "outcome": outcome})
+    return accepted, cancel_outcomes
+
+
 def gather_month(session: Session, period_id: int) -> dict:
     period = session.get(BudgetPeriod, period_id)
     start, end = period.start_date, period.end_date
@@ -111,32 +145,7 @@ def gather_month(session: Session, period_id: int) -> dict:
             return saved
         return spent.get(ln.category, 0)
 
-    accepted = {}
-    for alert in session.scalars(select(Alert).where(
-            Alert.period_id == period_id, Alert.action == "adjust_next_budget", Alert.status == "accepted",
-            Alert.proposed_limit_cents.is_not(None)).order_by(Alert.id)):
-        accepted[alert.category] = alert.proposed_limit_cents       # the latest answer wins
-
-    # pending cancellations survive close. consume each accepted stream once, including an answer to an older month
-    consumed = {outcome["stream_id"] for summary in session.scalars(select(AgentRun.summary_json).where(
-        AgentRun.user_id == period.user_id, AgentRun.graph == "close", AgentRun.status == "ok"))
-        for outcome in (summary or {}).get("cancel_outcomes", [])}
-    cancel_outcomes = []
-    for alert, stream in session.execute(select(Alert, RecurringStream).join(
-            RecurringStream, Alert.stream_id == RecurringStream.id).where(
-            Alert.user_id == period.user_id, RecurringStream.user_id == period.user_id,
-            Alert.action == "suggest_cancel", Alert.status == "accepted").order_by(Alert.id)):
-        if stream.id in consumed:
-            continue
-        consumed.add(stream.id)
-        category = stream.category
-        old = accepted.get(category, limits.get(category))
-        new = None if old is None else cancel_limit(old, monthly_cents(stream.typical_cents, stream.frequency))
-        outcome = "no_line" if old is None else "nonpositive" if new is None else "applied"
-        if new is not None:
-            accepted[category] = new
-        cancel_outcomes.append({"alert_id": alert.id, "stream_id": stream.id, "category": category,
-                                "old_cents": old, "new_cents": new, "outcome": outcome})
+    accepted, cancel_outcomes = accepted_limits(session, period)
 
     new_start = end + timedelta(days=1)
     # a month further back than it fits, so the window's edge doesn't look like the start of the history
