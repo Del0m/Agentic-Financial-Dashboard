@@ -50,30 +50,153 @@ docker compose exec backend python scripts/seed_budget_user.py --profile overspe
 docker compose exec backend python scripts/setup_demo.py
 ```
 
-### Link a bank with Plaid (optional)
+### Plaid Sandbox demo: income, goals and live purchases
 
-This needs Plaid sandbox keys, from your own free [Plaid](https://dashboard.plaid.com/signup) account or supplied separately. Sandbox keys only reach Plaid's test data. Add them to `.env`, along with a user that starts empty:
+This walkthrough uses simulated bank accounts served through Plaid Sandbox. No real bank account is needed. Use this custom scenario on its own: combining it with the built-in College Student or generic accounts changes the totals and can introduce missing card-payment data.
 
-```bash
+#### 1. Configure Plaid
+
+After initial setup has created `.env`, add the supplied **client ID and Sandbox secret** (or use your own [Plaid developer account](https://dashboard.plaid.com/signup)):
+
+```dotenv
 PLAID_CLIENT_ID=...
 PLAID_SECRET=...
+PLAID_ENV=sandbox
 DEV_USER_EMAIL=dev@localhost
 ```
 
-If you were given a complete `.env` instead, put it in the repo root and add only the `DEV_USER_EMAIL` line. Never commit `.env`.
-
-Run `docker compose up -d`, click **Connect a bank**, pick **First Platypus Bank**, and log in with `user_good` / `pass_good`. To return to the demo user, remove the `DEV_USER_EMAIL` line and run `docker compose up -d` again.
-
-With Docker Compose you can skip the `DEV_USER_EMAIL` line: the Dashboard and Alerts headers have a **Demo user / Plaid bank** switch, available while `ENABLE_ADMIN` is on. **Plaid bank** shows `dev@localhost`, the user Plaid links banks to.
-
-To send purchases through Plaid, link Plaid's `user_transactions_dynamic` test user. You can log in as that user in **Connect a bank** (any password), or run:
+Keep the generated `FERNET_KEY` and never commit `.env`. `DEV_USER_EMAIL=dev@localhost` opens the app directly on the Plaid user and hides the user switch, so the full walkthrough uses the same linked accounts. After changing configuration, run:
 
 ```bash
-docker compose exec backend python scripts/sandbox_link.py --dynamic
+docker compose up -d
+```
+
+Wait for the model and knowledge base setup described in Quickstart to finish. Open http://localhost:3000/dashboard. If the user switch is still present, select **Plaid bank**. If this user already has other banks linked, use the reset in step 5 before proceeding.
+
+#### 2. Connect the custom test accounts through Link
+
+The complete configuration is [backend/fixtures/plaid-goals-demo.json](backend/fixtures/plaid-goals-demo.json). It specifies:
+
+| Data | Configuration |
+|---|---|
+| Demo Checking | $6,000 starting balance |
+| Emergency Savings | $1,000 starting balance |
+| Demo Rewards Card | $2,400 starting balance, 24% purchase APR, $75 minimum payment |
+| Salary | $4,200 monthly, categorized as income in the validation run |
+| Regular expenses | $2,600 per complete month |
+| History | July–October 2026 plus early November activity; dates shift forward when a new connection is created |
+
+The savings/card histories contain $0 initialization entries to prevent random transactions. Available balances are fixed for the demo; do not expect the $6,000 available balance to fall after each injected purchase. The app computes goal affordability from the imported history and forecast, so proposal amounts are not fixed by this table.
+
+1. Click **Connect a bank**. At the phone-number screen, choose **Continue without phone number**. The **Switch profile** menu and **Default Returning User** are not needed for this route.
+2. Choose **First Platypus Bank**, a non-OAuth Sandbox institution.
+3. Use either login method below:
+
+   | Method | Username | Password |
+   |---|---|---|
+   | Direct JSON, no Sandbox Studio access needed | `user_custom` | Copy the **entire contents** of [plaid-goals-demo.json](backend/fixtures/plaid-goals-demo.json), including the outer braces, into the password field. Do not enter the filename. |
+   | Saved custom user | In your Plaid Dashboard, open **Build → Sandbox → Users**, create a custom user with the same JSON, and save it. Enter that saved username here. | Any nonempty password, such as `pass_good`. |
+
+   A saved custom **user** is a set of bank-login test credentials; it does not automatically appear in Link's phone-number **Switch profile** menu. The direct JSON method uses the API credentials already configured on the server and needs no Dashboard login.
+4. Complete the remaining Link screens and select all three accounts. Wait for background import. If it fails, use **Retry sync** rather than connecting the bank again.
+5. Confirm the three account names and check **Debts by APR** for the card's **24% APR and $75 minimum**. There should be no unrelated generic loan or credit-card accounts.
+
+Both custom login methods are described in [Plaid's custom Sandbox user documentation](https://plaid.com/docs/sandbox/user-custom/). Editing a saved custom user's JSON does not update an existing connection; reset and link again to apply changes. Completing **Link another account** adds another connection—it does not replace the old one.
+
+#### 3. Generate and approve goals
+
+1. Open **Alerts**, leave **Date (blank for today)** empty, and click **Run budget check**. Wait for it to finish so the budget and recurring streams are available.
+2. Inspect the Dashboard budget and **Recurring charges → Income**. This user follows the real date.
+3. Open **Goals → Generate goals**. This configuration produced valid **debt-payoff** and **emergency-fund** proposals in the isolated real-model verification. Model wording, amounts and the set of goals may differ.
+4. Accept a proposal. It appears among accepted goals; its budget allocation starts next month. No money is transferred.
+
+If Goals reports a missing balance/minimum, inspect the card shown on Dashboard: the intended custom card has both fields. An additional generic card can block all goals. If Goals reports no surplus, check the imported income, history and existing commitments against the custom fixture.
+
+#### 4. Send a purchase through Plaid and inspect the agent
+
+After the initial budget check, run this from the repo root:
+
+```bash
+docker compose exec backend python scripts/demo_purchase.py laptop --plaid
+```
+
+This sends a $1,200 test purchase to Plaid Sandbox, not directly into the app database. Wait at least five seconds, then, still as **Plaid bank**, click **Alerts → Run budget check** with the date blank. Inspect the bank-sync result and **Agent activity**, then return to Dashboard Transactions to find the new purchase. Plaid may rename or recategorize it. If nothing arrives, wait and retry the budget check before sending another purchase.
+
+A new budget alert depends on the current limits, date and previous warnings. Show the actual measured facts, remembered advice, diagnosis, decision and code checks even if the agent stays quiet. In Chat, try **“What debts do I have, including their APRs?”** or **“What did I spend on general merchandise this month?”** using the category actually returned by Plaid. Compare the answer with the imported data.
+
+For this walkthrough, do **not** also run `sandbox_link.py --dynamic`: it creates a different test bank with generic accounts. The custom Sandbox connection supports purchase injection; the supplied CLI tries the linked bank directly.
+
+Verification: the JSON was accepted by Plaid Sandbox and returned the three intended balances, 24% purchase APR, $75 minimum, and 38 transactions, including five salary deposits categorized as income. The returned data generated goals in an isolated app database. This verifies the configuration/API path; a complete browser Link walkthrough with this JSON and a live-purchase run against this custom user still need rehearsal. The JSON was validated on November 8, 2026.
+
+#### 5. Reset for another presentation
+
+Wait for active runs to finish, then run:
+
+```bash
+docker compose stop backend && docker compose run --rm --no-deps backend python scripts/reset_plaid.py --yes && docker compose up -d backend
+```
+
+This backs up the database, clears only the local Plaid user's data and leaves it ready for **Connect a bank**. Old Items remain at Plaid. Reconnect using the same custom JSON in step 2 for fresh history. Run the reset script without `--yes` for a preview. If reset fails, the command stops before restart; read the error and restart with `docker compose up -d backend` when ready.
+
+#### Plaid demo command reference
+
+Run these from the repository root after connecting the custom Sandbox user. Choose the purchase command for the step you want; do not run every example in sequence unless you intend to add every purchase. Keep `--plaid` on purchase commands so they go through Plaid Sandbox.
+
+**Copy the custom login JSON (macOS):**
+
+```bash
+pbcopy < backend/fixtures/plaid-goals-demo.json
+```
+
+Use username `user_custom` and paste that JSON as the password at the **First Platypus Bank** login. On other systems, open the JSON file and copy its entire contents.
+
+**List the available purchase presets without adding anything:**
+
+```bash
+docker compose exec backend python scripts/demo_purchase.py --list
+```
+
+The preset descriptions are tuned for the separate simulated scenario; Plaid's returned categories, your current budget and alert history determine this walkthrough's results.
+
+**Add the main $1,200 laptop purchase, then start the agent in the browser:**
+
+```bash
+docker compose exec backend python scripts/demo_purchase.py laptop --plaid
+```
+
+Wait at least five seconds, then click **Alerts → Run budget check**, leaving Date blank. This gives live activity in the browser. Check the sync result and find the new transaction on Dashboard.
+
+**Alternatively, add the laptop and run the agent from the terminal:**
+
+```bash
 docker compose exec backend python scripts/demo_purchase.py laptop --plaid --run
 ```
 
-`--plaid` sends the purchase to Plaid Sandbox. Plaid names and categorizes it, and the next budget run's sync pulls it in like any bank transaction. Without `--run`, click **Run budget check** on Alerts a few seconds later. Plaid rate-limits new Sandbox transactions to a few a minute.
+This adds its own laptop, waits five seconds, syncs and prints the completed decision trace. Use it **instead of** the preceding command for that purchase. Refresh Alerts for its completed trace; CLI runs do not supply the API process's live step events.
+
+**Add a small purchase or your own merchant/amount:**
+
+```bash
+docker compose exec backend python scripts/demo_purchase.py coffee --plaid
+```
+
+Or:
+
+```bash
+docker compose exec backend python scripts/demo_purchase.py --plaid --merchant "Sushi Go" --amount 64.20
+```
+
+Wait at least five seconds and run the budget check in the browser afterward. Plaid assigns the category; `--category` cannot force its returned category. `--undo` cannot remove a purchase sent through Plaid. Repeated pushes accumulate and Sandbox rate limits can require waiting at least a minute before retrying.
+
+**Run another check without adding a purchase:** use **Alerts → Run budget check** again. Inspect Remembered and Decided in Agent activity. A duplicate warning may be suppressed, but silence is not guaranteed if another signal changed.
+
+**Preview the reset target without deleting anything:**
+
+```bash
+docker compose exec backend python scripts/reset_plaid.py
+```
+
+For a full reset, use the stop/reset/restart command in [step 5](#5-reset-for-another-presentation), then reconnect the custom JSON. Use **Goals → Generate goals → Accept** for human approval; no terminal purchase command is needed to generate goals. On Dashboard, **Cash forecast → Show as a table** and **Paying off your debts → Extra per month** use the same linked accounts.
 
 ### On other machines
 

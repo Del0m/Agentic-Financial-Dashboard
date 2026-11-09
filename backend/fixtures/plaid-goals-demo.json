@@ -1,0 +1,327 @@
+{
+  "version": 2,
+  "seed": "plaid-agent-goals-demo-v1",
+  "roll_dates_forward": true,
+  "override_accounts": [
+    {
+      "type": "depository",
+      "subtype": "checking",
+      "starting_balance": 6000,
+      "force_available_balance": 6000,
+      "currency": "USD",
+      "meta": {
+        "name": "Demo Checking",
+        "mask": "1001"
+      },
+      "inflow_model": {
+        "type": "none"
+      },
+      "transactions": [
+        {
+          "date_transacted": "2026-07-01",
+          "date_posted": "2026-07-01",
+          "amount": -4200,
+          "description": "ACME CORPORATION PAYROLL",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-07-02",
+          "date_posted": "2026-07-02",
+          "amount": 1500,
+          "description": "RENT PAYMENT LANDLORD",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-07-04",
+          "date_posted": "2026-07-04",
+          "amount": 500,
+          "description": "WHOLE FOODS MARKET",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-07-05",
+          "date_posted": "2026-07-05",
+          "amount": 200,
+          "description": "DUKE ENERGY ELECTRIC BILL",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-07-06",
+          "date_posted": "2026-07-06",
+          "amount": 200,
+          "description": "SHELL GAS STATION",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-07-07",
+          "date_posted": "2026-07-07",
+          "amount": 180,
+          "description": "COMCAST INTERNET",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-07-07",
+          "date_posted": "2026-07-07",
+          "amount": 20,
+          "description": "NETFLIX SUBSCRIPTION",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-08-01",
+          "date_posted": "2026-08-01",
+          "amount": -4200,
+          "description": "ACME CORPORATION PAYROLL",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-08-02",
+          "date_posted": "2026-08-02",
+          "amount": 1500,
+          "description": "RENT PAYMENT LANDLORD",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-08-04",
+          "date_posted": "2026-08-04",
+          "amount": 500,
+          "description": "WHOLE FOODS MARKET",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-08-05",
+          "date_posted": "2026-08-05",
+          "amount": 200,
+          "description": "DUKE ENERGY ELECTRIC BILL",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-08-06",
+          "date_posted": "2026-08-06",
+          "amount": 200,
+          "description": "SHELL GAS STATION",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-08-07",
+          "date_posted": "2026-08-07",
+          "amount": 180,
+          "description": "COMCAST INTERNET",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-08-07",
+          "date_posted": "2026-08-07",
+          "amount": 20,
+          "description": "NETFLIX SUBSCRIPTION",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-09-01",
+          "date_posted": "2026-09-01",
+          "amount": -4200,
+          "description": "ACME CORPORATION PAYROLL",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-09-02",
+          "date_posted": "2026-09-02",
+          "amount": 1500,
+          "description": "RENT PAYMENT LANDLORD",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-09-04",
+          "date_posted": "2026-09-04",
+          "amount": 500,
+          "description": "WHOLE FOODS MARKET",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-09-05",
+          "date_posted": "2026-09-05",
+          "amount": 200,
+          "description": "DUKE ENERGY ELECTRIC BILL",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-09-06",
+          "date_posted": "2026-09-06",
+          "amount": 200,
+          "description": "SHELL GAS STATION",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-09-07",
+          "date_posted": "2026-09-07",
+          "amount": 180,
+          "description": "COMCAST INTERNET",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-09-07",
+          "date_posted": "2026-09-07",
+          "amount": 20,
+          "description": "NETFLIX SUBSCRIPTION",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-10-01",
+          "date_posted": "2026-10-01",
+          "amount": -4200,
+          "description": "ACME CORPORATION PAYROLL",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-10-02",
+          "date_posted": "2026-10-02",
+          "amount": 1500,
+          "description": "RENT PAYMENT LANDLORD",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-10-04",
+          "date_posted": "2026-10-04",
+          "amount": 500,
+          "description": "WHOLE FOODS MARKET",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-10-05",
+          "date_posted": "2026-10-05",
+          "amount": 200,
+          "description": "DUKE ENERGY ELECTRIC BILL",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-10-06",
+          "date_posted": "2026-10-06",
+          "amount": 200,
+          "description": "SHELL GAS STATION",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-10-07",
+          "date_posted": "2026-10-07",
+          "amount": 180,
+          "description": "COMCAST INTERNET",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-10-07",
+          "date_posted": "2026-10-07",
+          "amount": 20,
+          "description": "NETFLIX SUBSCRIPTION",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-11-01",
+          "date_posted": "2026-11-01",
+          "amount": -4200,
+          "description": "ACME CORPORATION PAYROLL",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-11-02",
+          "date_posted": "2026-11-02",
+          "amount": 1500,
+          "description": "RENT PAYMENT LANDLORD",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-11-04",
+          "date_posted": "2026-11-04",
+          "amount": 500,
+          "description": "WHOLE FOODS MARKET",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-11-05",
+          "date_posted": "2026-11-05",
+          "amount": 200,
+          "description": "DUKE ENERGY ELECTRIC BILL",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-11-06",
+          "date_posted": "2026-11-06",
+          "amount": 200,
+          "description": "SHELL GAS STATION",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-11-07",
+          "date_posted": "2026-11-07",
+          "amount": 180,
+          "description": "COMCAST INTERNET",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-11-07",
+          "date_posted": "2026-11-07",
+          "amount": 20,
+          "description": "NETFLIX SUBSCRIPTION",
+          "currency": "USD"
+        },
+        {
+          "date_transacted": "2026-11-08",
+          "date_posted": "2026-11-08",
+          "amount": 1,
+          "description": "STARBUCKS",
+          "currency": "USD"
+        }
+      ]
+    },
+    {
+      "type": "depository",
+      "subtype": "savings",
+      "starting_balance": 1000,
+      "force_available_balance": 1000,
+      "currency": "USD",
+      "meta": {
+        "name": "Emergency Savings",
+        "mask": "1002"
+      },
+      "inflow_model": {
+        "type": "none"
+      },
+      "transactions": [
+        {
+          "date_transacted": "2026-11-08",
+          "date_posted": "2026-11-08",
+          "amount": 0,
+          "description": "SANDBOX ACCOUNT INITIALIZATION",
+          "currency": "USD"
+        }
+      ]
+    },
+    {
+      "type": "credit",
+      "subtype": "credit card",
+      "starting_balance": 2400,
+      "currency": "USD",
+      "meta": {
+        "name": "Demo Rewards Card",
+        "mask": "2001",
+        "limit": 5000
+      },
+      "inflow_model": {
+        "type": "none"
+      },
+      "transactions": [
+        {
+          "date_transacted": "2026-11-08",
+          "date_posted": "2026-11-08",
+          "amount": 0,
+          "description": "SANDBOX ACCOUNT INITIALIZATION",
+          "currency": "USD"
+        }
+      ],
+      "liability": {
+        "type": "credit",
+        "purchase_apr": 24,
+        "minimum_payment_amount": 75,
+        "last_payment_amount": 75
+      }
+    }
+  ]
+}
