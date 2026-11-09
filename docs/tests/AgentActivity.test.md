@@ -81,11 +81,11 @@ npm test -- components/AgentActivity.test.tsx
 
 **Why it's there:** A failed bank still lets the run go ahead on stored data, and the reader should know that data may be old.
 
-## `syncLine`: `the demo user says it has no bank feed`
+## `syncLine`: `the demo user's skipped sync shows no line`
 
-**What it does:** A skipped sync says the user's data is seeded for the demo, not linked through Plaid. No sync record gives no line.
+**What it does:** A skipped sync (the demo user, which has no bank feed) gives no line, and neither does a run with no sync record.
 
-**Why it's there:** It's honest about the demo user: it doesn't talk to Plaid. Older runs without a sync record show nothing.
+**Why it's there:** The demo user never talks to Plaid, so a line saying so on every run was noise. Older runs without a sync record show nothing either.
 
 ## `a finished run shows the sync line`
 

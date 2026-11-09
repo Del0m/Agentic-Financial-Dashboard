@@ -101,8 +101,8 @@ describe("syncLine", () => {
       .toBe("Bank sync through Plaid: 0 new transactions from 4 linked banks; 3 of them couldn't be reached, so their data may be stale.");
   });
 
-  test("the demo user says it has no bank feed", () => {
-    expect(syncLine({ skipped: true })).toMatch(/seeded for the demo, not linked through Plaid/);
+  test("the demo user's skipped sync shows no line", () => {
+    expect(syncLine({ skipped: true })).toBeNull();
     expect(syncLine(null)).toBeNull();
   });
 

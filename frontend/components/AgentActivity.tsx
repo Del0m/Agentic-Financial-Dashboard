@@ -227,10 +227,10 @@ export function RunView({ run }: { run: ActivityRun }) {
   );
 }
 
-// the run's first step, in words: what came in from the bank through plaid, or that the demo user has no bank feed
+// the run's first step, in words: what came in from the bank through plaid. the demo user has no bank feed, so its
+// skipped sync gets no line, like an older run with no sync record
 export function syncLine(sync: ActivityRun["summary"]["sync"]): string | null {
-  if (!sync) return null;
-  if (sync.skipped) return "Bank sync: skipped. This user's data is seeded for the demo, not linked through Plaid.";
+  if (!sync || sync.skipped) return null;
   const banks = plural(sync.items ?? 0, "linked bank");
   const failed = sync.errors?.length ? `; ${sync.errors.length} of them couldn't be reached, so their data may be stale` : "";
   const what = sync.added === undefined ? banks : `${plural(sync.added, "new transaction")} from ${banks}`;
