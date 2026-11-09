@@ -105,6 +105,14 @@ def _graph_section(found: Optional[dict]) -> str:
     return f"\n\nFacts (valid as of {found['as_of']}):\n" + "\n".join(f"- {line}" for line in found["facts"])
 
 
+# text a model writes next to its tool calls isn't the answer: the browser and history already drop it. it isn't sent back
+# either. qwen2.5:14b wrote that note in thai for "what is the biggest expense i have right now?", then answered in thai
+# and named the wrong category. with the note left out it answered in english, correctly (2026-11-08)
+def _without_side_text(messages: list) -> list:
+    return [m.model_copy(update={"content": ""}) if isinstance(m, AIMessage) and m.tool_calls and m.content else m
+            for m in messages]
+
+
 def _answered(messages: list) -> list:
     answered = {m.tool_call_id for m in messages if isinstance(m, ToolMessage)}
     out = []
@@ -142,7 +150,7 @@ def build_chat_graph(tools: list[BaseTool], *, retrieve: Optional[Callable[[str]
         offered = [t for t in tools if not (have_facts and t.name == "get_history")]
         llm = model.bind_tools(offered) if state.get("tool_rounds", 0) < MAX_TOOL_ROUNDS else model
         system = SystemMessage(system_prompt() + _date_line(today) + _guidance(state.get("sources", [])) + _graph_section(state.get("graph_facts")))
-        messages = [system] + _answered(state["messages"])
+        messages = [system] + _without_side_text(_answered(state["messages"]))
         reply = llm.invoke(messages)
         # an empty reply with tools on offer: the same prompt with none bound gets an answer, as on the last round
         if offered and llm is not model and not reply.tool_calls and not str(reply.content).strip():

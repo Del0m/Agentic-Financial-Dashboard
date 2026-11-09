@@ -330,6 +330,21 @@ def test_dangling_tool_calls_answered_before_the_model_sees_them():
     assert sent[i + 1].content.startswith("error:")
 
 
+# text next to a tool call isn't sent back: qwen wrote it in thai once, then answered in thai (2026-11-08).
+# the checkpoint keeps it as written; only what the model is sent changes
+def test_text_next_to_a_tool_call_not_sent_back_to_the_model():
+    call = tool_call("get_lucky_number", {"name": "Ada"})
+    call.content = "ฉันจะตรวจสอบ"
+    model = ScriptedChatModel(replies=[call, AIMessage("It's 24.")])
+
+    graph = run(model)
+
+    sent = next(m for m in model.seen[1] if getattr(m, "tool_calls", None))
+    assert sent.content == "" and sent.tool_calls == call.tool_calls
+    stored = next(m for m in graph.get_state(CONFIG).values["messages"] if getattr(m, "tool_calls", None))
+    assert stored.content == "ฉันจะตรวจสอบ"
+
+
 # a real tool call on the local model, end to end through the graph
 @pytest.mark.skipif(not ollama_has(config.OLLAMA_MODEL), reason="needs ollama running with OLLAMA_MODEL pulled")
 def test_live_tool_call_round_trip():
